@@ -4,6 +4,7 @@
 // license that can be found in the LICENSE file or at
 // https://opensource.org/licenses/MIT.
 
+using System;
 using System.Collections;
 using Mediapipe.Tasks.Vision.HandLandmarker;
 using UnityEngine;
@@ -18,6 +19,9 @@ namespace Mediapipe.Unity.Sample.HandLandmarkDetection
     private Experimental.TextureFramePool _textureFramePool;
 
     public readonly HandLandmarkDetectionConfig config = new HandLandmarkDetectionConfig();
+    
+    // 追加
+    public static event Action<HandLandmarkerResult> OnLandmarkDetected;
 
     public override void Stop()
     {
@@ -151,9 +155,11 @@ namespace Mediapipe.Unity.Sample.HandLandmarkDetection
       }
     }
 
+    // 外部に渡すための発火処理を追加
     private void OnHandLandmarkDetectionOutput(HandLandmarkerResult result, Image image, long timestamp)
     {
       _handLandmarkerResultAnnotationController.DrawLater(result);
+      OnLandmarkDetected?.Invoke(result); // 追加
     }
   }
 }
