@@ -14,7 +14,7 @@
               "type": "markdown",
               "state": {
                 "file": "specification_MUDRA.md",
-                "mode": "source",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
@@ -27,12 +27,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specification_MUDRA.md",
+                "file": "proposal_MUDRA.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "specification_MUDRA"
+              "title": "proposal_MUDRA"
             }
           }
         ],
@@ -109,7 +109,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "specification_MUDRA.md",
+                "file": "proposal_MUDRA.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -119,7 +119,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "specification_MUDRAへのバックリンク"
+              "title": "proposal_MUDRAへのバックリンク"
             }
           },
           {
@@ -200,7 +200,9 @@
   },
   "active": "d90261507791b1bf",
   "lastOpenFiles": [
-    "proposal_MUDRA.md",
-    "specification_MUDRA.md"
+    "devlog/dev_log_P3.md",
+    "devlog/未確認 872297.crdownload",
+    "specification_MUDRA.md",
+    "proposal_MUDRA.md"
   ]
 }
