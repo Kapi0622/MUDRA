@@ -520,14 +520,14 @@ public struct DamageResult
 
 **遷移条件の詳細:**
 
-| From | To | 条件 |
-|------|-----|------|
-| Idle | Chanting | 詠唱印（Open, Fist, Point, Scissors, Palm, Union）を検出 |
-| Idle | Guarding | 防御印（Fist）を一定時間保持で防御モード移行 |
-| Chanting | Releasing | 発動印（Release）を確定 |
-| Chanting | Idle | 解除印（Cancel）を確定 / 制限時間切れ |
-| Releasing | Idle | 術エフェクトの再生が完了 |
-| Guarding | Idle | 防御印を解除（手を開くなど） |
+| From      | To        | 条件                                               |
+| --------- | --------- | ------------------------------------------------ |
+| Idle      | Chanting  | 詠唱印（Open, Fist, Point, Scissors, Palm, Union）を検出 |
+| Idle      | Guarding  | 防御印（Fist）を一定時間保持で防御モード移行                         |
+| Chanting  | Releasing | 発動印（Release）を確定                                  |
+| Chanting  | Idle      | 解除印（Cancel）を確定 / 制限時間切れ                          |
+| Releasing | Idle      | 発動後の固定硬直時間が経過                                    |
+| Guarding  | Idle      | 防御印を解除（手を開くなど）                                   |
 
 > **注意:** Fist（グー）は詠唱印と防御印を兼ねるため、文脈で判断する。
 > Idle状態でFistを保持 → Guarding。Chanting中にFistが来る → シーケンスの一部。
