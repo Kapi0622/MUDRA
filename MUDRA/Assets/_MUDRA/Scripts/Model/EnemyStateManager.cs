@@ -37,6 +37,14 @@ public class EnemyStateManager : IDisposable
     /// </summary>
     public void StartLoop()
     {
+        StopLoop();
+
+        if (_enemyData.actionPattern == null || _enemyData.actionPattern.Length == 0)
+        {
+            UnityEngine.Debug.LogError($"[EnemyStateManager] {_enemyData.enemyName} の actionPattern が未設定です");
+            return;
+        }
+        
         _loopCts = new CancellationTokenSource();
         _patternIndex = 0;
         RunLoopAsync(_loopCts.Token).Forget();
@@ -56,38 +64,45 @@ public class EnemyStateManager : IDisposable
 
     private async UniTaskVoid RunLoopAsync(CancellationToken ct)
     {
-        while (!ct.IsCancellationRequested)
+        try
         {
-            var action = _enemyData.actionPattern[_patternIndex];
+            while (!ct.IsCancellationRequested)
+            {
+                var action = _enemyData.actionPattern[_patternIndex];
 
-            // --- Charging ---
-            _currentPhase.Value = EnemyPhase.Charging;
-            _currentAction.Value = action;
-            await UniTask.Delay(
-                TimeSpan.FromSeconds(action.attackData.chargeTime),
-                cancellationToken: ct
-            );
+                // --- Charging ---
+                _currentPhase.Value = EnemyPhase.Charging;
+                _currentAction.Value = action;
+                await UniTask.Delay(
+                    TimeSpan.FromSeconds(action.attackData.chargeTime),
+                    cancellationToken: ct
+                );
 
-            // --- Attacking ---
-            _currentPhase.Value = EnemyPhase.Attacking;
-            _onAttackExecuted.OnNext(action);
+                // --- Attacking ---
+                _currentPhase.Value = EnemyPhase.Attacking;
+                _onAttackExecuted.OnNext(action);
 
-            // 攻撃演出用の短い待機（仮値）
-            await UniTask.Delay(
-                TimeSpan.FromSeconds(0.3f),
-                cancellationToken: ct
-            );
+                // 攻撃演出用の短い待機（仮値）
+                await UniTask.Delay(
+                    TimeSpan.FromSeconds(0.3f),
+                    cancellationToken: ct
+                );
 
-            // --- Idle（次の行動までの待機）---
-            _currentPhase.Value = EnemyPhase.Idle;
-            _currentAction.Value = null;
-            await UniTask.Delay(
-                TimeSpan.FromSeconds(action.intervalAfter),
-                cancellationToken: ct
-            );
+                // --- Idle（次の行動までの待機）---
+                _currentPhase.Value = EnemyPhase.Idle;
+                _currentAction.Value = null;
+                await UniTask.Delay(
+                    TimeSpan.FromSeconds(action.intervalAfter),
+                    cancellationToken: ct
+                );
 
-            // パターンを進める
-            _patternIndex = (_patternIndex + 1) % _enemyData.actionPattern.Length;
+                // パターンを進める
+                _patternIndex = (_patternIndex + 1) % _enemyData.actionPattern.Length;
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // バトル終了・シーン破棄によるキャンセルは正常終了として扱う
         }
     }
 

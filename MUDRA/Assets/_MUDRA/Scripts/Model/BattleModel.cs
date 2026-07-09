@@ -88,8 +88,11 @@ public class BattleModel : IDisposable
 
     public void ApplyMisfireDamage()
     {
+        if (!_isBattleActive.Value) return;
+        
         int damage = (int)(PlayerMaxHp * MisfireDamageRate);
         _playerHp.Value = Math.Max(0, _playerHp.Value - damage);
+        _comboCount.Value = 0;
         CheckBattleEnd();
     }
 
