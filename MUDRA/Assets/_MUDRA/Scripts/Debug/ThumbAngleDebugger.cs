@@ -55,7 +55,7 @@ namespace MUDRA.Debugging
                 return;
             }
 
-            // 親指のランドマーク: 0=CMC(1), 1=MCP(2), 2=IP(3), 3=TIP(4)
+            // 親指のランドマーク: 0=Wrist, 1=CMC, 2=MCP, 3=IP, 4=TIP
             var cmc = landmarks[1].Position;
             var mcp = landmarks[2].Position;
             var ip = landmarks[3].Position;

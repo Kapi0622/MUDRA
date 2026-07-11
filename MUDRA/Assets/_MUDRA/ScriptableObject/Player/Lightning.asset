@@ -16,7 +16,7 @@ MonoBehaviour:
   element: 2
   icon: {fileID: 0}
   description: 
-  sequence: 0200000003000000
+  sequence: 0200000005000000
   basePower: 40
   damageType: 1
   hitCount: 5

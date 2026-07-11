@@ -119,7 +119,7 @@ public class BattleModel : IDisposable
             DamageType.SingleHit => new SingleHitCalculator(),
             DamageType.MultiHit => new MultiHitCalculator(),
             DamageType.DamageOverTime => new DamageOverTimeCalculator(),
-            _ => throw new ArgumentOutOfRangeException(),
+            _ => throw new ArgumentOutOfRangeException(nameof(damageType), damageType, null),
         };
     }
 
