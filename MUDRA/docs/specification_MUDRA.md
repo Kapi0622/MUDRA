@@ -122,7 +122,7 @@ View: UpdateHpBar(int hp)
 | `BattleModel` | プレイヤーHP・ボスHP・コンボカウント等のバトルデータを保持し、ダメージ計算Strategyを呼び出す | Pure C# |
 | `GameStateManager` | ゲーム全体のフェーズ（Title / InGame / Result）を管理する | Pure C# |
 | `PlayerStateManager` | プレイヤーの行動フェーズ（Idle / Chanting / Releasing / Guarding）を管理する | Pure C# |
-| `EnemyStateManager` | 敵の行動フェーズ（Idle / Attacking / Stunned）を管理する | Pure C# |
+| `EnemyStateManager` | 敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用） | Pure C# |
 
 #### Strategy
 
@@ -143,6 +143,7 @@ View: UpdateHpBar(int hp)
 | `BattlePresenter` | BattleModel ↔ BattleView の仲介 | MonoBehaviour |
 | `EnemyPresenter` | EnemyStateManager ↔ EnemyView の仲介 | MonoBehaviour |
 | `HandSignPresenter` | SpellSequenceModel ↔ HandSignView の仲介（印の表示・確定演出のトリガー） | MonoBehaviour |
+| `BattleInitializer` | 全ModelとPresenterの生成・注入を一元管理する。Presenter-in-Presenter依存を避けるため、各Modelの生成責務をここに集約する。Script Execution OrderをPresenter群より先行させる | MonoBehaviour |
 
 #### View Layer
 
@@ -158,6 +159,8 @@ View: UpdateHpBar(int hp)
 |----------|------|------|
 | `SpellData` | 術の定義データ（シーケンス・威力・属性・演出素材） | ScriptableObject |
 | `EnemyData` | 敵の定義データ（HP・弱点属性・行動パターン） | ScriptableObject |
+| `EnemyAttackData` | 攻撃1種分のテンプレートデータ（ダメージ・チャージ時間・演出） | ScriptableObject |
+| `EnemyAction` | 行動パターン1要素分のデータ（`EnemyAttackData`参照・大技フラグ・行動後の待機時間） | Serializable struct |
 | `StageData` | ステージ定義データ（登場ボス・BGM） | ScriptableObject |
 
 ### 2-2. インターフェース定義
@@ -368,6 +371,45 @@ public class SpellData : ScriptableObject
 }
 
 /// <summary>
+/// 攻撃1種分のテンプレートデータ。
+/// SpellDataと対称的な構造として分離しており、複数ボスでの使い回しを想定する。
+/// </summary>
+[CreateAssetMenu(fileName = "NewEnemyAttack", menuName = "InJutsushi/EnemyAttackData")]
+public class EnemyAttackData : ScriptableObject
+{
+    [Header("基本情報")]
+    public string attackName;
+
+    [Header("戦闘パラメータ")]
+    [Tooltip("ダメージ量")]
+    public int damage;
+
+    [Tooltip("攻撃予告の演出時間（秒）")]
+    public float chargeTime = 1.5f;
+
+    [Header("演出")]
+    public GameObject effectPrefab;
+    public AudioClip se;
+}
+
+/// <summary>
+/// 行動パターン1要素分のデータ。
+/// EnemyDataのactionPattern配列を構成する。
+/// </summary>
+[Serializable]
+public struct EnemyAction
+{
+    [Tooltip("使用する攻撃データ")]
+    public EnemyAttackData attackData;
+
+    [Tooltip("大技（防御軽減率が異なる）かどうか")]
+    public bool isHeavy;
+
+    [Tooltip("この行動が完了してから次の行動に移るまでの待機時間（秒）")]
+    public float intervalAfter;
+}
+
+/// <summary>
 /// 敵（ボス）の定義データ。
 /// </summary>
 [CreateAssetMenu(fileName = "NewEnemy", menuName = "InJutsushi/EnemyData")]
@@ -383,26 +425,8 @@ public class EnemyData : ScriptableObject
     public float weakMultiplier = 1.5f;
 
     [Header("行動パラメータ")]
-    [Tooltip("通常攻撃の間隔（秒）")]
-    public float normalAttackInterval;
-
-    [Tooltip("通常攻撃のダメージ")]
-    public int normalAttackDamage;
-
-    [Tooltip("大技の間隔（秒）。normalAttackIntervalの倍数にすると自然")]
-    public float heavyAttackInterval;
-
-    [Tooltip("大技のダメージ")]
-    public int heavyAttackDamage;
-
-    [Tooltip("攻撃予告の演出時間（秒）")]
-    public float chargeTime = 1.5f;
-
-    [Header("演出")]
-    public GameObject normalAttackEffectPrefab;
-    public GameObject heavyAttackEffectPrefab;
-    public AudioClip normalAttackSE;
-    public AudioClip heavyAttackSE;
+    [Tooltip("行動パターン。配列の先頭から順にインデックスを1つずつ進めながら巡回する")]
+    public EnemyAction[] actionPattern;
 }
 
 /// <summary>
@@ -1093,12 +1117,13 @@ MLモデルを使わない理由は以下の通り。
 
 目標: **1体のボスと最後まで戦えるバトルが成立する**
 
-| 工程 | 内容 | 期限 | 完了条件 |
-|------|------|------|---------|
-| **A1** | アーキテクチャ構築 | 07/11（3日） | State管理・MVP構成・ScriptableObject基盤が動作する |
-| **A2** | バトルループ実装 | 07/16（5日） | ボスが自動攻撃し、プレイヤーが術で反撃でき、HP増減でバトルが決着する |
-| **A3** | 全手印・全術実装 | 07/19（3日） | 5種以上の手印が動作し、属性の異なる術が3種以上発動できる |
-| **A4** | UI・演出の基礎 | 07/22（3日） | HPバー・印シーケンスガイド・術名テロップ・印確定エフェクトが表示される |
+| 工程     | 内容                      | 期限         | 完了条件                                                                         |
+| ------ | ----------------------- | ---------- | ---------------------------------------------------------------------------- |
+| **A1** | アーキテクチャ構築               | 07/11（3日）  | State管理・MVP構成・ScriptableObject基盤が動作する                                        |
+| **A2** | バトルループ実装                | 07/16（5日）  | ボスが自動攻撃し、プレイヤーが術で反撃でき、HP増減でバトルが決着する                                          |
+| **A3** | 全手印・全術実装                | 07/19（3日）  | 5種以上の手印が動作し、属性の異なる術が3種以上発動できる                                                |
+| **A4** | UI・演出の基礎                | 07/22（3日）  | HPバー・印シーケンスガイド・術名テロップ・印確定エフェクトが表示される                                         |
+| **A5** | Guarding・StatusEffect実装 | 07/25（3日間） | Fist文脈判定によるGuarding状態が機能し、Stun付与でボスのStunned状態が実際に駆動し、DoTのtick処理が毎秒ダメージを与え続ける |
 
 **A4完了時の判断ポイント:**
 - バトルのテンポ感は面白いか？

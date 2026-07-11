@@ -6,6 +6,7 @@ using MUDRA.Data;
 public struct DamageResult
 {
     public int TotalDamage;
+    public int PerHitDamage;
     public int HitCount;
     public bool IsWeakness;
     public bool HasSpeedBonus;

@@ -12,14 +12,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 231b1a0dc42b0b3418cdb9f59683d2c3, type: 3}
   m_Name: Lightning
   m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.SpellData
-  spellName: "\u96F7\u6483"
+  spellName: "\u96F7\u9023\u6483"
   element: 2
   icon: {fileID: 0}
   description: 
-  sequence: 020000000100000000000000
-  basePower: 35
-  damageType: 0
-  hitCount: 1
+  sequence: 0200000005000000
+  basePower: 40
+  damageType: 1
+  hitCount: 5
   rangeType: 0
   statusEffect: 0
   statusEffectDuration: 0
