@@ -17,6 +17,7 @@ public class SingleHitCalculator : IDamageCalculator
         return new DamageResult
         {
             TotalDamage = totalDamage,
+            PerHitDamage = totalDamage,
             HitCount = 1,
             IsWeakness = isWeak,
             HasSpeedBonus = speedBonus > 1.0f,

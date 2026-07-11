@@ -117,10 +117,9 @@ public class BattleModel : IDisposable
         return damageType switch
         {
             DamageType.SingleHit => new SingleHitCalculator(),
-            // A3で追加
-            // DamageType.MultiHit => new MultiHitCalculator(),
-            // DamageType.DamageOverTime => new DamageOverTimeCalculator(),
-            _ => new SingleHitCalculator(),
+            DamageType.MultiHit => new MultiHitCalculator(),
+            DamageType.DamageOverTime => new DamageOverTimeCalculator(),
+            _ => throw new ArgumentOutOfRangeException(),
         };
     }
 

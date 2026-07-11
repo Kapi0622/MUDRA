@@ -15,7 +15,7 @@ MonoBehaviour:
   enemyName: "\u6CE5\u4EBA\u5F62"
   sprite: {fileID: 0}
   maxHp: 200
-  weakElement: 2
+  weakElement: 0
   weakMultiplier: 1.5
   actionPattern:
   - attackData: {fileID: 11400000, guid: c8d7c91dddb614542aeaf058f36ff7df, type: 2}

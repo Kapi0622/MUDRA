@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specification_MUDRA.md",
+                "file": "devlog/dev_log_A2.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "specification_MUDRA"
+              "title": "dev_log_A2"
             }
           },
           {
@@ -27,15 +27,16 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "proposal_MUDRA.md",
-                "mode": "source",
+                "file": "specification_MUDRA.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "proposal_MUDRA"
+              "title": "specification_MUDRA"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -197,12 +198,13 @@
       "bases:新規ベースを作成": false
     }
   },
-  "active": "15c62275b50631a3",
+  "active": "d90261507791b1bf",
   "lastOpenFiles": [
-    "devlog/dev_log_A2.md",
-    "devlog/未確認 846011.crdownload",
     "proposal_MUDRA.md",
+    "devlog/dev_log_A2.md",
+    "未確認 966469.crdownload",
     "specification_MUDRA.md",
+    "devlog/未確認 846011.crdownload",
     "devlog/dev_log_A1.md",
     "devlog/未確認 993417.crdownload",
     "devlog/dev_log_P3.md",
