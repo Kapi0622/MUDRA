@@ -50,16 +50,22 @@ public class BattleModel : IDisposable
     }
 
     /// <summary>
-    /// 術の発動成功時にボスへダメージを与える。
-    /// speedBonusはA4で詠唱時間計測を実装するまで1.0固定。
+    /// 術の発動結果を受けてダメージを処理する。
+    /// 成功時はボスへダメージ+コンボ加算、暴発時はセルフダメージ+コンボリセット。
     /// </summary>
-    public void ApplySpellDamage(SpellData spellData, float speedBonus = 1.0f)
+    public void ApplySpellDamage(SpellCastResult result)
     {
         if (!_isBattleActive.Value) return;
 
-        var calculator = ResolveCalculator(spellData.damageType);
+        if (!result.IsSuccess)
+        {
+            ApplyMisfireDamage();
+            return;
+        }
+
+        var calculator = ResolveCalculator(result.Spell.damageType);
         var damageResult = calculator.Calculate(
-            spellData, _enemyData, speedBonus, _comboCount.Value
+            result.Spell, _enemyData, result.SpeedBonus, _comboCount.Value
         );
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damageResult.TotalDamage);
@@ -86,10 +92,11 @@ public class BattleModel : IDisposable
         CheckBattleEnd();
     }
 
-    public void ApplyMisfireDamage()
+    /// <summary>
+    /// 暴発時のセルフダメージ。MaxHpの固定割合ダメージ+コンボリセット。
+    /// </summary>
+    private void ApplyMisfireDamage()
     {
-        if (!_isBattleActive.Value) return;
-        
         int damage = (int)(PlayerMaxHp * MisfireDamageRate);
         _playerHp.Value = Math.Max(0, _playerHp.Value - damage);
         _comboCount.Value = 0;

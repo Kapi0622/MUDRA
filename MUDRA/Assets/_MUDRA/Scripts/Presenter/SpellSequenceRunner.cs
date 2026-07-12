@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using MUDRA.Data;
 using MUDRA.HandTracking;
 using UnityEngine;
@@ -11,7 +12,8 @@ using R3;
 public class SpellSequenceRunner : MonoBehaviour
 {
     [SerializeField] private SpellEffectView _spellEffectView;
-    [SerializeField] private TextMeshProUGUI _debugSignText;
+    [SerializeField] [CanBeNull] private TextMeshProUGUI _debugSignText;
+    [SerializeField] private SequenceGuideView _sequenceGuideView;
 
     private HandTrackingService _handTrackingService;
     private SpellSequenceModel _model;
@@ -39,15 +41,27 @@ public class SpellSequenceRunner : MonoBehaviour
         _handTrackingService.OnHandSignRecognized
             .Subscribe(sign => _debugSignText.text = sign.ToString())
             .AddTo(_disposables);
+        
+        // --- 印確定 → ガイド更新 + 確定エフェクト ---
+        _model.OnSignAdded
+            .Subscribe(_ =>
+            {
+                _sequenceGuideView.UpdateGuide(_model.MatchCandidates, _model.InputCount);
+                _sequenceGuideView.PlayConfirmEffect();
+            })
+            .AddTo(_disposables);
 
+        // --- 術発動 → エフェクト再生 + ガイドクリア ---
         _model.OnSpellCast
             .Subscribe(HandleSpellCast)
             .AddTo(_disposables);
 
         _model.OnSpellCast
+            .Where(result => result.IsSuccess)
             .Subscribe(_ => _playerStateManager.HandleSpellCast())
             .AddTo(_disposables);
 
+        // --- シーケンスリセット → ガイドクリア ---
         _model.OnSequenceReset
             .Subscribe(HandleSequenceReset)
             .AddTo(_disposables);
@@ -94,10 +108,17 @@ public class SpellSequenceRunner : MonoBehaviour
         }
     }
 
-    private void HandleSpellCast(SpellData spell)
+    private void HandleSpellCast(SpellCastResult result)
     {
-        Debug.Log($"[SpellSequence] 発動成功: {spell.spellName}");
-        _spellEffectView.PlayEffect();
+        if (result.IsSuccess)
+        {
+            Debug.Log($"[SpellSequence] 発動成功: {result.Spell.spellName} (SpeedBonus: {result.SpeedBonus})");
+            _spellEffectView.PlayEffect();
+        }
+        else
+        {
+            Debug.Log("[SpellSequence] 暴発");
+        }
     }
 
     private void HandleSequenceReset(SequenceResetReason reason)
