@@ -14,6 +14,7 @@ public class SpellSequenceRunner : MonoBehaviour
     [SerializeField] private SpellEffectView _spellEffectView;
     [SerializeField] [CanBeNull] private TextMeshProUGUI _debugSignText;
     [SerializeField] private SequenceGuideView _sequenceGuideView;
+    [SerializeField] private SpellTelopView _spellTelopView;
 
     private HandTrackingService _handTrackingService;
     private SpellSequenceModel _model;
@@ -110,14 +111,18 @@ public class SpellSequenceRunner : MonoBehaviour
 
     private void HandleSpellCast(SpellCastResult result)
     {
+        _sequenceGuideView.Clear();
+
         if (result.IsSuccess)
         {
             Debug.Log($"[SpellSequence] 発動成功: {result.Spell.spellName} (SpeedBonus: {result.SpeedBonus})");
             _spellEffectView.PlayEffect();
+            _spellTelopView.ShowSpellName(result.Spell.spellName);
         }
         else
         {
             Debug.Log("[SpellSequence] 暴発");
+            _spellTelopView.ShowMisfire();
         }
     }
 
