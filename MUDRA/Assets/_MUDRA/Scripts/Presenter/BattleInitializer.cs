@@ -20,6 +20,10 @@ public class BattleInitializer : MonoBehaviour
     [SerializeField] private SpellData[] _allSpells;
     [SerializeField] private EnemyData _enemyData;
     [SerializeField] private int _playerMaxHp = 100;
+    
+    [Header("View")]
+    [SerializeField] private HpBarView _playerHpBarView;
+    [SerializeField] private HpBarView _bossHpBarView;
 
     // Model群（Dispose管理のため保持）
     private HandTrackingService _handTrackingService;
@@ -27,14 +31,14 @@ public class BattleInitializer : MonoBehaviour
     private PlayerStateManager _playerStateManager;
     private EnemyStateManager _enemyStateManager;
     private BattleModel _battleModel;
-    
+
     private readonly CompositeDisposable _disposables = new();
 
     private void Awake()
     {
         // --- Model生成 ---
         _handTrackingService = new HandTrackingService(_provider);
-        _spellSequenceModel = new SpellSequenceModel(_allSpells);
+        _spellSequenceModel = new SpellSequenceModel(_allSpells, () => Time.time);
         _playerStateManager = new PlayerStateManager();
         _enemyStateManager = new EnemyStateManager(_enemyData);
         _battleModel = new BattleModel(_playerMaxHp, _enemyData);
@@ -49,12 +53,14 @@ public class BattleInitializer : MonoBehaviour
         _battlePresenter.Initialize(
             _battleModel,
             _enemyStateManager,
-            _spellSequenceModel
+            _spellSequenceModel,
+            _playerHpBarView,
+            _bossHpBarView
         );
 
         // --- バトル開始 ---
         _enemyStateManager.StartLoop();
-        
+
         _battleModel.OnBattleEnd
             .Subscribe(_ => _enemyStateManager.StopLoop())
             .AddTo(_disposables);

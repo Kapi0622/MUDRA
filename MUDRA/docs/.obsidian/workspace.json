@@ -28,7 +28,7 @@
               "type": "markdown",
               "state": {
                 "file": "specification_MUDRA.md",
-                "mode": "preview",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
@@ -200,6 +200,8 @@
   },
   "active": "d90261507791b1bf",
   "lastOpenFiles": [
+    "devlog/dev_log_A3.md",
+    "devlog/未確認 729090.crdownload",
     "proposal_MUDRA.md",
     "devlog/dev_log_A2.md",
     "未確認 966469.crdownload",
