@@ -39,9 +39,12 @@ public class SpellSequenceRunner : MonoBehaviour
             .Subscribe(HandleSignConfirmed)
             .AddTo(_disposables);
 
-        _handTrackingService.OnHandSignRecognized
-            .Subscribe(sign => _debugSignText.text = sign.ToString())
-            .AddTo(_disposables);
+        if (_debugSignText != null)
+        {
+            _handTrackingService.OnHandSignRecognized
+                .Subscribe(sign => _debugSignText.text = sign.ToString())
+                .AddTo(_disposables);
+        }
         
         // --- 印確定 → ガイド更新 + 確定エフェクト ---
         _model.OnSignAdded
@@ -60,6 +63,11 @@ public class SpellSequenceRunner : MonoBehaviour
         _model.OnSpellCast
             .Where(result => result.IsSuccess)
             .Subscribe(_ => _playerStateManager.HandleSpellCast())
+            .AddTo(_disposables);
+        
+        _model.OnSpellCast
+            .Where(result => !result.IsSuccess)
+            .Subscribe(_ => _playerStateManager.HandleSequenceReset())
             .AddTo(_disposables);
 
         // --- シーケンスリセット → ガイドクリア ---

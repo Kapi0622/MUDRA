@@ -19,12 +19,11 @@ public class SequenceGuideView : MonoBehaviour
     private const float PunchScaleAmount = 1.3f;
     private const float PunchDuration = 0.15f;
 
-    // --- 色定義 ---
-    [Header("色設定")]
-    [SerializeField] private Color _confirmedColor = new Color(0.3f, 1f, 0.5f);
-    [SerializeField] private Color _pendingColor = new Color(0.85f, 0.85f, 0.85f);
-    [SerializeField] private Color _confirmedBgColor = new Color(0.05f, 0.2f, 0.05f, 0.7f);
-    [SerializeField] private Color _pendingBgColor = new Color(0f, 0f, 0f, 0.6f);
+    // --- 色定義(調整済みならSerializeFieldのまま残してOK) ---
+    [SerializeField] private Color ConfirmedColor = new Color(0.3f, 1f, 0.5f);
+    [SerializeField] private Color PendingColor = new Color(0.85f, 0.85f, 0.85f);
+    [SerializeField] private Color ConfirmedBgColor = new Color(0.05f, 0.2f, 0.05f);
+    [SerializeField] private Color PendingBgColor = new Color(0f, 0f, 0f);
 
     [Header("ガイド表示のルート")]
     [SerializeField] private RectTransform _guideRoot;
@@ -36,8 +35,9 @@ public class SequenceGuideView : MonoBehaviour
     // 動的に生成した行を保持
     private readonly List<GameObject> _activeRows = new();
 
-    // 確定エフェクト用
-    private RectTransform _lastConfirmedSlot;
+    // 確定エフェクト用(複数候補を同時にハイライトするためリスト化)
+    private readonly List<RectTransform> _lastConfirmedSlots = new();
+    private readonly List<MotionHandle> _confirmEffectHandles = new();
 
     /// <summary>
     /// マッチ候補と入力済み印数に基づいてガイド表示を更新する。
@@ -53,6 +53,9 @@ public class SequenceGuideView : MonoBehaviour
             var row = CreateCandidateRow(candidates[i], confirmedCount);
             _activeRows.Add(row);
         }
+
+        // LayoutGroupに再計算を強制する
+        LayoutRebuilder.ForceRebuildLayoutImmediate(_guideRoot);
     }
 
     /// <summary>
@@ -60,43 +63,67 @@ public class SequenceGuideView : MonoBehaviour
     /// </summary>
     public void Clear()
     {
+        // 実行中の確定エフェクトをキャンセルしてからDestroyする
+        CancelConfirmEffect();
+
         foreach (var row in _activeRows)
         {
             Destroy(row);
         }
         _activeRows.Clear();
-        _lastConfirmedSlot = null;
+        _lastConfirmedSlots.Clear();
     }
 
     /// <summary>
-    /// 最後に確定した印のスロットにScalePunchエフェクトを再生する。
+    /// 最後に確定した印に該当する、全候補のスロットにScalePunchエフェクトを再生する。
     /// </summary>
     public void PlayConfirmEffect()
     {
-        if (_lastConfirmedSlot == null) return;
+        if (_lastConfirmedSlots.Count == 0) return;
 
-        LMotion.Create(PunchScaleAmount, 1f, PunchDuration)
-            .WithEase(Ease.OutBack)
-            .Bind(s => _lastConfirmedSlot.localScale = new Vector3(s, s, 1f));
+        CancelConfirmEffect();
+
+        foreach (var target in _lastConfirmedSlots)
+        {
+            // ローカル変数にキャプチャしてラムダ内でnullチェックする
+            var capturedTarget = target;
+
+            var handle = LMotion.Create(PunchScaleAmount, 1f, PunchDuration)
+                .WithEase(Ease.OutBack)
+                .Bind(s =>
+                {
+                    if (capturedTarget != null)
+                    {
+                        capturedTarget.localScale = new Vector3(s, s, 1f);
+                    }
+                });
+
+            _confirmEffectHandles.Add(handle);
+        }
     }
 
-    /// <summary>
-    /// 候補1術分の行を生成する。
-    /// PrefabからInstantiateし、術名と各印スロットを設定する。
-    /// </summary>
+    private void CancelConfirmEffect()
+    {
+        foreach (var handle in _confirmEffectHandles)
+        {
+            if (handle.IsActive())
+            {
+                handle.Cancel();
+            }
+        }
+        _confirmEffectHandles.Clear();
+    }
+
     private GameObject CreateCandidateRow(SpellData spell, int confirmedCount)
     {
         var row = Instantiate(_candidateRowPrefab, _guideRoot);
         row.name = $"Row_{spell.spellName}";
 
-        // 術名テキストを設定
         var spellNameText = row.GetComponentInChildren<TextMeshProUGUI>();
         spellNameText.text = spell.spellName;
 
-        // SignSlotの親となるコンテナを取得(術名テキストの次の子要素)
         var slotContainer = row.transform.GetChild(1);
 
-        // 各印のスロットを生成
         for (int i = 0; i < spell.sequence.Length; i++)
         {
             bool isConfirmed = i < confirmedCount;
@@ -104,38 +131,28 @@ public class SequenceGuideView : MonoBehaviour
 
             if (i == confirmedCount - 1)
             {
-                _lastConfirmedSlot = slot.GetComponent<RectTransform>();
+                _lastConfirmedSlots.Add(slot.GetComponent<RectTransform>());
             }
         }
 
         return row;
     }
 
-    /// <summary>
-    /// 印1つ分のスロットをPrefabから生成し、状態に応じて色を設定する。
-    /// </summary>
     private GameObject CreateSignSlot(Transform parent, HandSign sign, bool isConfirmed)
     {
         var slot = Instantiate(_signSlotPrefab, parent);
         slot.name = $"Slot_{sign}";
 
-        // 背景色の設定
         var bgImage = slot.GetComponent<Image>();
-        bgImage.color = isConfirmed ? _confirmedBgColor : _pendingBgColor;
+        bgImage.color = isConfirmed ? ConfirmedBgColor : PendingBgColor;
 
-        // 印名テキストの設定
         var label = slot.GetComponentInChildren<TextMeshProUGUI>();
         label.text = GetSignDisplayName(sign);
-        label.color = isConfirmed ? _confirmedColor : _pendingColor;
+        label.color = isConfirmed ? ConfirmedColor : PendingColor;
 
         return slot;
     }
 
-    /// <summary>
-    /// HandSign enumを表示用の漢字名に変換する。
-    /// β版でSpriteに差し替える場合、Prefab内のTextをImageに変え、
-    /// ここをSprite参照に置き換える。
-    /// </summary>
     private static string GetSignDisplayName(HandSign sign)
     {
         return sign switch
@@ -147,5 +164,10 @@ public class SequenceGuideView : MonoBehaviour
             HandSign.Palm => "掌",
             _ => "？"
         };
+    }
+
+    private void OnDestroy()
+    {
+        CancelConfirmEffect();
     }
 }
