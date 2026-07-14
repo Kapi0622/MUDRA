@@ -27,6 +27,7 @@ https://youtu.be/OXeevxjCwSA
 | リアクティブ | R3 | Model → Presenter 間のデータバインディング |
 | 非同期 | UniTask | タイマー駆動・非同期ループ |
 | トゥイーン | LitMotion | UI演出 |
+| ドット絵 | Aseprite | キャラクター・背景素材制作 |
 | IDE | JetBrains Rider | |
 | ターゲット | Windows スタンドアロン | MediaPipeUnityPluginがWebGL未対応のため |
 
@@ -42,7 +43,7 @@ Model Layer      SpellSequenceModel / BattleModel / PlayerStateManager / EnemySt
                               │  R3 (ReactiveProperty / Observable)
 Presenter Layer  BattlePresenter / SpellSequenceRunner / EnemyPresenter
                               │
-View Layer       BattleView / HandSignView / EnemyView / SpellEffectView
+View Layer       HpBarView / SpellTelopView / SequenceGuideView / EnemyView / SpellEffectView
                               │
 Data Layer       SpellData(SO) / EnemyData(SO) / EnemyAttackData(SO) / StageData(SO)
 ```
@@ -77,8 +78,8 @@ Prototypeフェーズ（P1〜P3）では「最短で動くもの」を優先し�
 
 ```
 SpellData.damageType == SingleHit  → SingleHitCalculator
-SpellData.damageType == MultiHit   → MultiHitCalculator（A3実装予定）
-SpellData.damageType == DoT        → DamageOverTimeCalculator（A3実装予定）
+SpellData.damageType == MultiHit   → MultiHitCalculator
+SpellData.damageType == DoT        → DamageOverTimeCalculator（計算ロジックのみ。tick駆動はA5）
 ```
 
 新しいダメージ計算方式が必要になった場合、`IDamageCalculator`を実装したクラスを1つ追加するだけで対応できます。
@@ -95,30 +96,45 @@ SpellData.damageType == DoT        → DamageOverTimeCalculator（A3実装予定
 
 ### 6. 手印認識のルールベース設計と将来の拡張パス
 
-現フェーズの手印分類は「各指の関節角度 → 曲げ/伸び判定 → 5本指パターンで識別」のルールベースで実装しています。MLモデルを使わない理由は、現在の手印種類数（3〜6種）ではルールベースで十分に対応でき、学習データ収集のコストに見合わないためです。
+現フェーズの手印分類は「各指の関節角度 → 曲げ/伸び判定 → 5本指パターンで識別」のルールベースで実装しています。MLモデルを使わない理由は、現在の手印種類数（7種）ではルールベースで十分に対応でき、学習データ収集のコストに見合わないためです。
 
-ただし、将来的に手印の種類が増加した場合に備え、`IHandLandmarkProvider`インターフェースによる差し替え設計を維持しています。移行パスとしては「自前データ収集 → PyTorchで学習 → ONNXエクスポート → Unity Sentisで推論」を想定しています。
+親指は他4指と関節構造が異なるため、専用の閾値（`_thumbBentThreshold = 20f`）を分離して導入しています。`ThumbAngleDebugger`（一時検証スクリプト）で実測した結果、CMC-MCP-IP角度のバラつきがMCP-IP-TIP角度の半分以下であることを確認し、パターンAを採用しました。5指の曲げ/伸びの組み合わせで全7種が衝突なく識別可能であることをテーブルで検証済みです。
+
+将来的に手印の種類が増加した場合に備え、`IHandLandmarkProvider`インターフェースによる差し替え設計を維持しています。移行パスとしては「自前データ収集 → PyTorchで学習 → ONNXエクスポート → Unity Inference Engineで推論」を想定しています。
+
+### 7. SpellCastResultによるストリーム統合
+
+A2まで成功と暴発を別ストリーム（`OnSpellCast` / `OnSequenceReset`）で通知していた構造を、A4で`SpellCastResult`（readonly struct: `IsSuccess` / `Spell` / `SpeedBonus`）に統合しました。`ComboCount`は`BattleModel`の管轄であるためこのstructには含めず、責務の境界を明確にしています。SpeedBonus計測は`Func<float> getTime`をコンストラクタDIで受け取る方式とし、テスト時にfake clockを注入できる設計です。
+
+### 8. LitMotionを活用したUI演出
+
+A4で実装した3つのViewコンポーネントはいずれもLitMotionのトゥイーンを活用しています。
+
+- **HpBarView（2層遅延ダメージバー）**: 即時反映バーと遅延追従バーの2層構成。LitMotionの`.Bind()` APIで遅延バーのトゥイーンを制御し、連続ダメージ時は前のトゥイーンをキャンセルして最新値に追従させる
+- **SequenceGuideView（印シーケンスガイド）**: Prefabベースの動的インスタンス化で候補術を表示。印確定時にScalePunchアニメーションで視覚フィードバック。`MaxDisplayCount = 4`で表示上限を設定
+- **SpellTelopView（術名テロップ）**: `CanvasGroup`のalphaをLitMotionでフェードイン/フェードアウト。将来テロップに背景画像やアイコンを追加しても配下の全要素をまとめてフェードできる拡張性を確保
 
 
 ## 改善したい点・未完成な点・既知のバグ
 
-### 未実装の機能
+### 未実装の機能（A5以降のスコープ）
 
-- **Guarding状態**: `PlayerStateManager`にIdle中のFist保持による防御モードが未実装（`isGuarding`がfalse固定）
-- **MultiHitCalculator / DamageOverTimeCalculator**: ダメージ計算Strategyが`SingleHitCalculator`のみ
-- **StatusEffect付与ロジック**: Stun等の副次効果。`EnemyStateManager`のStunned状態はenum定義のみで、ループ内の処理が未実装
-- **親指の曲げ判定**: 他4指と曲げ軸が異なり判定ロジックが複雑化するため、P2から延期中。これにより`Palm`（親指だけ折る）の手印が未対応
-- **コンボ倍率の上限値**: 計算式（`1.0 + comboCount × 0.1`）は組み込み済みだが、天井が未設定
-- **UI全般**: HPバー・印シーケンスガイド・術名テロップ等はすべて未実装。現状はDebug.Logのみ
+- **Guarding状態**: `PlayerStateManager`にIdle中のFist保持による防御モードが未実装（`isGuarding`がfalse固定）。Fist文脈判定（Idle中は防御、Chanting中は詠唱印として処理する）が必要
+- **StatusEffect管理基盤**: Stun・Slow・DoTの共通ライフサイクル管理が未実装。`EnemyStateManager`のStunned状態はenum定義のみで駆動処理が未接続
+- **DoTのtick駆動**: `DamageOverTimeCalculator`は計算ロジックのみ実装済み。tick駆動（毎秒ダメージ適用）の「適用スケジュール管理」はStatusEffect基盤と合わせてA5で実装予定。`DamageResult`への`perTickDamage`/`tickCount`フィールド追加も未対応
+- **火炎弾のDamageType**: DoTtick駆動基盤が未完成のため暫定的にSingleHitで動作中。A5でDamageOverTimeに切り替え予定
+- **コンボ倍率の上限値**: 計算式（`1.0 + comboCount × 0.1`）は組み込み済みだが天井が未設定
+- **MultiHitの時間差ダメージ表示**: `DamageResult.PerHitDamage`は追加済みだが、View側の時間差演出は未着手。HPバーのトゥイーン基盤が構築済みのため拡張は容易
+- **EnemyViewの攻撃予告演出**: Charging状態の可視化が未実装
 - **チュートリアル / カメラキャリブレーション**: β版スコープ
 - **SE / BGM**: 未実装
+- **SpellDataの演出系フィールド**: effectPrefab・castSE等が全アセットでnull。β版のビジュアル作業フェーズで対応予定
 
 ### 既知の技術的負債
 
 - `SpellSequenceRunner`は歴史的経緯でPresenter層に存在するが、命名が実態（HandSignPresenterに近い役割）と乖離している。リネーム・責務整理が必要
 - `SingleHitCalculator`等のCalculatorを`ResolveCalculator`内で毎回newしている。ステートレスなので実害はないが、種類が増えたらFactoryへの抽出を検討
-- MediaPipeUnityPluginのサンプルシーンに付属する既存UI（上下バー・全画面カメラプレビュー）が残存。MUDRA専用のCanvas構築時に整理予定
-- namespaceとフォルダ構成が完全に一致していない箇所が残る可能性あり
+- SpeedBonus閾値定数（`SpeedBonusTimePerSign = 1.0f`）がconst。バランス調整が本格化した段階でSO化を検討
 
 ### 制約事項
 
@@ -131,11 +147,12 @@ SpellData.damageType == DoT        → DamageOverTimeCalculator（A3実装予定
 ```
 Assets/MUDRA/Scripts/
 ├── Input/          # IHandLandmarkProvider, MediaPipeHandLandmarkProvider, HandTrackingService
-├── Model/          # SpellSequenceModel, BattleModel, GameStateManager
-│   └── State/      # PlayerStateManager, IPlayerState, IdleState, ChantingState, ReleasingState
+├── Model/          # SpellSequenceModel, BattleModel, EnemyStateManager, GameStateManager
+│   ├── State/      # PlayerStateManager, IPlayerState, IdleState, ChantingState, ReleasingState
+│   └── Strategy/   # IDamageCalculator, SingleHitCalculator, MultiHitCalculator, DamageOverTimeCalculator
 ├── Presenter/      # BattlePresenter, BattleInitializer, SpellSequenceRunner
-├── View/           # SpellEffectView, BattleView, EnemyView, HandSignView
-├── Data/           # SpellData(SO), EnemyData(SO), EnemyAttackData(SO), SpellEnums
+├── View/           # HpBarView, SpellTelopView, SequenceGuideView, EnemyView, SpellEffectView
+├── Data/           # SpellData(SO), EnemyData(SO), EnemyAttackData(SO), SpellEnums, SpellCastResult
 └── Debug/          # TempHandTrackingRunner（Input Layer単体確認用）
 ```
 
@@ -148,19 +165,20 @@ Assets/MUDRA/Scripts/
 |------------|------|
 | `docs/specification_MUDRA.md` | ゲーム仕様書（クラス設計・状態遷移・バトルループ等） |
 | `docs/proposal_MUDRA.md` | ゲーム企画書 |
-| `docs/dev_log_P2.md` | Prototype P2: MediaPipe接続・手印判定 |
+| `docs/dev_log_P2.md` | Prototype P2: MediaPipe接続・3種の手印判定 |
 | `docs/dev_log_P3.md` | Prototype P3: 術発動の最小デモ |
-| `docs/dev_log_A1.md` | α版 A1: アーキテクチャ再構築・技術的負債の返済 |
-| `docs/dev_log_A2.md` | α版 A2: バトルループ実装 |
+| `docs/dev_log_A1.md` | α版 A1: アーキテクチャ再構築・技術的負債8件中7件返済 |
+| `docs/dev_log_A2.md` | α版 A2: バトルループ実装・BattleInitializerパターン導入 |
+| `docs/dev_log_A3.md` | α版 A3: 親指判定・手印7種・術3種・ダメージ計算Strategy拡充 |
+| `docs/dev_log_A4.md` | α版 A4: SpellCastResult導入・HPバー/シーケンスガイド/テロップのUI実装 |
 
 
 ## セットアップ
 
 ### 前提条件
 
-- Unity 6（6000.x 系の最新安定版）
+- Unity 6.4
 - Webカメラ付きWindows PC
-- JetBrains Rider（推奨）またはVisual Studio
 
 ### 依存パッケージ
 
