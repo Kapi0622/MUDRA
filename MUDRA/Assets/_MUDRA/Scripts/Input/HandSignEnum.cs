@@ -1,10 +1,11 @@
 public enum HandSign
 {
-    Open = 0,
-    Fist = 1,
-    Point = 2,
-    Release = 3,
-    Cancel = 4,
-    Scissors = 5,
-    Palm = 6,
+    Open = 0,       // 壱印「開」パー（全指開き）
+    Fist = 1,       // 弐印「握」グー（全指閉じ）
+    Point = 2,      // 参印「指」人差し指のみ伸ばす
+    Release = 3,    // 発動印「射」親指曲げ+人差し指+小指
+    Cancel = 4,     // 解除印「散」小指のみ伸ばす
+    Scissors = 5,   // 肆印「刃」チョキ（人差し指+中指）
+    Palm = 6,       // 伍印「掌」親指だけ折る
+    Guard = 7,      // 捌印「盾」親指のみ伸ばし（ガード専用）
 }

@@ -91,6 +91,22 @@ Presenter: CurrentHp.Subscribe(hp => view.UpdateHpBar(hp))
 View: UpdateHpBar(int hp)
 ```
 
+### フォルダ階層図
+
+```
+Scripts/
+├── Data/
+├── Debug/
+├── HandTracking/
+├── Input/
+├── Model/
+│   ├── State/
+│   ├── Strategy/
+│
+├── Presenter/
+└── View/
+```
+
 ---
 
 ## 2. クラス設計

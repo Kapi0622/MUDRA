@@ -5,12 +5,7 @@ using MUDRA.Data;
 /// 初撃ダメージ = basePower × 0.3 × 弱点倍率
 /// tick1回分ダメージ = basePower × 0.7 / tick数
 /// tick数 = statusEffectDuration（秒） ÷ 1.0（tick間隔固定）
-///
 /// このCalculatorは「各値がいくらになるか」を算出するだけ。
-/// 「毎秒tickダメージをBattleModelに適用し続ける」スケジュール管理は
-/// StatusEffect基盤（A5）で実装する。
-/// A3時点ではTotalDamageに初撃分のみを格納し、
-/// tick分の情報はDamageResultの拡張（A5）で返す想定。
 /// </summary>
 public class DamageOverTimeCalculator : IDamageCalculator
 {
@@ -27,7 +22,7 @@ public class DamageOverTimeCalculator : IDamageCalculator
         float comboMul = 1.0f + comboCount * 0.1f;
         int initialDamage = (int)(spellData.basePower * InitialDamageRatio * weakMul * speedBonus * comboMul);
 
-        // tick情報の算出（A5でStatusEffect基盤が使う値）
+        // tick情報の算出
         int tickCount = spellData.statusEffectDuration > 0f
             ? (int)(spellData.statusEffectDuration / TickInterval)
             : 0;
@@ -45,6 +40,8 @@ public class DamageOverTimeCalculator : IDamageCalculator
             HasSpeedBonus = speedBonus > 1.0f,
             AppliedEffect = spellData.statusEffect,
             EffectDuration = spellData.statusEffectDuration,
+            PerTickDamage = perTickDamage,
+            TickCount = tickCount,
         };
     }
 }

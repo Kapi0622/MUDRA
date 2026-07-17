@@ -17,12 +17,12 @@ MonoBehaviour:
   icon: {fileID: 0}
   description: 
   sequence: 0600000001000000
-  basePower: 30
-  damageType: 0
+  basePower: 50
+  damageType: 2
   hitCount: 1
   rangeType: 0
-  statusEffect: 0
-  statusEffectDuration: 0
+  statusEffect: 3
+  statusEffectDuration: 3
   effectPrefab: {fileID: 0}
   castSE: {fileID: 0}
   cutInSprite: {fileID: 0}

@@ -38,6 +38,10 @@ public class BattleModel : IDisposable
 
     // --- 敵データ ---
     private readonly EnemyData _enemyData;
+    
+    // --- StatusEffect関連の依存解決用 ---
+    private StatusEffectManager _statusEffectManager;
+    private StatusEffectFactory _statusEffectFactory;
 
     public BattleModel(int playerMaxHp, EnemyData enemyData)
     {
@@ -47,6 +51,16 @@ public class BattleModel : IDisposable
         _bossHp = new ReactiveProperty<int>(enemyData.maxHp);
         _enemyData = enemyData;
         _isBattleActive.Value = true;
+    }
+    
+    /// <summary>
+    /// StatusEffect関連の依存を注入する。BattleInitializerからコンストラクタ後に1回だけ呼ぶ。
+    /// EnemyStateManagerとの循環依存を避けるため、コンストラクタでなくこのメソッドで注入する。
+    /// </summary>
+    public void SetStatusEffectDependencies(StatusEffectManager statusEffectManager, StatusEffectFactory statusEffectFactory)
+    {
+        _statusEffectManager = statusEffectManager;
+        _statusEffectFactory = statusEffectFactory;
     }
 
     /// <summary>
@@ -70,6 +84,28 @@ public class BattleModel : IDisposable
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damageResult.TotalDamage);
         _comboCount.Value++;
+        
+        // --- 副次効果の付与 ---
+        if (_statusEffectFactory != null && _statusEffectManager != null)
+        {
+            var effect = _statusEffectFactory.CreateFromDamageResult(damageResult);
+            if (effect != null)
+                _statusEffectManager.ApplyEffect(effect);
+        }
+        
+        CheckBattleEnd();
+    }
+    
+    /// <summary>
+    /// DoTのtickダメージをボスに適用する。
+    /// StatusEffectManager経由でDotEffectから毎秒呼ばれる。
+    /// tickダメージにはコンボ倍率・速度ボーナスを乗せない（初撃のみ適用の設計方針）。
+    /// </summary>
+    public void ApplyDotDamage(int damage)
+    {
+        if (!_isBattleActive.Value) return;
+
+        _bossHp.Value = Math.Max(0, _bossHp.Value - damage);
         CheckBattleEnd();
     }
 

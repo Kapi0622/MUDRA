@@ -22,8 +22,8 @@ public class SequenceGuideView : MonoBehaviour
     // --- 色定義(調整済みならSerializeFieldのまま残してOK) ---
     [SerializeField] private Color ConfirmedColor = new Color(0.3f, 1f, 0.5f);
     [SerializeField] private Color PendingColor = new Color(0.85f, 0.85f, 0.85f);
-    [SerializeField] private Color ConfirmedBgColor = new Color(0.05f, 0.2f, 0.05f);
-    [SerializeField] private Color PendingBgColor = new Color(0f, 0f, 0f);
+    [SerializeField] private Color ConfirmedBgColor = new Color(0.05f, 0.2f, 0.05f, 0.7f);
+    [SerializeField] private Color PendingBgColor = new Color(0f, 0f, 0f, 0.6f);
 
     [Header("ガイド表示のルート")]
     [SerializeField] private RectTransform _guideRoot;

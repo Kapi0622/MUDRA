@@ -32,7 +32,7 @@ namespace MUDRA.HandTracking
             IHandLandmarkProvider provider,
             float bentThreshold = 45f,
             float thumbBentThreshold = 20f,
-            int stableFrameCount = 24)
+            int stableFrameCount = 36)
         {
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             _bentThreshold = bentThreshold;
@@ -82,6 +82,7 @@ namespace MUDRA.HandTracking
             //   Palm     : [X, O, O, O, O] 親指のみ曲げ
             //   Release  : [X, O, X, X, O] 親指曲げ+人差し指+小指
             //   Cancel   : [X, X, X, X, O] 小指のみ
+            //   Guard    : [O, X, X, X, X] 親指のみ
             
             // Open: 全指が伸びている（親指含む）
             if (!thumbBent && !indexBent && !middleBent && !ringBent && !pinkyBent)
@@ -90,6 +91,10 @@ namespace MUDRA.HandTracking
             // Fist: 全指が曲がっている
             if (thumbBent && indexBent && middleBent && ringBent && pinkyBent)
                 return HandSign.Fist;
+            
+            // Guard: 親指だけ伸びている
+            if (!thumbBent && indexBent && middleBent && ringBent && pinkyBent)
+                return HandSign.Guard;
 
             // Point: 人差し指だけ伸びている
             if (thumbBent && !indexBent && middleBent && ringBent && pinkyBent)

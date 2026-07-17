@@ -21,8 +21,8 @@ public class SingleHitCalculator : IDamageCalculator
             HitCount = 1,
             IsWeakness = isWeak,
             HasSpeedBonus = speedBonus > 1.0f,
-            AppliedEffect = StatusEffectType.None,
-            EffectDuration = 0f,
+            AppliedEffect = spellData.statusEffect,
+            EffectDuration = spellData.statusEffectDuration,
         };
     }
 }

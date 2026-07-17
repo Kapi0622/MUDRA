@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 using R3;
 
@@ -10,6 +11,8 @@ public class BattlePresenter : MonoBehaviour
     private BattleModel _battleModel;
     private EnemyStateManager _enemyStateManager;
     private SpellSequenceModel _spellSequenceModel;
+    private StatusEffectManager _statusEffectManager;
+    private GuardWindowManager _guardWindowManager;
     
     private HpBarView _playerHpBarView;
     private HpBarView _bossHpBarView;
@@ -20,12 +23,16 @@ public class BattlePresenter : MonoBehaviour
         BattleModel battleModel,
         EnemyStateManager enemyStateManager,
         SpellSequenceModel spellSequenceModel,
+        StatusEffectManager statusEffectManager,
+        GuardWindowManager guardWindowManager,
         HpBarView _playerHpBarView,
         HpBarView _bossHpBarView)
     {
         _battleModel = battleModel;
         _enemyStateManager = enemyStateManager;
         _spellSequenceModel = spellSequenceModel;
+        _statusEffectManager = statusEffectManager;
+        _guardWindowManager = guardWindowManager;
 
         // --- HP初期表示(初期化アニメーションは今のところなし) ---
         _playerHpBarView.InitializeHp(_battleModel.PlayerHp.CurrentValue, _battleModel.PlayerMaxHp);
@@ -71,14 +78,20 @@ public class BattlePresenter : MonoBehaviour
             .AddTo(_disposables);
     }
 
+    private void Update()
+    {
+        _statusEffectManager?.Tick(Time.deltaTime);
+        _guardWindowManager?.Tick(Time.deltaTime);
+    }
+
     private void HandleEnemyAttack(EnemyAction action)
     {
-        // A2ではGuarding未実装のため常にfalse
-        bool isGuarding = false;
+        bool isGuarding = _guardWindowManager.IsGuarding;
         _battleModel.ApplyEnemyDamage(action, isGuarding);
 
         string attackType = action.isHeavy ? "大技" : "通常";
-        Debug.Log($"[Enemy] 攻撃: {action.attackData.attackName}({attackType}) DMG:{action.attackData.damage}");
+        string guardStatus = isGuarding ? " [GUARD]" : "";
+        Debug.Log($"[Enemy] 攻撃: {action.attackData.attackName}({attackType}) DMG:{action.attackData.damage}{guardStatus}");
     }
 
     private void OnDestroy()
