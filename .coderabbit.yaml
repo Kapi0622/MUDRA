@@ -1,6 +1,13 @@
 language: "ja-JP"
 
 reviews:
+  auto_review:
+    enabled: true
+    drafts: false             # Draft PRは自動レビューしない
+    auto_incremental_review: true   # 追加コミットのたびに差分だけ再レビュー
+    auto_pause_after_reviewed_commits: 10   # 10コミット以上積まれたら一旦停止
+    base_branches:
+      - "main"
   profile: "chill"  # まずは静かめに。ノイズが多ければ様子を見て調整
   high_level_summary: true
   poem: false
@@ -11,7 +18,7 @@ reviews:
     - "!**/Logs/**"
     - "!**/obj/**"
     - "!**/Build/**"
-    - "!**/*.asset"      # ScriptableObjectのシリアライズデータは差分が読みにくいので除外推奨
+    - "!**/*.asset"      # ScriptableObjectのシリアライズデータは差分が読みにくいので除外
     - "!**/*.unity"      # シーンファイルも同様（YAMLだが実質バイナリ差分）
     - "!**/*.prefab"     # 必要なら外して個別レビューしても良い
   path_instructions:
