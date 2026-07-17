@@ -1,0 +1,28 @@
+language: "ja-JP"
+
+reviews:
+  profile: "chill"  # まずは静かめに。ノイズが多ければ様子を見て調整
+  high_level_summary: true
+  poem: false
+  path_filters:
+    - "!**/*.meta"
+    - "!**/Library/**"
+    - "!**/Temp/**"
+    - "!**/Logs/**"
+    - "!**/obj/**"
+    - "!**/Build/**"
+    - "!**/*.asset"      # ScriptableObjectのシリアライズデータは差分が読みにくいので除外推奨
+    - "!**/*.unity"      # シーンファイルも同様（YAMLだが実質バイナリ差分）
+    - "!**/*.prefab"     # 必要なら外して個別レビューしても良い
+  path_instructions:
+    - path: "Assets/Scripts/Model/**/*.cs"
+      instructions: |
+        このプロジェクトのModel層はPure C#で構成されMonoBehaviourの継承は禁止されている。
+        MonoBehaviour依存やUnityEngine名前空間への不要な依存が見つかった場合は指摘すること。
+    - path: "Assets/Scripts/**/*.cs"
+      instructions: |
+        MVPアーキテクチャ（Input → Model → Presenter → View）を採用している。
+        View層がModel層に直接依存していたり、Presenter層を経由しない参照がある場合は指摘すること。
+
+chat:
+  auto_reply: true
