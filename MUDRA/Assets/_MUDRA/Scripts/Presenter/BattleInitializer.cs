@@ -31,6 +31,8 @@ public class BattleInitializer : MonoBehaviour
     private PlayerStateManager _playerStateManager;
     private EnemyStateManager _enemyStateManager;
     private BattleModel _battleModel;
+    private StatusEffectManager _statusEffectManager;
+    private GuardWindowManager _guardWindowManager;
 
     private readonly CompositeDisposable _disposables = new();
 
@@ -42,18 +44,31 @@ public class BattleInitializer : MonoBehaviour
         _playerStateManager = new PlayerStateManager();
         _enemyStateManager = new EnemyStateManager(_enemyData);
         _battleModel = new BattleModel(_playerMaxHp, _enemyData);
+        _guardWindowManager = new GuardWindowManager();
 
+        // EnemyStateManagerとBattleModelの両方が揃ってから配線する
+        _statusEffectManager = new StatusEffectManager();
+        var statusEffectFactory = new StatusEffectFactory(
+            _battleModel.ApplyDotDamage,
+            _enemyStateManager.ApplyStun,
+            _enemyStateManager.EndStun
+        );
+        _battleModel.SetStatusEffectDependencies(_statusEffectManager, statusEffectFactory);
+        
         // --- Presenterへ注入 ---
         _spellSequenceRunner.Initialize(
             _handTrackingService,
             _spellSequenceModel,
-            _playerStateManager
+            _playerStateManager,
+            _guardWindowManager
         );
 
         _battlePresenter.Initialize(
             _battleModel,
             _enemyStateManager,
             _spellSequenceModel,
+            _statusEffectManager,
+            _guardWindowManager,
             _playerHpBarView,
             _bossHpBarView
         );
@@ -61,6 +76,12 @@ public class BattleInitializer : MonoBehaviour
         // --- バトル開始 ---
         _enemyStateManager.StartLoop();
 
+        // --- バトル終了時の後片付け ---
+        // ClearAllを先に呼ぶ（StunEffect.OnExpire→EndStunが走ってもStopLoopが後で確実に止める）
+        _battleModel.OnBattleEnd
+            .Subscribe(_ => _statusEffectManager.ClearAll())
+            .AddTo(_disposables);
+        
         _battleModel.OnBattleEnd
             .Subscribe(_ => _enemyStateManager.StopLoop())
             .AddTo(_disposables);

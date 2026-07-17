@@ -1,6 +1,6 @@
 # 📘 仕様書：「MUDRA」
 
-> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/07/12（A3完了時点の実装と同期） **ステータス:** v1.1 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
+> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/07/17（A5完了時点の実装と同期） **ステータス:** v1.2 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
 
 ---
 
@@ -91,6 +91,23 @@ Presenter: CurrentHp.Subscribe(hp => view.UpdateHpBar(hp))
 View: UpdateHpBar(int hp)
 ```
 
+### フォルダ階層図
+
+```
+Scripts/
+├── Data/
+├── Debug/
+├── HandTracking/
+├── Input/
+├── Model/
+│   ├── State/
+│   ├── Strategy/
+│   ├── StatusEffect/    ← A5新設
+│
+├── Presenter/
+└── View/
+```
+
 ---
 
 ## 2. クラス設計
@@ -112,10 +129,21 @@ View: UpdateHpBar(int hp)
 |クラス名|責務|区分|
 |---|---|---|
 |`SpellSequenceModel`|プレイヤーの手印入力をQueueで管理し、SpellDataのsequenceと前方一致で照合する。発動印・解除印のトリガー処理を行う|Pure C#|
-|`BattleModel`|プレイヤーHP・ボスHP・コンボカウント等のバトルデータを保持し、ダメージ計算Strategyを呼び出す|Pure C#|
+|`BattleModel`|プレイヤーHP・ボスHP・コンボカウント等のバトルデータを保持し、ダメージ計算Strategyを呼び出す。StatusEffect基盤への副次効果付与も担う|Pure C#|
 |`GameStateManager`|ゲーム全体のフェーズ（Title / InGame / Result）を管理する|Pure C#|
-|`PlayerStateManager`|プレイヤーの行動フェーズ（Idle / Chanting / Releasing / Guarding）を管理する|Pure C#|
-|`EnemyStateManager`|敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用）|Pure C#|
+|`PlayerStateManager`|プレイヤーの行動フェーズ（Idle / Chanting / Releasing）を管理する。ガードはPlayerPhaseとは独立した`GuardWindowManager`で管理する|Pure C#|
+|`EnemyStateManager`|敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用）。外部からのStun付与/解除メソッドを公開する|Pure C#|
+|`GuardWindowManager`|ガード受付窓（0.5秒）を管理する。Guard印確定で窓が開き、時間経過で自動終了。PlayerPhaseとは独立して動作し、詠唱中でもガード可能|Pure C#|
+
+#### StatusEffect
+
+|クラス名|責務|区分|
+|---|---|---|
+|`IStatusEffect`|時限効果（DoT・Stun・Slow等）の共通インターフェース。OnApply/OnTick/OnExpireのライフサイクルフックを定義|Interface|
+|`DotEffect`|DoTのtick駆動ロジック。毎秒perTickDamageをBattleModelに適用する|Pure C#|
+|`StunEffect`|Stun開始/終了をEnemyStateManagerに委譲する|Pure C#|
+|`StatusEffectManager`|アクティブな時限効果をコレクションで管理し、毎フレームTickで駆動する。同種効果の重複は無視する|Pure C#|
+|`StatusEffectFactory`|DamageResultの情報からIStatusEffectを生成するファクトリ|Pure C#|
 
 #### Strategy
 
@@ -221,12 +249,15 @@ public enum HandSign
     Cancel = 4,     // 解除印「散」小指のみ伸ばす
     Scissors = 5,   // 肆印「刃」チョキ（人差し指+中指）
     Palm = 6,       // 伍印「掌」親指だけ折る
+    Guard = 7,      // 捌印「盾」親指のみ伸ばし（ガード専用。手形は仮決定）
 }
 ```
 
 > **未検出の表現:** enumに`None`は持たず、`HandTrackingService`内部で`HandSign?`（nullable）として扱う。 手が検出されていない・未知のパターンは`null`で表現し、R3ストリームには流さない。
 > 
-> **Union（陸印「合」両手合わせ）:** 実装保留中。導入する場合は`Union = 7`として末尾に追加する。 両手検出（`DetectedHandCount == 2` かつ両手首座標の距離が閾値以下）が判定条件となる想定。
+> **Union（陸印「合」両手合わせ）:** 実装保留中。導入する場合は`Union = 8`として末尾に追加する。 両手検出（`DetectedHandCount == 2` かつ両手首座標の距離が閾値以下）が判定条件となる想定。
+> 
+> **Guard印の仮決定（A5）:** Guard = 7は親指のみ伸ばしで採用。将来の両手印対応時に手形を再検討する可能性がある。
 
 ```csharp
 /// <summary>
@@ -278,13 +309,14 @@ public enum GamePhase
 
 /// <summary>
 /// プレイヤーの行動フェーズ。
+/// ガードはPlayerPhaseとは独立した時限窓（GuardWindowManager）で管理するため、
+/// Guardingは含まない（A5で方針転換。詳細はdev_log_A5 3-5節参照）。
 /// </summary>
 public enum PlayerPhase
 {
     Idle,       // 待機（印を組んでいない）
     Chanting,   // 詠唱中（シーケンス入力中）
     Releasing,  // 発動中（発動印確定→術エフェクト再生中）
-    Guarding,   // 防御中（防御印を構えている）
 }
 
 /// <summary>
@@ -468,12 +500,12 @@ public struct DamageResult
     public bool HasSpeedBonus;      // 速度ボーナスが適用されたか
     public StatusEffectType AppliedEffect;
     public float EffectDuration;
+    public int PerTickDamage;       // tick1回あたりのダメージ（DoT専用。他Strategyは0 / A5追加）
+    public int TickCount;           // tick回数（DoT専用。他Strategyは0 / A5追加）
 }
 ```
 
 > **指の曲げ状態について:** 当初`FingerState`構造体を定義していたが、実装では `HandTrackingService`内のローカルbool（5指分）で完結するため構造体は不採用とした。
-> 
-> **A5での拡張予定:** DoTのtick駆動基盤の実装時に、`perTickDamage`・`tickCount`相当の フィールドを`DamageResult`へ追加する（dev_log_A3 6章参照）。
 
 ---
 
@@ -517,24 +549,17 @@ public struct DamageResult
 プレイヤーの行動フェーズを管理する。InGameフェーズ中のみ稼働する。
 
 ```
-            ┌──────────┐
-     ┌─────→│   Idle   │◄──────────────────────────┐
-     │      └────┬─────┘                            │
-     │           │ 詠唱印を検出                       │
-     │      ┌────▼──────┐                           │
-     │      │ Chanting  │───── 解除印 ─────────────→│
-     │      └────┬──────┘                           │
-     │           │ 発動印を検出                       │
-     │      ┌────▼──────┐                           │
-     │      │ Releasing │── 固定硬直(250ms)経過 ─────→│
-     │      └───────────┘                           │
-     │                                              │
-     │      ┌───────────┐                           │
-     └──────│ Guarding  │── 防御印を解除 ───────────→│
-            └───────────┘
-                 ▲
-                 │ Idle中に防御印を検出
-                 └─────── Idle から遷移
+     ┌──────────┐
+     │   Idle   │◄──────────────────────────┐
+     └────┬─────┘                            │
+          │ 詠唱印を検出                       │
+     ┌────▼──────┐                           │
+     │ Chanting  │───── 解除印 ─────────────→│
+     └────┬──────┘                           │
+          │ 発動印を検出                       │
+     ┌────▼──────┐                           │
+     │ Releasing │── 固定硬直(250ms)経過 ─────→│
+     └───────────┘
 ```
 
 **遷移条件の詳細:**
@@ -542,13 +567,26 @@ public struct DamageResult
 |From|To|条件|
 |---|---|---|
 |Idle|Chanting|詠唱印（Open, Fist, Point, Scissors, Palm）を検出|
-|Idle|Guarding|防御印（Fist）を一定時間保持で防御モード移行|
 |Chanting|Releasing|発動印（Release）を確定|
 |Chanting|Idle|解除印（Cancel）を確定 / 制限時間切れ|
 |Releasing|Idle|発動後の固定硬直時間（250ms、`UniTask.Delay`）が経過。VFXの再生時間とは独立させ、ゲームテンポを固定する|
-|Guarding|Idle|防御印を解除（手を開くなど）|
 
-> **注意:** Fist（グー）は詠唱印と防御印を兼ねるため、文脈で判断する。 Idle状態でFistを保持 → Guarding。Chanting中にFistが来る → シーケンスの一部。
+#### ガードシステム（GuardWindowManager / PlayerPhaseとは独立）
+
+ガードはPlayerPhaseの排他的状態遷移には含まれず、独立した時限窓として動作する。 詠唱中でもガードが割り込み可能であり、シーケンスに影響しない。
+
+```
+Guard印（捌印「盾」）確定
+    │
+    ▼
+受付窓オープン（0.5秒）── この間に攻撃を受けるとダメージ軽減 ──→ 自動終了
+```
+
+- Guard印はシーケンスに一切入らない。`SpellSequenceModel.AddSign()`を呼ばず、`GuardWindowManager.Activate()`のみを実行する
+- 受付窓が開いている間にボスの攻撃が着弾すると、`BattleModel.ApplyEnemyDamage`の`isGuarding`がtrueとなり軽減率が適用される
+- 受付窓は自動終了するため、解除検出は不要
+
+> **A5での方針転換:** 当初の仕様（Idle中にFist保持→Guarding状態遷移）を廃止し、タイミングガード方式に変更した。 持続ガードだと大技の前にずっとガード待機が容易でゲームループが単調になるため。 タイミングガードは将来的にパリィシステム（ジャストガードで反撃やスタン付与）への発展パスを開ける。 詳細はdev_log_A5 3-5節参照。
 
 ### 4-3. 状態遷移：EnemyStateManager
 
@@ -572,8 +610,17 @@ public struct DamageResult
     │    │  Stunned  │── 効果時間経過 ──→│
     │    └───────────┘
     │         ▲
-    └─────────┘ スタン付与時
+    │         │ ApplyStun()（任意フェーズから割り込み可能）
+    └─────────┘
 ```
+
+**Stun割り込みの仕様（A5確定）:**
+
+- `ApplyStun()`: 現在の行動ループをキャンセルし、Stunned状態に遷移する。Idle / Charging / Attacking / Idle待機中のいずれからでも割り込み可能
+- `EndStun()`: Idle復帰し、行動ループを再開する。`_patternIndex`はStun前の値を保持するため、中断されたアクションから再開する（攻撃を「潰す」のではなく「遅らせる」設計意図）
+- `_patternIndex`のインクリメントはAttacking突入直後に行う。これにより、攻撃確定後のIdle待機中にStunが入っても「同じ攻撃がもう一度来る」直感に反する挙動を防ぐ
+- Stun効果時間の管理は`StatusEffectManager`が担う（`StunEffect.OnApply`→`ApplyStun()`、`StunEffect.OnExpire`→`EndStun()`）
+- 同種効果の重複は無視する（A5方針。B3で見直し可能）
 
 ---
 
@@ -658,6 +705,7 @@ MediaPipe 21点ランドマーク配置:
 
 Open    (パー) : [O, O, O, O, O]  全指伸び
 Fist    (グー) : [X, X, X, X, X]  全指曲げ
+Guard   (盾)  : [O, X, X, X, X]  親指のみ伸び（A5追加）
 Point   (指差) : [X, O, X, X, X]  人差し指のみ伸び
 Scissors(チョキ): [X, O, O, X, X]  人差し指+中指伸び
 Palm    (掌)  : [X, O, O, O, O]  親指のみ曲げ
@@ -665,9 +713,11 @@ Release (発動) : [X, O, X, X, O]  親指曲げ+人差し指+小指伸び
 Cancel  (解除) : [X, X, X, X, O]  小指のみ伸び
 ```
 
-全7パターンは互いに衝突せず一意に識別できる（A3統合テストで確認済み）。 どのパターンにも一致しない場合は`null`（未知）として扱い、安定判定の対象外とする。
+全8パターンは互いに衝突せず一意に識別できる（A5統合テストで確認済み）。 どのパターンにも一致しない場合は`null`（未知）として扱い、安定判定の対象外とする。
 
 > **OpenとPalmの区別:** 親指の1ビットだけで決まるため、親指判定の精度がこの2印の 信頼性を直接左右する。Pattern Aの実測マージン（14°以上）で実用上問題ないことを確認済み。
+> 
+> **FistとGuardの区別（A5追加）:** 同じく親指の1ビットだけで決まる。A3で確認済みのマージン（14°以上）で区別可能。
 > 
 > **Union（両手合わせ）の判定（保留中）:** `IHandLandmarkProvider.DetectedHandCount == 2` かつ、両手の手首座標の距離が閾値以下。
 
@@ -861,24 +911,37 @@ private const float MisfireDamageRate = 0.05f; // 暴発セルフダメージ（
 
 ```csharp
 /// <summary>
-/// 術の発動成功時にボスへダメージを与える。
-/// DamageTypeに応じたStrategyをResolveCalculatorで選択して計算する。
-/// speedBonusはA4で詠唱時間計測を実装するまで1.0固定。
-/// A4でSpellCastResultを受け取る形への変更を予定。
+/// 術の発動結果を受けてダメージを処理する。
+/// 成功時はボスへダメージ+コンボ加算+副次効果付与、暴発時はセルフダメージ+コンボリセット。
+/// A4でSpellCastResultを受け取る形に変更済み。
 /// </summary>
-void ApplySpellDamage(SpellData spellData, float speedBonus = 1.0f);
+void ApplySpellDamage(SpellCastResult result);
 
 /// <summary>
 /// 暴発時のセルフダメージ（MaxHp×5%）を適用し、コンボをリセットする。
+/// ApplySpellDamageの内部から呼ばれる（private）。
 /// </summary>
-void ApplyMisfireDamage();
+private void ApplyMisfireDamage();
 
 /// <summary>
 /// ボスの攻撃ダメージをプレイヤーに適用する。
 /// EnemyActionのisHeavyとattackData.damageを参照する。
-/// isGuardingがtrueの場合は軽減率を適用する（A5でGuarding実装までfalse固定）。
+/// isGuardingはGuardWindowManager.IsGuardingの値がBattlePresenter経由で渡される。
 /// </summary>
 void ApplyEnemyDamage(EnemyAction action, bool isGuarding);
+
+/// <summary>
+/// DoTのtickダメージをボスに適用する。
+/// StatusEffectManager経由でDotEffectから毎秒呼ばれる。
+/// tickダメージにはコンボ倍率・速度ボーナスを乗せない（初撃のみ適用の設計方針）。
+/// </summary>
+void ApplyDotDamage(int damage);
+
+/// <summary>
+/// StatusEffect関連の依存を注入する。BattleInitializerからコンストラクタ後に1回だけ呼ぶ。
+/// EnemyStateManagerとの循環依存を避けるためのポストコンストラクション注入。
+/// </summary>
+void SetStatusEffectDependencies(StatusEffectManager manager, StatusEffectFactory factory);
 
 /// <summary>
 /// 勝敗判定。HP 0以下で決着し、OnBattleEndを発火する。
@@ -934,7 +997,7 @@ tick間隔 = 1.0秒（固定）
 
 > **倍率の適用範囲:** 速度ボーナスとコンボ倍率は初撃のみに適用する。 tickダメージは「一度付与したら固定値で刻む」設計とし、弱点倍率のみを適用する。
 > 
-> **A3/A5のスコープ分割:** Calculatorは「初撃・tick1回分がいくらか」の計算のみを担う。 「毎秒tickダメージを適用し続ける」スケジュール管理はStatusEffect基盤（A5）の責務。 A3時点では`TotalDamage`に初撃分のみを格納し、tick駆動は未接続（dev_log_A3 3-5節参照）。
+> **責務分割:** Calculatorは「初撃・tick1回分がいくらか」を算出し、`DamageResult.PerTickDamage`/`TickCount`に格納する。 「毎秒tickダメージを適用し続ける」スケジュール管理はStatusEffect基盤（`DotEffect` / `StatusEffectManager`）の責務。 初撃ダメージは`BattleModel.ApplySpellDamage`で即座に適用され、tickダメージは`DotEffect.OnTick`→`BattleModel.ApplyDotDamage`で毎秒適用される（A5で接続完了）。
 
 #### 共通倍率
 
@@ -978,7 +1041,7 @@ InGame開始
  Result画面
 ```
 
-> **重要:** ボスの行動とプレイヤーの印入力は**並行して進む**。 ターン制のように交互に行動するのではなく、ボスは一定間隔で自動的に攻撃してくる。 プレイヤーはその中で「攻撃を受けながら詠唱を続けるか」「防御印を挟むか」を判断する。
+> **重要:** ボスの行動とプレイヤーの印入力は**並行して進む**。 ターン制のように交互に行動するのではなく、ボスは一定間隔で自動的に攻撃してくる。 プレイヤーはその中で「攻撃を受けながら詠唱を続けるか」「ガード印を挟むか」を判断する。 ガード印は詠唱中でも割り込み可能で、シーケンスには影響しない。
 
 ---
 
@@ -1137,17 +1200,19 @@ MLモデルを使わない理由は以下の通り。
 |**手印の確定フレーム数**|0.4秒 / 0.5秒 / 0.6秒で体感を比較|「反応が遅い」と感じないギリギリの長さ|
 |**発動印・解除印の手形**|何の手形が誤判定なく快適に出せるか|詠唱印との混同が発生しないこと|
 |**ボスの攻撃間隔**|何秒間隔が「忙しすぎず暇すぎない」か|2印コンボを1回完走できる間隔が最低ライン|
-|**防御印（Fist）の文脈判定**|Idle中のFist保持と詠唱中のFist入力を区別できるか|意図しない防御モード移行が起きないこと|
+|**ガード印（Guard）のタイミング判定**|Guard印の0.5秒受付窓でボス攻撃を軽減できるか|攻撃予告を見てからガード印を出すプレイサイクルが成立すること（A5で検証済み）|
 |**暴発セルフダメージの量**|MaxHpの5%で適切か|ミスが怖すぎず、かつ無視できない程度|
 
 ### 10-2. 未決定の仕様
 
 | 項目                    | 現状                                          | 決定タイミング            |
 | --------------------- | ------------------------------------------- | ------------------ |
-| **手印の最終種類数**          | 7種（詠唱印5種 + Release/Cancel）実装済み。Union（両手）は保留 | A4完了時の判断ポイントで増減を判断 |
-| **コンボ倍率の上限**          | 未設定                                         | α版のバランス調整で確定       |
-| **プレイヤーMaxHp**        | 未設定                                         | α版で確定              |
-| **各術の具体的数値**          | A3で仮値設定済み（風刃30 / 雷連撃40 / 火炎弾35）             | β版で調整              |
+| **手印の最終種類数**          | 8種（詠唱印5種 + Release/Cancel/Guard）実装済み。Union（両手）は保留 | β版で増減を判断 |
+| **Guard印の手形**          | 親指のみ伸ばしで仮決定                               | 両手印対応時に再検討         |
+| **コンボ倍率の上限**          | 未設定                                         | β版のバランス調整で確定       |
+| **プレイヤーMaxHp**        | 未設定                                         | β版で確定              |
+| **各術の具体的数値**          | A3で仮値設定済み（風刃30 / 雷連撃50 / 火炎弾35）             | β版で調整              |
+| **Stun完封対策**           | 未実装（免疫期間 or 効果時間逓減 or 確率化）                  | B3で対応              |
 | **ビジュアル：2D or HD-2D** | HD-2D候補だが工数次第                               | Prototype完了時に判断    |
 
 ---
@@ -1184,15 +1249,15 @@ MLモデルを使わない理由は以下の通り。
 
 目標: **1体のボスと最後まで戦えるバトルが成立する**
 
-|工程|内容|期限|完了条件|
-|---|---|---|---|
-|**A1**|アーキテクチャ構築|07/11（3日）|State管理・MVP構成・ScriptableObject基盤が動作する|
-|**A2**|バトルループ実装|07/16（5日）|ボスが自動攻撃し、プレイヤーが術で反撃でき、HP増減でバトルが決着する|
-|**A3**|全手印・全術実装|07/19（3日）|5種以上の手印が動作し、属性の異なる術が3種以上発動できる|
-|**A4**|UI・演出の基礎|07/22（3日）|HPバー・印シーケンスガイド・術名テロップ・印確定エフェクトが表示される|
-|**A5**|Guarding・StatusEffect実装|07/25（3日）|Fist文脈判定によるGuarding状態が機能し、Stun付与でボスのStunned状態が実際に駆動し、DoTのtick処理が毎秒ダメージを与え続ける|
+| 工程     | 内容                      | 期限        | 完了条件                                                                         |
+| ------ | ----------------------- | --------- | ---------------------------------------------------------------------------- |
+| **A1** | アーキテクチャ構築               | 07/11（3日） | State管理・MVP構成・ScriptableObject基盤が動作する                                        |
+| **A2** | バトルループ実装                | 07/16（5日） | ボスが自動攻撃し、プレイヤーが術で反撃でき、HP増減でバトルが決着する                                          |
+| **A3** | 全手印・全術実装                | 07/19（3日） | 5種以上の手印が動作し、属性の異なる術が3種以上発動できる                                                |
+| **A4** | UI・演出の基礎                | 07/22（3日） | HPバー・印シーケンスガイド・術名テロップ・印確定エフェクトが表示される                                         |
+| **A5** | Guarding・StatusEffect実装 | 07/25（3日） | タイミングガードによるダメージ軽減が機能し、Stun付与でボスのStunned状態が実際に駆動し、DoTのtick処理が毎秒ダメージを与え続ける |
 
-> **進捗実績:** A3は07/12に完了（予定07/19から1週間前倒し）。A5はA3のスコープから Guarding / StatusEffect / DoTのtick駆動を切り出して新設した工程（dev_log_A3 5章参照）。
+> **進捗実績:** A3は07/12に完了（予定07/19から1週間前倒し）。A5はA3のスコープからGuarding / StatusEffect / DoTのtick駆動を切り出して新設した工程（dev_log_A3 5章参照）。A5は07/17に完了（予定07/25から8日前倒し）。α版全工程完了。
 
 **A5完了時の判断ポイント:**
 

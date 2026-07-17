@@ -29,8 +29,8 @@ public class MultiHitCalculator : IDamageCalculator
             HitCount = hitCount,
             IsWeakness = isWeak,
             HasSpeedBonus = speedBonus > 1.0f,
-            AppliedEffect = StatusEffectType.None,
-            EffectDuration = 0f,
+            AppliedEffect = spellData.statusEffect,
+            EffectDuration = spellData.statusEffectDuration,
         };
     }
 }

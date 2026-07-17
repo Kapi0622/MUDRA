@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "devlog/dev_log_A2.md",
+                "file": "specification_MUDRA.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "dev_log_A2"
+              "title": "specification_MUDRA"
             }
           },
           {
@@ -27,16 +27,15 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "devlog/dev_log_A4.md",
+                "file": "devlog/dev_log_A5.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "dev_log_A4"
+              "title": "dev_log_A5"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -109,7 +108,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "devlog/dev_log_A4.md",
+                "file": "specification_MUDRA.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -119,7 +118,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "dev_log_A4へのバックリンク"
+              "title": "specification_MUDRAへのバックリンク"
             }
           },
           {
@@ -198,15 +197,18 @@
       "bases:新規ベースを作成": false
     }
   },
-  "active": "d90261507791b1bf",
+  "active": "15c62275b50631a3",
   "lastOpenFiles": [
+    "未確認 276620.crdownload",
+    "devlog/dev_log_A2.md",
+    "devlog/dev_log_A5.md",
+    "proposal_MUDRA.md",
+    "devlog/未確認 204870.crdownload",
     "specification_MUDRA.md",
     "devlog/dev_log_A4.md",
     "devlog/未確認 616792.crdownload",
     "devlog/dev_log_A3.md",
     "devlog/未確認 729090.crdownload",
-    "proposal_MUDRA.md",
-    "devlog/dev_log_A2.md",
     "未確認 966469.crdownload",
     "devlog/未確認 846011.crdownload",
     "devlog/dev_log_A1.md",

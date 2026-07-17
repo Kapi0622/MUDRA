@@ -21,8 +21,8 @@ MonoBehaviour:
   damageType: 1
   hitCount: 5
   rangeType: 0
-  statusEffect: 0
-  statusEffectDuration: 0
+  statusEffect: 2
+  statusEffectDuration: 3
   effectPrefab: {fileID: 0}
   castSE: {fileID: 0}
   cutInSprite: {fileID: 0}

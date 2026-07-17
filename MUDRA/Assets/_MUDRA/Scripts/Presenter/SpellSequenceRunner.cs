@@ -19,6 +19,7 @@ public class SpellSequenceRunner : MonoBehaviour
     private HandTrackingService _handTrackingService;
     private SpellSequenceModel _model;
     private PlayerStateManager _playerStateManager;
+    private GuardWindowManager _guardWindowManager;
 
     private readonly CompositeDisposable _disposables = new();
     private bool _isInitialized;
@@ -29,11 +30,13 @@ public class SpellSequenceRunner : MonoBehaviour
     public void Initialize(
         HandTrackingService handTrackingService,
         SpellSequenceModel model,
-        PlayerStateManager playerStateManager)
+        PlayerStateManager playerStateManager,
+        GuardWindowManager guardWindowManager)
     {
         _handTrackingService = handTrackingService;
         _model = model;
         _playerStateManager = playerStateManager;
+        _guardWindowManager = guardWindowManager;
 
         _handTrackingService.OnHandSignRecognized
             .Subscribe(HandleSignConfirmed)
@@ -110,6 +113,10 @@ public class SpellSequenceRunner : MonoBehaviour
                 break;
             case HandSign.Cancel:
                 _model.Cancel();
+                break;
+            case HandSign.Guard:
+                _guardWindowManager.Activate();
+                Debug.Log("[Guard] ガード");
                 break;
             default:
                 _model.AddSign(sign);

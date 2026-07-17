@@ -81,6 +81,9 @@ public class EnemyStateManager : IDisposable
                 // --- Attacking ---
                 _currentPhase.Value = EnemyPhase.Attacking;
                 _onAttackExecuted.OnNext(action);
+                
+                // パターンを進める
+                _patternIndex = (_patternIndex + 1) % _enemyData.actionPattern.Length;
 
                 // 攻撃演出用の短い待機（仮値）
                 await UniTask.Delay(
@@ -95,15 +98,37 @@ public class EnemyStateManager : IDisposable
                     TimeSpan.FromSeconds(action.intervalAfter),
                     cancellationToken: ct
                 );
-
-                // パターンを進める
-                _patternIndex = (_patternIndex + 1) % _enemyData.actionPattern.Length;
             }
         }
         catch (OperationCanceledException)
         {
             // バトル終了・シーン破棄によるキャンセルは正常終了として扱う
         }
+    }
+    
+    /// <summary>
+    /// 外部からStunを付与する。現在の行動ループを中断しStunned状態に遷移する。
+    /// _patternIndexは保持するため、解除後は中断されたアクションから再開する。
+    /// </summary>
+    public void ApplyStun()
+    {
+        _loopCts?.Cancel();
+        _loopCts?.Dispose();
+        _loopCts = null;
+
+        _currentPhase.Value = EnemyPhase.Stunned;
+        _currentAction.Value = null;
+    }
+
+    /// <summary>
+    /// Stunを解除しIdle復帰→行動ループを再開する。
+    /// StatusEffectManagerのStunEffect.OnExpireから呼ばれる。
+    /// </summary>
+    public void EndStun()
+    {
+        _currentPhase.Value = EnemyPhase.Idle;
+        _loopCts = new CancellationTokenSource();
+        RunLoopAsync(_loopCts.Token).Forget();
     }
 
     public void Dispose()

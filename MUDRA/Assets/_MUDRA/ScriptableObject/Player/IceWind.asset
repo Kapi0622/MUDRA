@@ -10,14 +10,14 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 231b1a0dc42b0b3418cdb9f59683d2c3, type: 3}
-  m_Name: WindBlade
+  m_Name: IceWind
   m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.SpellData
-  spellName: "\u98A8\u5203"
+  spellName: "\u6C37\u98A8"
   element: 0
   icon: {fileID: 0}
   description: 
-  sequence: 02000000
-  basePower: 30
+  sequence: 000000000200000001000000
+  basePower: 50
   damageType: 0
   hitCount: 1
   rangeType: 0
