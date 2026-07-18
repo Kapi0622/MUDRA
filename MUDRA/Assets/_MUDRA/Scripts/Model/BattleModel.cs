@@ -115,6 +115,10 @@ public class BattleModel : IDisposable
     public void ApplyEnemyDamage(EnemyAction action, bool isGuarding)
     {
         if (!_isBattleActive.Value) return;
+        
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (IsInvincible) return;
+    #endif
 
         int baseDamage = action.attackData.damage;
 
@@ -133,6 +137,14 @@ public class BattleModel : IDisposable
     /// </summary>
     private void ApplyMisfireDamage()
     {
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (IsInvincible)
+        {
+            _comboCount.Value = 0;  // コンボリセットだけは無敵でも発生させる
+            return;
+        }
+    #endif
+        
         int damage = (int)(PlayerMaxHp * MisfireDamageRate);
         _playerHp.Value = Math.Max(0, _playerHp.Value - damage);
         _comboCount.Value = 0;
@@ -166,6 +178,25 @@ public class BattleModel : IDisposable
         };
     }
 
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    // デバッグ専用
+
+    /// <summary> 無敵モードフラグ。trueの間、プレイヤーへのダメージを無効化する。 </summary>
+    public bool IsInvincible { get; set; }
+
+    public void DebugModifyPlayerHp(int delta)
+    {
+        _playerHp.Value = Math.Clamp(_playerHp.Value + delta, 0, PlayerMaxHp);
+        CheckBattleEnd();
+    }
+
+    public void DebugModifyBossHp(int delta)
+    {
+        _bossHp.Value = Math.Clamp(_bossHp.Value + delta, 0, BossMaxHp);
+        CheckBattleEnd();
+    }
+#endif
+    
     public void Dispose()
     {
         _playerHp.Dispose();

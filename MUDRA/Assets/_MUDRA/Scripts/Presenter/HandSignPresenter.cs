@@ -9,12 +9,18 @@ using R3;
 /// HandTrackingServiceを駆動し、確定通知をSpellSequenceModelへ振り分ける配線役。
 /// 将来的に仕様書のHandSignPresenterへ発展させる想定。
 /// </summary>
-public class SpellSequenceRunner : MonoBehaviour
+public class HandSignPresenter : MonoBehaviour
 {
     [SerializeField] private SpellEffectView _spellEffectView;
     [SerializeField] [CanBeNull] private TextMeshProUGUI _debugSignText;
     [SerializeField] private SequenceGuideView _sequenceGuideView;
     [SerializeField] private SpellTelopView _spellTelopView;
+    
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        [SerializeField, Tooltip("アタッチするとカメラをバイパスしてキーボード入力でテスト可能")]
+        private DebugKeyboardInput _debugKeyboardInput;
+    #endif
+
 
     private HandTrackingService _handTrackingService;
     private SpellSequenceModel _model;
@@ -38,15 +44,38 @@ public class SpellSequenceRunner : MonoBehaviour
         _playerStateManager = playerStateManager;
         _guardWindowManager = guardWindowManager;
 
-        _handTrackingService.OnHandSignRecognized
-            .Subscribe(HandleSignConfirmed)
-            .AddTo(_disposables);
-
-        if (_debugSignText != null)
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (_debugKeyboardInput != null)
         {
-            _handTrackingService.OnHandSignRecognized
-                .Subscribe(sign => _debugSignText.text = sign.ToString())
+            // デバッグモード: キーボード入力 → HandleSignConfirmed に直結
+            // HandTrackingService.Tick() は駆動しない（Update側で分岐）
+            _debugKeyboardInput.OnHandSignInput
+                .Subscribe(HandleSignConfirmed)
                 .AddTo(_disposables);
+
+            if (_debugSignText != null)
+            {
+                _debugKeyboardInput.OnHandSignInput
+                    .Subscribe(sign => _debugSignText.text = sign.ToString())
+                    .AddTo(_disposables);
+            }
+
+            Debug.Log("[DebugMode] キーボード手印シミュレーション有効");
+        }
+        else
+    #endif
+        {
+            // 通常モード: HandTrackingService 経由
+            _handTrackingService.OnHandSignRecognized
+                .Subscribe(HandleSignConfirmed)
+                .AddTo(_disposables);
+
+            if (_debugSignText != null)
+            {
+                _handTrackingService.OnHandSignRecognized
+                    .Subscribe(sign => _debugSignText.text = sign.ToString())
+                    .AddTo(_disposables);
+            }
         }
         
         // --- 印確定 → ガイド更新 + 確定エフェクト ---
@@ -95,8 +124,13 @@ public class SpellSequenceRunner : MonoBehaviour
 
     private void Update()
     {
-        if (_isInitialized)
-            _handTrackingService.Tick();
+        if (!_isInitialized) return;
+
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        if (_debugKeyboardInput != null) return; // キーボードモードではTick不要
+    #endif
+
+        _handTrackingService.Tick();
     }
 
     private void OnDestroy()
