@@ -10,7 +10,7 @@ using R3;
 public class BattleInitializer : MonoBehaviour
 {
     [Header("Presenter参照")]
-    [SerializeField] private SpellSequenceRunner _spellSequenceRunner;
+    [SerializeField] private HandSignPresenter _handSignPresenter;
     [SerializeField] private BattlePresenter _battlePresenter;
 
     [Header("Input")]
@@ -56,7 +56,7 @@ public class BattleInitializer : MonoBehaviour
         _battleModel.SetStatusEffectDependencies(_statusEffectManager, statusEffectFactory);
         
         // --- Presenterへ注入 ---
-        _spellSequenceRunner.Initialize(
+        _handSignPresenter.Initialize(
             _handTrackingService,
             _spellSequenceModel,
             _playerStateManager,
@@ -72,6 +72,14 @@ public class BattleInitializer : MonoBehaviour
             _playerHpBarView,
             _bossHpBarView
         );
+        
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        var debugMenu = FindFirstObjectByType<DebugMenuView>();
+        if (debugMenu != null)
+        {
+            debugMenu.Inject(_battleModel, _statusEffectManager, _enemyStateManager);
+        }
+    #endif
 
         // --- バトル開始 ---
         _enemyStateManager.StartLoop();

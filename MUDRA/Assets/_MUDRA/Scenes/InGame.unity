@@ -1209,6 +1209,63 @@ MonoBehaviour:
   _currentBar: {fileID: 1463570349}
   _delayedBar: {fileID: 1841125728}
   _hpText: {fileID: 153915303}
+--- !u!1 &1189720539
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1189720542}
+  - component: {fileID: 1189720541}
+  - component: {fileID: 1189720540}
+  m_Layer: 0
+  m_Name: BattleDebug
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &1189720540
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1189720539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ac7e0ef76fa543f4aab09eb2ace3fa64, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DebugMenuView
+--- !u!114 &1189720541
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1189720539}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db0ce48030169af4695d42ffd0718855, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DebugKeyboardInput
+--- !u!4 &1189720542
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1189720539}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 51.98368, y: 141.45221, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!224 &1229135957 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 3259285889726014650, guid: 5713b959e3c77a58fb258133fc8e4aef, type: 3}
@@ -1300,7 +1357,6 @@ GameObject:
   - component: {fileID: 1408001611}
   - component: {fileID: 1408001610}
   - component: {fileID: 1408001609}
-  - component: {fileID: 1408001612}
   m_Layer: 0
   m_Name: MediaPipeHandLandmarkProvider
   m_TagString: Untagged
@@ -1348,19 +1404,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1408001612
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1408001608}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 92824499a848f004bbd8dfe60a3f3da6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Debugging.ThumbAngleDebugger
-  providerBehaviour: {fileID: 1408001610}
 --- !u!1 &1463570346
 GameObject:
   m_ObjectHideFlags: 0
@@ -1578,6 +1621,7 @@ MonoBehaviour:
   _debugSignText: {fileID: 0}
   _sequenceGuideView: {fileID: 821531495}
   _spellTelopView: {fileID: 340701382}
+  _debugKeyboardInput: {fileID: 1189720541}
 --- !u!114 &1560692252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1602,7 +1646,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: ccd191e8a9f2ddf42a17fd19c3293fcf, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleInitializer
-  _spellSequenceRunner: {fileID: 1560692251}
+  _handSignPresenter: {fileID: 1560692251}
   _battlePresenter: {fileID: 1560692252}
   _provider: {fileID: 1408001610}
   _allSpells:
@@ -2529,3 +2573,4 @@ SceneRoots:
   - {fileID: 1833722653}
   - {fileID: 1408001611}
   - {fileID: 1560692254}
+  - {fileID: 1189720542}
