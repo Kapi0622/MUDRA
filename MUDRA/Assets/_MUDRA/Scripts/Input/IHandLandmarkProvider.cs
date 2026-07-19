@@ -9,14 +9,14 @@ namespace MUDRA.HandTracking
     public interface IHandLandmarkProvider
     {
         /// <summary>
-        /// 現在キャッシュされているランドマーク座標一覧を返す。
-        /// 検出なしの場合は空リスト。
-        /// 複数手対応時は最初の手のみを返す暫定仕様（Union判定実装時に拡張予定）。
+        /// 指定した手のランドマーク座標を返す。
+        /// 該当する手が検出されていない場合は空リストを返す。
         /// </summary>
-        IReadOnlyList<HandLandmark> GetCurrentLandmarks();
+        /// <param name="handIndex">手のインデックス（0: 1手目, 1: 2手目）</param>
+        IReadOnlyList<HandLandmark> GetLandmarks(int handIndex);
 
         /// <summary>
-        /// 現在検出されている手の数（0, 1, 2）。
+        /// 現在検出されている手の数を返す。
         /// </summary>
         int DetectedHandCount { get; }
     }

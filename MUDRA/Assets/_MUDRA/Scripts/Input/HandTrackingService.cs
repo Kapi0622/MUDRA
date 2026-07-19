@@ -11,6 +11,14 @@ namespace MUDRA.HandTracking
     /// </summary>
     public sealed class HandTrackingService : IDisposable
     {
+        // Union判定の手首間距離しきい値（手のひら長基準の比率）
+        // 実機テストで調整する前提の仮値
+        private const float UnionWristDistanceRatio = 1.5f;
+
+        // 手首・中指付け根のランドマークインデックス
+        private const int WristIndex = 0;
+        private const int MiddleFingerMcpIndex = 9;
+        
         private readonly IHandLandmarkProvider _provider;
         private readonly float _bentThreshold;
         private readonly float _thumbBentThreshold;
@@ -46,10 +54,35 @@ namespace MUDRA.HandTracking
         /// </summary>
         public void Tick()
         {
-            var landmarks = _provider.GetCurrentLandmarks();
-            var isHandDetected = _provider.DetectedHandCount > 0 && landmarks.Count > 0;
+            var hand0 = _provider.GetLandmarks(0);
+            var isHandDetected = _provider.DetectedHandCount > 0 && hand0.Count > 0;
 
-            var currentSign = isHandDetected ? DetectSign(landmarks) : (HandSign?)null;
+            HandSign? currentSign;
+
+            // Union判定：2手検出かつ手首間距離が閾値以下
+            if (_provider.DetectedHandCount >= 2)
+            {
+                var hand1 = _provider.GetLandmarks(1);
+                if (hand1.Count > 0 && IsUnionPose(hand0, hand1))
+                {
+                    currentSign = HandSign.Union;
+                }
+                else
+                {
+                    // 2手見えているがUnion条件未達 → 判定保留
+                    // （両手検出中は片手印を抑制し、両手印の判定を優先する）
+                    currentSign = null;
+                    
+                    // 片手判定を優先させたいとき用
+                    // 2手見えているがUnion条件未達 → 1手目で通常判定
+                    // currentSign = isHandDetected ? DetectSign(hand0) : null;
+                }
+            }
+            else
+            {
+                currentSign = isHandDetected ? DetectSign(hand0) : null;
+            }
+
             JudgeStability(currentSign);
         }
 
@@ -175,6 +208,30 @@ namespace MUDRA.HandTracking
                 _isConfirmed = true;
                 _onHandSignRecognized.OnNext(currentSign.Value);
             }
+        }
+        
+        /// <summary>
+        /// 両手の手首間距離が、1手目の手のひら長を基準にした比率で
+        /// 閾値以下であればtrueを返す（合掌判定）。
+        /// </summary>
+        private bool IsUnionPose(
+            IReadOnlyList<HandLandmark> hand0,
+            IReadOnlyList<HandLandmark> hand1)
+        {
+            // 1手目の手のひら長（手首→中指付け根）を基準長として取得
+            var palmLength = Vector3.Distance(
+                hand0[WristIndex].Position,
+                hand0[MiddleFingerMcpIndex].Position);
+
+            // 基準長が極端に小さい場合は判定不能（ゼロ除算防止）
+            if (palmLength < 0.001f) return false;
+
+            // 両手の手首間距離を算出
+            var wristDistance = Vector3.Distance(
+                hand0[WristIndex].Position,
+                hand1[WristIndex].Position);
+
+            return wristDistance / palmLength <= UnionWristDistanceRatio;
         }
 
         public void Dispose()

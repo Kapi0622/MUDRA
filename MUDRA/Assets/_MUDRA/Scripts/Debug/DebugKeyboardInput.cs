@@ -23,6 +23,7 @@ public class DebugKeyboardInput : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Alpha3)) _onHandSignInput.OnNext(HandSign.Point);
         if (Input.GetKeyDown(KeyCode.Alpha4)) _onHandSignInput.OnNext(HandSign.Scissors);
         if (Input.GetKeyDown(KeyCode.Alpha5)) _onHandSignInput.OnNext(HandSign.Palm);
+        if (Input.GetKeyDown(KeyCode.U))      _onHandSignInput.OnNext(HandSign.Union);
 
         // 特殊印
         if (Input.GetKeyDown(KeyCode.Space))      _onHandSignInput.OnNext(HandSign.Release);

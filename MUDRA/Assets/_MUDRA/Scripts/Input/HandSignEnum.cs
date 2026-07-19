@@ -8,4 +8,5 @@ public enum HandSign
     Scissors = 5,   // 肆印「刃」チョキ（人差し指+中指）
     Palm = 6,       // 伍印「掌」親指だけ折る
     Guard = 7,      // 捌印「盾」親指のみ伸ばし（ガード専用）
+    Union = 8,      // 陸印「合」両手合わせ
 }
