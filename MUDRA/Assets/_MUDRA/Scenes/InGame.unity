@@ -1669,6 +1669,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 49d074f01160bc2428cc93b67f91d64f, type: 2}
   - {fileID: 11400000, guid: f4dbf3297a2b8c24089ca6f6ca1ed8d6, type: 2}
   - {fileID: 11400000, guid: 91c5976cdeb84cd49b8d290fa2b6e542, type: 2}
+  - {fileID: 11400000, guid: d8b52d98cddcfa44db1e02cd2ffa06b8, type: 2}
   _enemyData: {fileID: 11400000, guid: 317364a1c84741841862983ebc60e6de, type: 2}
   _playerMaxHp: 100
   _playerHpBarView: {fileID: 1569285708}

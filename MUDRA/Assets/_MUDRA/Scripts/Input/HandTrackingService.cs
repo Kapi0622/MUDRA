@@ -94,7 +94,7 @@ namespace MUDRA.HandTracking
         /// カメラとの距離に依存しない正規化された判定を実現する。
         /// 実機テストで調整する前提の仮値。β版でScriptableObject化候補。
         /// </summary>
-        private const float UnionWristDistanceRatio = 1.5f;
+        private const float UnionWristDistanceRatio = 0.8f;
 
         // =========================================================================
         // テーブル定義：片手パターン（Stage 1）
@@ -212,7 +212,7 @@ namespace MUDRA.HandTracking
         {
             // 現在は空。10本指パターンはここに追加していく。
             // 例：左グー + 右パー → 新しい印
-            new TwoHandPattern(HandSign.Fist, HandSign.Open, HandSign.Scissors),
+            new TwoHandPattern(HandSign.Scissors, HandSign.Scissors, HandSign.DoubleScissors),
         };
 
         // =========================================================================
