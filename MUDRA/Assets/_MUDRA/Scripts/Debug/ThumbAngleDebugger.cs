@@ -48,7 +48,7 @@ namespace MUDRA.Debugging
         {
             if (_provider == null) return;
 
-            var landmarks = _provider.GetCurrentLandmarks();
+            var landmarks = _provider.GetLandmarks(0);
             if (_provider.DetectedHandCount <= 0 || landmarks.Count == 0)
             {
                 Debug.LogWarning("手が検出されていません");

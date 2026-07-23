@@ -7,6 +7,6 @@ public class Test : MonoBehaviour
     
     private void Update()
     {
-        Debug.Log($"HandCount: {_provider.DetectedHandCount}, LandmarkCount: {_provider.GetCurrentLandmarks().Count}");
+        Debug.Log($"HandCount: {_provider.DetectedHandCount}, LandmarkCount: {_provider.GetLandmarks(0).Count}");
     }
 }

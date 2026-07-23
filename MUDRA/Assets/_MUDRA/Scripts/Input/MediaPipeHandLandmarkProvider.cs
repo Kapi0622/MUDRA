@@ -1,6 +1,7 @@
+using System;
 using System.Collections.Generic;
 using Cysharp.Threading.Tasks;
-using Mediapipe.Tasks.Vision.HandLandmarker; // ← 実際のnamespaceに合わせて調整
+using Mediapipe.Tasks.Vision.HandLandmarker;
 using Mediapipe.Unity.Sample.HandLandmarkDetection;
 using UnityEngine;
 
@@ -14,12 +15,40 @@ namespace MUDRA.HandTracking
     public sealed class MediaPipeHandLandmarkProvider : MonoBehaviour, IHandLandmarkProvider
     {
         // 21点分の容量を確保して再確保コストを避ける
-        private readonly List<HandLandmark> _cachedLandmarks = new(21);
+        // 2手分のキャッシュを配列で保持（各21点分の容量を確保）
+        private readonly List<HandLandmark>[] _cachedLandmarks = new[]
+        {
+            new List<HandLandmark>(21),
+            new List<HandLandmark>(21)
+        };
+        
+        // 範囲外アクセス時に返す空リスト（毎回newを避ける）
+        private static readonly IReadOnlyList<HandLandmark> EmptyLandmarks 
+            = Array.Empty<HandLandmark>();
+        
         private int _detectedHandCount;
 
         public int DetectedHandCount => _detectedHandCount;
+        
+        // 各手の左右情報（true = 左手、null = 未検出）
+        private readonly bool?[] _cachedIsLeftHand = new bool?[2];
 
-        public IReadOnlyList<HandLandmark> GetCurrentLandmarks() => _cachedLandmarks;
+        public IReadOnlyList<HandLandmark> GetLandmarks(int handIndex)
+        {
+            // 範囲外または未検出の手には空リストを返す
+            if (handIndex < 0 || handIndex >= _cachedLandmarks.Length)
+                return EmptyLandmarks;
+
+            return _cachedLandmarks[handIndex];
+        }
+        
+        public bool? IsLeftHand(int handIndex)
+        {
+            if (handIndex < 0 || handIndex >= _cachedIsLeftHand.Length)
+                return null;
+
+            return _cachedIsLeftHand[handIndex];
+        }
 
         private void OnEnable()
         {
@@ -48,7 +77,12 @@ namespace MUDRA.HandTracking
 
         private void UpdateCache(HandLandmarkerResult result)
         {
-            _cachedLandmarks.Clear();
+            // 全手のキャッシュをクリア
+            for (var h = 0; h < _cachedLandmarks.Length; h++)
+            {
+                _cachedLandmarks[h].Clear();
+                _cachedIsLeftHand[h] = null;
+            }
 
             var hands = result.handLandmarks;
             if (hands == null || hands.Count == 0)
@@ -59,12 +93,27 @@ namespace MUDRA.HandTracking
 
             _detectedHandCount = hands.Count;
 
-            // 現状は最初の手のみを扱う（両手対応はUnion判定実装時に拡張）
-            var landmarks = hands[0].landmarks;
-            for (var i = 0; i < landmarks.Count; i++)
+            // 検出された手の数（最大2）分だけキャッシュに格納
+            var handCount = Mathf.Min(hands.Count, _cachedLandmarks.Length);
+            for (var h = 0; h < handCount; h++)
             {
-                var l = landmarks[i];
-                _cachedLandmarks.Add(new HandLandmark(new Vector3(l.x, l.y, l.z), i));
+                // ランドマーク座標のキャッシュ
+                var landmarks = hands[h].landmarks;
+                for (var i = 0; i < landmarks.Count; i++)
+                {
+                    var l = landmarks[i];
+                    _cachedLandmarks[h].Add(new HandLandmark(new Vector3(l.x, l.y, l.z), i));
+                }
+                
+                // 左右情報のキャッシュ
+                if (result.handedness != null && h < result.handedness.Count)
+                {
+                    var categories = result.handedness[h].categories;
+                    if (categories != null && categories.Count > 0)
+                    {
+                        _cachedIsLeftHand[h] = categories[0].categoryName == "Left";
+                    }
+                }
             }
         }
     }
