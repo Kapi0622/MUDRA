@@ -19,5 +19,11 @@ namespace MUDRA.HandTracking
         /// 現在検出されている手の数を返す。
         /// </summary>
         int DetectedHandCount { get; }
+        
+        /// <summary>
+        /// 指定した手が左手かどうかを返す。
+        /// 該当する手が検出されていない場合はnullを返す。
+        /// </summary>
+        bool? IsLeftHand(int handIndex);
     }
 }

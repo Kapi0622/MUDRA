@@ -29,6 +29,9 @@ namespace MUDRA.HandTracking
         private int _detectedHandCount;
 
         public int DetectedHandCount => _detectedHandCount;
+        
+        // 各手の左右情報（true = 左手、null = 未検出）
+        private readonly bool?[] _cachedIsLeftHand = new bool?[2];
 
         public IReadOnlyList<HandLandmark> GetLandmarks(int handIndex)
         {
@@ -37,6 +40,14 @@ namespace MUDRA.HandTracking
                 return EmptyLandmarks;
 
             return _cachedLandmarks[handIndex];
+        }
+        
+        public bool? IsLeftHand(int handIndex)
+        {
+            if (handIndex < 0 || handIndex >= _cachedIsLeftHand.Length)
+                return null;
+
+            return _cachedIsLeftHand[handIndex];
         }
 
         private void OnEnable()
@@ -68,7 +79,10 @@ namespace MUDRA.HandTracking
         {
             // 全手のキャッシュをクリア
             for (var h = 0; h < _cachedLandmarks.Length; h++)
+            {
                 _cachedLandmarks[h].Clear();
+                _cachedIsLeftHand[h] = null;
+            }
 
             var hands = result.handLandmarks;
             if (hands == null || hands.Count == 0)
@@ -83,11 +97,22 @@ namespace MUDRA.HandTracking
             var handCount = Mathf.Min(hands.Count, _cachedLandmarks.Length);
             for (var h = 0; h < handCount; h++)
             {
+                // ランドマーク座標のキャッシュ
                 var landmarks = hands[h].landmarks;
                 for (var i = 0; i < landmarks.Count; i++)
                 {
                     var l = landmarks[i];
                     _cachedLandmarks[h].Add(new HandLandmark(new Vector3(l.x, l.y, l.z), i));
+                }
+                
+                // 左右情報のキャッシュ
+                if (result.handedness != null && h < result.handedness.Count)
+                {
+                    var categories = result.handedness[h].categories;
+                    if (categories != null && categories.Count > 0)
+                    {
+                        _cachedIsLeftHand[h] = categories[0].categoryName == "Left";
+                    }
                 }
             }
         }
