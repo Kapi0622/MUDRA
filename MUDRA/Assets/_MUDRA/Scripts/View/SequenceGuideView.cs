@@ -163,6 +163,7 @@ public class SequenceGuideView : MonoBehaviour
             HandSign.Scissors => "刃",
             HandSign.Palm => "掌",
             HandSign.Union => "合",
+            HandSign.DoubleScissors => "双",
             _ => "？"
         };
     }
