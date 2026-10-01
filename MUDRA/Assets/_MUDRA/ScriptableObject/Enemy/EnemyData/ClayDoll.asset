@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ClayDoll
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u6CE5\u4EBA\u5F62"
-  sprite: {fileID: 0}
+  sprite: {fileID: -7153053430564936571, guid: 5f9b2c30df3263644987e5ccb2e61fba, type: 3}
   maxHp: 200
   weakElement: 0
   weakMultiplier: 1.5

@@ -31,6 +31,11 @@ namespace MUDRA.Data
         Slow,
         Stun,
         DamageOverTime,
+        /// <summary>
+        /// 継続回復（HoT）。他の効果が敵に付くのに対し、これだけはプレイヤーに付く。
+        /// セクション遷移時のクリア対象から外れる唯一の効果でもある（HotEffect参照）。
+        /// </summary>
+        HealOverTime,
     }
 
     /// <summary>

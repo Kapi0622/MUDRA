@@ -14,4 +14,9 @@ public struct DamageResult
     public float EffectDuration;
     public int PerTickDamage;       // tick1回あたりのダメージ（DoT専用。他Strategyは0）
     public int TickCount;           // tick回数（DoT専用。他Strategyは0）
+
+    // tick1回あたりの回復量（HoT専用）。
+    // 回復は敵の弱点属性やコンボに影響されないため、Strategyでは算出せず
+    // BattleModel.ApplySpellDamageがSpellDataから直接埋める。
+    public int PerTickHeal;
 }

@@ -13,10 +13,12 @@ public class DebugMenuView : MonoBehaviour
     private BattleModel _battleModel;
     private StatusEffectManager _statusEffectManager;
     private EnemyStateManager _enemyStateManager;
+    private SectionProgressManager _sectionProgressManager;
+    private StageData[] _allStages;
 
     private bool _isVisible;
     private bool _isInvincible;
-    private Rect _windowRect = new(10, 10, 600, 700);
+    private Rect _windowRect = new(10, 10, 600, 820);
 
     // --- FPS計測用 ---
     private float _deltaTime;
@@ -32,11 +34,15 @@ public class DebugMenuView : MonoBehaviour
     public void Inject(
         BattleModel battleModel,
         StatusEffectManager statusEffectManager,
-        EnemyStateManager enemyStateManager)
+        EnemyStateManager enemyStateManager,
+        SectionProgressManager sectionProgressManager,
+        StageData[] allStages)
     {
         _battleModel = battleModel;
         _statusEffectManager = statusEffectManager;
         _enemyStateManager = enemyStateManager;
+        _sectionProgressManager = sectionProgressManager;
+        _allStages = allStages;
     }
 
     private void Update()
@@ -189,15 +195,116 @@ public class DebugMenuView : MonoBehaviour
         // --- ステージ ---
         GUILayout.Label("--- Stage ---", _labelStyle);
 
+        DrawStageJump();
+
+        GUILayout.Space(8);
+
         if (GUILayout.Button("シーンリロード (R)", _buttonStyle))
         {
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
 
-        GUILayout.Space(4);
-        GUILayout.Label("※ステージジャンプはB3で実装");
-
         GUI.DragWindow();
+    }
+
+    // ============================
+    // ステージジャンプ
+    // ============================
+
+    /// <summary>
+    /// ステージ切替とセクションジャンプのボタン群。
+    /// どのジャンプもDebugResetPlayerStateを挟み、飛んだ先を全回復・コンボ0の素の状態で始める。
+    /// </summary>
+    private void DrawStageJump()
+    {
+        if (_sectionProgressManager == null || _sectionProgressManager.SectionCount == 0)
+        {
+            GUILayout.Label("SectionProgressManager未注入");
+            return;
+        }
+
+        // --- ステージ切替 ---
+        if (_allStages != null && _allStages.Length > 0)
+        {
+            GUILayout.BeginHorizontal();
+            for (int i = 0; i < _allStages.Length; i++)
+            {
+                var stage = _allStages[i];
+                if (stage == null) continue;
+
+                string label = string.IsNullOrEmpty(stage.stageName) ? $"Stage{i + 1}" : stage.stageName;
+                if (GUILayout.Button(label, _buttonStyle))
+                {
+                    // 同じステージを押した時も先頭から仕切り直す（やり直し手段になる）
+                    _battleModel.DebugResetPlayerState();
+                    _sectionProgressManager.StartStage(stage);
+                    Debug.Log($"[DebugMenu] ステージ切替: {label}");
+                }
+            }
+            GUILayout.EndHorizontal();
+
+            GUILayout.Space(8);
+        }
+
+        // --- 現在地 ---
+        int currentIndex = _sectionProgressManager.CurrentSectionIndex.CurrentValue;
+        int sectionCount = _sectionProgressManager.SectionCount;
+        var currentStage = _sectionProgressManager.CurrentStage;
+        var currentEnemy = _sectionProgressManager.CurrentSection.enemyData;
+
+        string stageName = currentStage != null ? currentStage.stageName : "?";
+        string enemyName = currentEnemy != null ? currentEnemy.enemyName : "?";
+
+        GUILayout.Label(
+            $"現在: {stageName} セクション {currentIndex + 1}/{sectionCount} ({enemyName})",
+            _labelStyle);
+
+        // --- セクション直接指定 ---
+        GUILayout.BeginHorizontal();
+        for (int i = 0; i < sectionCount; i++)
+        {
+            if (GUILayout.Button($"Sec {i}", _buttonStyle))
+                JumpToSection(i);
+        }
+        GUILayout.EndHorizontal();
+
+        // --- ショートカット ---
+        GUILayout.BeginHorizontal();
+
+        bool hasNext = currentIndex < sectionCount - 1;
+        GUI.enabled = hasNext;
+        if (GUILayout.Button("次のセクションへ", _buttonStyle))
+            JumpToSection(currentIndex + 1);
+        GUI.enabled = true;
+
+        if (GUILayout.Button("ボスへ飛ぶ", _buttonStyle))
+            JumpToSection(FindBossSectionIndex());
+
+        GUILayout.EndHorizontal();
+    }
+
+    private void JumpToSection(int index)
+    {
+        _battleModel.DebugResetPlayerState();
+        _sectionProgressManager.DebugJumpToSection(index);
+        Debug.Log($"[DebugMenu] セクション{index} へジャンプ");
+    }
+
+    /// <summary>
+    /// ボスセクションのindexを返す。
+    /// 末尾から走査して最初に見つかったisBossを採用し、
+    /// 1つも立っていなければ末尾セクションで代用する。
+    /// </summary>
+    private int FindBossSectionIndex()
+    {
+        var sections = _sectionProgressManager.CurrentStage.sections;
+
+        for (int i = sections.Length - 1; i >= 0; i--)
+        {
+            if (sections[i].isBoss) return i;
+        }
+
+        return sections.Length - 1;
     }
 }
 

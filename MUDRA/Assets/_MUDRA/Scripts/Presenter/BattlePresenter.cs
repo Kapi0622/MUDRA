@@ -25,19 +25,31 @@ public class BattlePresenter : MonoBehaviour
         SpellSequenceModel spellSequenceModel,
         StatusEffectManager statusEffectManager,
         GuardWindowManager guardWindowManager,
-        HpBarView _playerHpBarView,
-        HpBarView _bossHpBarView)
+        HpBarView playerHpBarView,
+        HpBarView bossHpBarView)
     {
         _battleModel = battleModel;
         _enemyStateManager = enemyStateManager;
         _spellSequenceModel = spellSequenceModel;
         _statusEffectManager = statusEffectManager;
         _guardWindowManager = guardWindowManager;
+        _playerHpBarView = playerHpBarView;
+        _bossHpBarView = bossHpBarView;
 
         // --- HP初期表示(初期化アニメーションは今のところなし) ---
         _playerHpBarView.InitializeHp(_battleModel.PlayerHp.CurrentValue, _battleModel.PlayerMaxHp);
         _bossHpBarView.InitializeHp(_battleModel.BossHp.CurrentValue, _battleModel.BossMaxHp);
         
+        // --- 敵差し替え（セクション遷移）→ ボスHPバーを新しい敵で初期化し直す ---
+        // BossHpの値変化だけではBossMaxHpが変わったことを拾えないため別途購読する
+        _battleModel.OnEnemyChanged
+            .Subscribe(enemyData =>
+            {
+                _bossHpBarView.InitializeHp(_battleModel.BossHp.CurrentValue, _battleModel.BossMaxHp);
+                Debug.Log($"[Battle] 敵出現: {enemyData.enemyName} (HP:{_battleModel.BossMaxHp})");
+            })
+            .AddTo(_disposables);
+
         // --- HP監視 ---
         _battleModel.PlayerHp
             .Skip(1)
