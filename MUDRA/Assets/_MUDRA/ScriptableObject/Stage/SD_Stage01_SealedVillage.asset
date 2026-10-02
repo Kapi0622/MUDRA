@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 689e0cc6b964b9f4b8a7ca29c380779d, type: 3}
+  m_Name: SD_Stage01_SealedVillage
+  m_EditorClassIdentifier: Assembly-CSharp::StageData
+  stageName: "\u5C01\u571F\u306E\u91CC"
+  stageNumber: 1
+  sections:
+  - enemyData: {fileID: 11400000, guid: 8717e5339fc766046ac1e0840dceee8f, type: 2}
+    isBoss: 0
+  - enemyData: {fileID: 11400000, guid: 5fd32c2154a1be2419e26e63c8987cd2, type: 2}
+    isBoss: 0
+  - enemyData: {fileID: 11400000, guid: 317364a1c84741841862983ebc60e6de, type: 2}
+    isBoss: 1
+  bgm: {fileID: 0}
+  roadBackgroundSprite: {fileID: 0}
+  bossBackgroundSprite: {fileID: -7443756053782179069, guid: e24ab0007c1221d449f39e1da5c4488d, type: 3}

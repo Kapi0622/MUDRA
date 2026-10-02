@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
+  m_Name: ED_Shade
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: "\u5F71\u6CD5\u5E2B"
+  sprite: {fileID: 0}
+  maxHp: 400
+  weakElement: 5
+  weakMultiplier: 1.5
+  actionPattern:
+  - attackData: {fileID: 11400000, guid: 464367406e814b0488d309b5a822e04e, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 464367406e814b0488d309b5a822e04e, type: 2}
+    isHeavy: 0
+    intervalAfter: 4
+  - attackData: {fileID: 11400000, guid: b6dac819d6790024898d3680be1f8234, type: 2}
+    isHeavy: 1
+    intervalAfter: 3

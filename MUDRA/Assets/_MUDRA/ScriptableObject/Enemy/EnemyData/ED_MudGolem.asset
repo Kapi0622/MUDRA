@@ -10,11 +10,11 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
-  m_Name: ClayDoll
+  m_Name: ED_MudGolem
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u6CE5\u4EBA\u5F62"
   sprite: {fileID: -7153053430564936571, guid: 5f9b2c30df3263644987e5ccb2e61fba, type: 3}
-  maxHp: 200
+  maxHp: 800
   weakElement: 0
   weakMultiplier: 1.5
   actionPattern:
@@ -28,5 +28,5 @@ MonoBehaviour:
     isHeavy: 0
     intervalAfter: 3
   - attackData: {fileID: 11400000, guid: 86e699b629b15c8428890f527a8492ce, type: 2}
-    isHeavy: 0
+    isHeavy: 1
     intervalAfter: 5

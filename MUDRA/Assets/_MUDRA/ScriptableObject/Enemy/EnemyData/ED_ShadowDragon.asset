@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
+  m_Name: ED_ShadowDragon
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: "\u5F71\u9F8D"
+  sprite: {fileID: 0}
+  maxHp: 1600
+  weakElement: 5
+  weakMultiplier: 2
+  actionPattern:
+  - attackData: {fileID: 11400000, guid: 4fdad3ebce5882c44863a6fea6f9146c, type: 2}
+    isHeavy: 0
+    intervalAfter: 1.5
+  - attackData: {fileID: 11400000, guid: 4fdad3ebce5882c44863a6fea6f9146c, type: 2}
+    isHeavy: 0
+    intervalAfter: 1.5
+  - attackData: {fileID: 11400000, guid: c3f2f196d4a8cac47a3c4af5c0e0eb4f, type: 2}
+    isHeavy: 1
+    intervalAfter: 2.5
+  - attackData: {fileID: 11400000, guid: 4fdad3ebce5882c44863a6fea6f9146c, type: 2}
+    isHeavy: 0
+    intervalAfter: 1
+  - attackData: {fileID: 11400000, guid: b6dac819d6790024898d3680be1f8234, type: 2}
+    isHeavy: 1
+    intervalAfter: 2
+  - attackData: {fileID: 11400000, guid: 81a594de5a8ca5d48a2dbaa009d11512, type: 2}
+    isHeavy: 1
+    intervalAfter: 6

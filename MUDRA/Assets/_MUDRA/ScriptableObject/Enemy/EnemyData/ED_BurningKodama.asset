@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
+  m_Name: ED_BurningKodama
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: "\u71C3\u3048\u6728\u970A"
+  sprite: {fileID: 0}
+  maxHp: 350
+  weakElement: 3
+  weakMultiplier: 1.5
+  actionPattern:
+  - attackData: {fileID: 11400000, guid: f6119d782c38fd145bb71b0d425d4842, type: 2}
+    isHeavy: 0
+    intervalAfter: 1.5
+  - attackData: {fileID: 11400000, guid: f6119d782c38fd145bb71b0d425d4842, type: 2}
+    isHeavy: 0
+    intervalAfter: 1.5
+  - attackData: {fileID: 11400000, guid: 6fc73247452c48b42b452f6bf365e5a4, type: 2}
+    isHeavy: 1
+    intervalAfter: 2.5

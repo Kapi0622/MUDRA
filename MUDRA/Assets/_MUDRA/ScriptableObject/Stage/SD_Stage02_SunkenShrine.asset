@@ -1,0 +1,28 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 689e0cc6b964b9f4b8a7ca29c380779d, type: 3}
+  m_Name: SD_Stage02_SunkenShrine
+  m_EditorClassIdentifier: Assembly-CSharp::StageData
+  stageName: "\u6C34\u5E95\u306E\u793E"
+  stageNumber: 2
+  sections:
+  - enemyData: {fileID: 11400000, guid: 063db3f867077444bae017eb87ae57ff, type: 2}
+    isBoss: 0
+  - enemyData: {fileID: 11400000, guid: c0991e99e5edc1946b0182654c9f0189, type: 2}
+    isBoss: 0
+  - enemyData: {fileID: 11400000, guid: 90caaa0570fc7b843b4a0d10b04d0617, type: 2}
+    isBoss: 0
+  - enemyData: {fileID: 11400000, guid: f6ea9583307d07744a69abfd8124282d, type: 2}
+    isBoss: 1
+  bgm: {fileID: 0}
+  roadBackgroundSprite: {fileID: 0}
+  bossBackgroundSprite: {fileID: 0}

@@ -1,0 +1,26 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
+  m_Name: ED_CrabMonk
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: "\u87F9\u574A\u4E3B"
+  sprite: {fileID: 0}
+  maxHp: 380
+  weakElement: 1
+  weakMultiplier: 1.5
+  actionPattern:
+  - attackData: {fileID: 11400000, guid: fa750e991a3a3bc4d8a92f39ecc4af44, type: 2}
+    isHeavy: 0
+    intervalAfter: 2
+  - attackData: {fileID: 11400000, guid: 0efa97e58755fa742b56706e82b24522, type: 2}
+    isHeavy: 1
+    intervalAfter: 5

@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
+  m_Name: ED_WaterSerpent
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: "\u6C34\u86C7"
+  sprite: {fileID: 0}
+  maxHp: 1000
+  weakElement: 2
+  weakMultiplier: 1.5
+  actionPattern:
+  - attackData: {fileID: 11400000, guid: 7462a4e0f823dc9478fa683748309b69, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 7462a4e0f823dc9478fa683748309b69, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 7462a4e0f823dc9478fa683748309b69, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 3e823c7594aade7429fd4d59919353b1, type: 2}
+    isHeavy: 1
+    intervalAfter: 3
+  - attackData: {fileID: 11400000, guid: 7462a4e0f823dc9478fa683748309b69, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 7462a4e0f823dc9478fa683748309b69, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 0874711baf274d3488f5b4f73b504971, type: 2}
+    isHeavy: 1
+    intervalAfter: 5

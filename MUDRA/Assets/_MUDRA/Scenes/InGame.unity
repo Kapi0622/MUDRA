@@ -1673,6 +1673,9 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 61fbf01a5eada1d44bbcadbdcd724f2b, type: 2}
   _allStages:
   - {fileID: 11400000, guid: a3a8f1fb2c83dbd489ba6f78c3ecae8b, type: 2}
+  - {fileID: 11400000, guid: feb843bbfdf8a074ab084da7e9aecaa2, type: 2}
+  - {fileID: 11400000, guid: 7967b4ce52031db468a59b32f734b948, type: 2}
+  - {fileID: 11400000, guid: fafef8aaea91a8a408dea8c702713383, type: 2}
   _playerMaxHp: 100
   _playerHpBarView: {fileID: 1569285708}
   _bossHpBarView: {fileID: 1183724156}
