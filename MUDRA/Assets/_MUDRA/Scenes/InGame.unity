@@ -1670,7 +1670,12 @@ MonoBehaviour:
   - {fileID: 11400000, guid: f4dbf3297a2b8c24089ca6f6ca1ed8d6, type: 2}
   - {fileID: 11400000, guid: 91c5976cdeb84cd49b8d290fa2b6e542, type: 2}
   - {fileID: 11400000, guid: d8b52d98cddcfa44db1e02cd2ffa06b8, type: 2}
-  _enemyData: {fileID: 11400000, guid: 317364a1c84741841862983ebc60e6de, type: 2}
+  - {fileID: 11400000, guid: 61fbf01a5eada1d44bbcadbdcd724f2b, type: 2}
+  _allStages:
+  - {fileID: 11400000, guid: a3a8f1fb2c83dbd489ba6f78c3ecae8b, type: 2}
+  - {fileID: 11400000, guid: feb843bbfdf8a074ab084da7e9aecaa2, type: 2}
+  - {fileID: 11400000, guid: 7967b4ce52031db468a59b32f734b948, type: 2}
+  - {fileID: 11400000, guid: fafef8aaea91a8a408dea8c702713383, type: 2}
   _playerMaxHp: 100
   _playerHpBarView: {fileID: 1569285708}
   _bossHpBarView: {fileID: 1183724156}

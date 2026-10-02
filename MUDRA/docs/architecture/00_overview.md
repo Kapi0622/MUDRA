@@ -2,8 +2,9 @@
 
 > **ドキュメント種別:** アーキテクチャ復習ドキュメント
 > **作成日:** 2026/09/18
-> **対象コミット:** `8f0e81e`（feat:B2 片手印同士を組み合わせた両手印の実装とテスト）
-> **対象コード:** `Assets/_MUDRA/Scripts`（45ファイル / 約3,070行）
+> **最終更新:** 2026/10/02（B3完了時点に更新）
+> **対象コミット:** `bf45ea2`（stagedata,enemydataの生成）
+> **対象コード:** `Assets/_MUDRA/Scripts`（50ファイル / 約4,390行。うちEditor生成ツール1本・約560行）
 > **ステータス:** 現状スナップショット
 
 ---
@@ -49,11 +50,11 @@ DIコンテナは**使っていない**。手書きの Composition Root（`Battl
 ```
 Assets/_MUDRA/
 ├── Scenes/InGame.unity          … 唯一のシーン
-├── ScriptableObject/            … 術・敵の定義アセット
+├── ScriptableObject/            … 術・敵・攻撃・ステージの定義アセット
 ├── Prefabs/ Particle/ Sprites/ Fonts/
 └── Scripts/
     ├── Data/                    … ScriptableObject定義とenum
-    │   SpellData / EnemyData / EnemyAttackData / EnemyAction / SpellEnums
+    │   SpellData / EnemyData / EnemyAttackData / EnemyAction / StageData(+StageSection) / SpellEnums
     ├── Input/                   … 手印認識（namespace MUDRA.HandTracking）
     │   IHandLandmarkProvider / MediaPipeHandLandmarkProvider
     │   HandTrackingService(484行・中核) / HandLandmark / FingerState / HandSignEnum
@@ -61,15 +62,18 @@ Assets/_MUDRA/
     ├── Model/                   … Pure C#。Unity非依存のゲームロジック
     │   SpellSequenceModel / BattleModel / SpellCastResult
     │   PlayerStateManager+PlayerPhase / EnemyStateManager+EnemyPhase
+    │   SectionProgressManager+SectionPhase … ステージ内のセクション進行
     │   ├── State/               … プレイヤーのStateパターン（Idle/Chanting/Releasing）
-    │   ├── StatusEffect/        … 時限効果（DoT/Stun）とガード受付窓
+    │   ├── StatusEffect/        … 時限効果（DoT/Stun/HoT）とガード受付窓
     │   └── Strategy/            … ダメージ計算3種
     ├── Presenter/               … Model購読 → View呼び出しの配線のみ
     │   BattleInitializer(起動) / HandSignPresenter / BattlePresenter
     ├── View/                    … 表示専用MonoBehaviour。Modelを知らない
     │   HpBarView / SequenceGuideView / SpellTelopView / SpellEffectView
-    └── Debug/                   … #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        DebugKeyboardInput / DebugMenuView / ThumbAngleDebugger / HandTrackingActiveTest
+    ├── Debug/                   … #if UNITY_EDITOR || DEVELOPMENT_BUILD
+    │   DebugKeyboardInput / DebugMenuView / ThumbAngleDebugger / HandTrackingActiveTest
+    └── Editor/                  … ビルド対象外。ランタイムから参照しない
+        B3ContentGenerator … 敵・攻撃・ステージSOの一括生成（メニュー MUDRA/Generate B3 Content）
 ```
 
 `.asmdef` は無く、全コードが `Assembly-CSharp` にコンパイルされる。**自動テストは存在しない**（`Debug/HandTrackingActiveTest.cs` はテストではなく毎フレームのログ出力）。
@@ -111,15 +115,14 @@ flowchart LR
 
 `BattleInitializer.Awake()`（`Presenter/BattleInitializer.cs:39`）が Composition Root。シーンに1つだけ置く。
 
-1. **Model 7種を生成**
-   `HandTrackingService(_provider)` / `SpellSequenceModel(_allSpells, () => Time.time)` /
-   `PlayerStateManager()` / `EnemyStateManager(_enemyData)` / `BattleModel(_playerMaxHp, _enemyData)` /
-   `GuardWindowManager()` / `StatusEffectManager()`
-2. **循環依存の解消** — `StatusEffectFactory` に `BattleModel.ApplyDotDamage` / `EnemyStateManager.ApplyStun` / `EndStun` を **`Action` として**渡し、`BattleModel.SetStatusEffectDependencies()` で後から注入する。コンストラクタでは BattleModel ↔ EnemyStateManager が相互に必要になってしまうため（A5）
-3. **Presenter へ注入** — `HandSignPresenter.Initialize(...)` / `BattlePresenter.Initialize(...)`
-4. **デバッグメニュー注入** — `FindFirstObjectByType<DebugMenuView>()` に `Inject(...)`（`#if UNITY_EDITOR || DEVELOPMENT_BUILD`）
-5. **バトル開始** — `_enemyStateManager.StartLoop()`
-6. **終了時の後片付けを購読** — `OnBattleEnd` → `StatusEffectManager.ClearAll()` → `EnemyStateManager.StopLoop()`（この順序は意図的。Stun解除が走っても最後に必ず止まるようにする）
+`Awake` は「検証 → Model生成 → 注入 → 終了処理の購読 → ステージ開始」の順。生成するModelは**すべてステージ全体で生存**し、セクション遷移で作り直すものは無い（購読の張り直しが発生しない）。
+
+1. **`ValidateStageData()`** — `_allStages` が空、または要素0（開始ステージ）が未設定なら中断
+2. **`BuildStageScopeModels()`** — Model 8種を生成。`EnemyStateManager` / `BattleModel` は開始ステージの先頭セクションの敵で初期化する
+   - **循環依存の解消** — `StatusEffectFactory` に `BattleModel.ApplyDotDamage` / `ApplyHeal` / `EnemyStateManager.ApplyStun` / `EndStun` を **`Action` として**渡し、`BattleModel.SetStatusEffectDependencies()` で後から注入する（A5）
+3. **`InjectPresenters()`** — 各Presenterへの注入と、デバッグメニューへの `Inject(...)`（`#if UNITY_EDITOR || DEVELOPMENT_BUILD`）
+4. **`SubscribeStageEnd()`** — `OnStageCleared` / `OnGameOver` → `StatusEffectManager.ClearAll()` → `EnemyStateManager.StopLoop()`（この順序は意図的。Stun解除が走っても最後に必ず止まるようにする）
+5. **ステージ開始** — `SectionProgressManager.StartStage(_allStages[0])`。敵の流し込みと行動ループの開始はここから先で行われる（[02 §11](02_battle_system.md)）
 
 `OnDestroy()` で `CompositeDisposable` と全Modelを `Dispose()` する。シングルトン・static は**プロジェクトコードには存在しない**（唯一の例外はMediaPipe側のstatic event、[01](01_hand_input.md) 参照）。
 
@@ -148,7 +151,7 @@ flowchart TD
     EDMG["BattleModel.ApplyEnemyDamage<br/>PlayerHp 減少"]
     CHK{"どちらかの HP が 0 ?"}
     BAR["HpBarView.SetHp<br/>2層バーのアニメーション"]
-    END["BattleInitializer<br/>StatusEffectManager.ClearAll<br/>EnemyStateManager.StopLoop"]
+    END["SectionProgressManager<br/>敵撃破 → 次セクション or ステージクリア<br/>自分のHP 0 → 敗北"]
 
     CAM --> MP
     MP -->|"static event OnLandmarkDetected"| PROV
@@ -205,7 +208,7 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | Canvas配下 | `HpBarView`×2（プレイヤー/ボス）/ `SequenceGuideView` / `SpellTelopView` / `SpellEffectView` |
 | Debug用 | `DebugMenuView` / `DebugKeyboardInput` |
 
-`BattleInitializer` の設定値: 術6種すべて登録 / `_enemyData` = ClayDoll / `_playerMaxHp` = 100。
+`BattleInitializer` の設定値: 術7種すべて登録 / `_allStages` = SD_Stage01〜04 / `_playerMaxHp` = 100。
 
 ### 術アセット（`ScriptableObject/Player/`）
 
@@ -217,27 +220,38 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | Lightning | 雷連撃 | 指 → 刃 | Thunder | 50 | MultiHit ×5 | Stun 3秒 |
 | Fireball | 火炎弾 | 掌 → 握 | Fire | 50 | DoT | DamageOverTime 3秒 |
 | CrossBlade | 双刃 | 双（両手チョキ） | Earth | 40 | SingleHit | — |
+| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 10） |
 
-### 敵アセット（`ScriptableObject/Enemy/`）
+### 敵・攻撃・ステージアセット
 
-`ClayDoll`（泥人形）: MaxHP 200 / 弱点 Wind ×1.5 / 行動パターン = 泥塊投げ(DMG10, 溜め1.5s, 間隔3s) ×3 → 地鳴り(DMG25, 溜め2s, 間隔5s) の4手を巡回。大技(`isHeavy`)は現状どれも未設定。
+4ステージ / 敵15種（雑魚ユニーク8 + 派生3 + ボス4）/ 攻撃23種。ファイル名は `EA_` / `ED_` / `SD_` プレフィックス + 英語（仕様書 §3-2 の命名規則）。
+全数値の一覧と設計意図は `docs/B3_enemy_stage_content.md` が正。**値の変更は `Editor/B3ContentGenerator.cs` の定義表を直して再実行する**（アセットを直接いじると次回の再実行で上書きされる）。
+
+| ステージ | セクション（最後がボス） |
+|---|---|
+| SD_Stage01_SealedVillage 封土の里 | 泥ころ → 枯れ木霊 → **泥人形** |
+| SD_Stage02_SunkenShrine 水底の社 | 河童 → 岩泥ころ → 蟹坊主 → **水蛇** |
+| SD_Stage03_BurningTemple 焔の廃寺 | 鬼火 → 燃え木霊 → 火車 → **炎魔** |
+| SD_Stage04_ShadowAbyss 影の深淵 | 影法師 → 影鬼火 → 鵺 → **影龍** |
+
+`isHeavy` は攻撃ごとに固定（同じ攻撃はどの敵が使っても大技か否かが変わらない）。生成スクリプトが攻撃テーブルから自動で設定する。
 
 ---
 
 ## 8. 仕様書とのギャップ（簡易）
 
-仕様書 v1.3 に設計はあるがコードに存在しないもの。次に作るものの目次として使う。
+仕様書 v1.5 に設計はあるがコードに存在しないもの。次に作るものの目次として使う。
 
 | 未実装のもの | 仕様書の該当箇所 | 影響 |
 |---|---|---|
 | `GameStateManager` / `GamePhase` | §4-1 | 画面遷移が無い。InGame直起動のみ（B5） |
-| `StageData` / セクション進行 | §2, §7-3 | ボス1体との単発バトルのみ。道中セクション無し（B3） |
 | `EnemyPresenter` / `EnemyView` | §2 | 敵の見た目・攻撃演出が無く、`Debug.Log` のみ（B4） |
+| 演出系フィールドの読み出し | §3-2 | `EnemyData.sprite` / `EnemyAttackData.effectPrefab` / `StageData` の背景・`isBoss` は**どこからも読まれていない**。受け口は `SectionProgressManager.OnSectionStarted`（B4） |
 | キャリブレーション / チュートリアル | §4-1 | しきい値は C# の const 固定（B6） |
-| サウンド（`castSE` / `attackSE`） | §3-2 | SpellData/EnemyAttackDataにフィールドはあるが未使用（B7） |
+| サウンド（`castSE` / `attackSE` / `bgm`） | §3-2 | フィールドはあるが未使用（B7） |
 | `StatusEffectType.Slow` | §3-1 | enumにあるが実装クラスが無い |
 
-逆に**仕様書に無く実装が先行している**もの: `HandSign.DoubleScissors`（B2 Step3 の10本指パターン第1号）。仕様書 v1.4 での追記対象。
+逆に**仕様書に無く実装が先行している**もの: `HandSign.DoubleScissors`（B2 Step3 の10本指パターン第1号）。
 
 ---
 

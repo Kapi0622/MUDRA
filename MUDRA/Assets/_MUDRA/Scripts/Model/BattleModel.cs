@@ -11,6 +11,8 @@ public class BattleModel : IDisposable
     private const float NormalGuardRate = 0.5f;
     private const float HeavyGuardRate = 0.3f;
     private const float MisfireDamageRate = 0.05f;
+    // HoTのtick間隔。HotEffect.TickIntervalと一致させること
+    private const float HealTickInterval = 1.0f;
 
     // --- HP ---
     private readonly ReactiveProperty<int> _playerHp;
@@ -19,7 +21,8 @@ public class BattleModel : IDisposable
 
     private readonly ReactiveProperty<int> _bossHp;
     public ReadOnlyReactiveProperty<int> BossHp => _bossHp;
-    public int BossMaxHp { get; }
+    /// <summary>現在交戦中の敵の最大HP。SetEnemyで差し替わる。</summary>
+    public int BossMaxHp { get; private set; }
 
     // --- コンボ ---
     private readonly ReactiveProperty<int> _comboCount = new(0);
@@ -32,12 +35,25 @@ public class BattleModel : IDisposable
     // --- 勝敗通知 ---
     private readonly Subject<bool> _onBattleEnd = new();
     /// <summary>
-    /// バトル終了時に発火。true = プレイヤー勝利、false = 敗北。
+    /// 「現在交戦中の敵1体との」決着時に発火。true = 敵を撃破、false = プレイヤー敗北。
+    /// ステージ全体の決着ではない点に注意。
+    /// trueがステージクリアを意味するのか次セクションへの前進を意味するのかは
+    /// SectionProgressManagerが判断する（BattleModelはセクションの概念を持たない）。
     /// </summary>
     public Observable<bool> OnBattleEnd => _onBattleEnd;
 
+    // --- 敵差し替え通知 ---
+    private readonly Subject<EnemyData> _onEnemyChanged = new();
+    /// <summary>
+    /// SetEnemyで交戦相手が差し替わった時に発火。
+    /// BossHpの値変化だけではBossMaxHpが変わったことをViewに伝えられないため、
+    /// HPバーの再初期化トリガとして別途用意している。
+    /// </summary>
+    public Observable<EnemyData> OnEnemyChanged => _onEnemyChanged;
+
     // --- 敵データ ---
-    private readonly EnemyData _enemyData;
+    // セクション遷移で差し替わるためreadonlyにできない
+    private EnemyData _enemyData;
     
     // --- StatusEffect関連の依存解決用 ---
     private StatusEffectManager _statusEffectManager;
@@ -64,6 +80,36 @@ public class BattleModel : IDisposable
     }
 
     /// <summary>
+    /// 交戦相手を差し替える。セクション遷移時にSectionProgressManagerから呼ぶ。
+    /// 敵側の状態（HP・最大HP）のみをリセットし、
+    /// プレイヤーHPとコンボは意図的に据え置く（セクション間の引き継ぎ要素）。
+    /// 決着済みで落ちている_isBattleActiveもここでtrueに戻す。
+    /// </summary>
+    public void SetEnemy(EnemyData enemyData)
+    {
+        _enemyData = enemyData;
+        BossMaxHp = enemyData.maxHp;
+        _bossHp.Value = enemyData.maxHp;
+        _isBattleActive.Value = true;
+
+        _onEnemyChanged.OnNext(enemyData);
+    }
+
+    /// <summary>
+    /// プレイヤーを回復する。HotEffectから毎秒呼ばれる。
+    /// PlayerMaxHpを上限にクランプする。
+    /// 回復は勝敗に影響しないためCheckBattleEndは呼ばない
+    /// （HPが0の時点で既に決着済みであり、そこから回復して復帰することはない）。
+    /// </summary>
+    public void ApplyHeal(int amount)
+    {
+        if (!_isBattleActive.Value) return;
+        if (amount <= 0) return;
+
+        _playerHp.Value = Math.Min(PlayerMaxHp, _playerHp.Value + amount);
+    }
+
+    /// <summary>
     /// 術の発動結果を受けてダメージを処理する。
     /// 成功時はボスへダメージ+コンボ加算、暴発時はセルフダメージ+コンボリセット。
     /// </summary>
@@ -84,10 +130,16 @@ public class BattleModel : IDisposable
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damageResult.TotalDamage);
         _comboCount.Value++;
-        
+
         // --- 副次効果の付与 ---
         if (_statusEffectFactory != null && _statusEffectManager != null)
         {
+            // 回復量だけはStrategyで算出しない。
+            // 弱点属性・速度ボーナス・コンボはいずれも「敵に与えるダメージ」の倍率であり、
+            // 自分の回復量に乗せる筋合いがないため、SpellDataの値をそのまま分割する。
+            if (result.Spell.statusEffect == StatusEffectType.HealOverTime)
+                damageResult.PerTickHeal = CalculatePerTickHeal(result.Spell);
+
             var effect = _statusEffectFactory.CreateFromDamageResult(damageResult);
             if (effect != null)
                 _statusEffectManager.ApplyEffect(effect);
@@ -151,6 +203,19 @@ public class BattleModel : IDisposable
         CheckBattleEnd();
     }
 
+    /// <summary>
+    /// HoTのtick1回あたりの回復量を算出する。
+    /// healPowerを持続時間で割って均等に分配する（端数は切り捨て）。
+    /// </summary>
+    private static int CalculatePerTickHeal(SpellData spell)
+    {
+        int tickCount = spell.statusEffectDuration > 0f
+            ? (int)(spell.statusEffectDuration / HealTickInterval)
+            : 0;
+
+        return tickCount > 0 ? (int)(spell.healPower / tickCount) : 0;
+    }
+
     private void CheckBattleEnd()
     {
         if (!_isBattleActive.Value) return;
@@ -184,6 +249,18 @@ public class BattleModel : IDisposable
     /// <summary> 無敵モードフラグ。trueの間、プレイヤーへのダメージを無効化する。 </summary>
     public bool IsInvincible { get; set; }
 
+    /// <summary>
+    /// プレイヤー側の状態を初期値に戻す。デバッグのステージジャンプから呼ぶ。
+    /// 削れたHPや積み上がったコンボ倍率が残っているとダメージ量の見積もりが狂い、
+    /// 飛んだ先のセクション単体のバランスを観察できないため。
+    /// 敵側（BossHp・_enemyData）には触らない。差し替えはSetEnemyの担当。
+    /// </summary>
+    public void DebugResetPlayerState()
+    {
+        _playerHp.Value = PlayerMaxHp;
+        _comboCount.Value = 0;
+    }
+
     public void DebugModifyPlayerHp(int delta)
     {
         _playerHp.Value = Math.Clamp(_playerHp.Value + delta, 0, PlayerMaxHp);
@@ -204,5 +281,6 @@ public class BattleModel : IDisposable
         _comboCount.Dispose();
         _isBattleActive.Dispose();
         _onBattleEnd.Dispose();
+        _onEnemyChanged.Dispose();
     }
 }

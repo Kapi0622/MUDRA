@@ -10,15 +10,18 @@ public class StatusEffectFactory
     private readonly Action<int> _applyDotDamage;
     private readonly Action _applyStun;
     private readonly Action _endStun;
+    private readonly Action<int> _applyHeal;
 
     public StatusEffectFactory(
         Action<int> applyDotDamage,
         Action applyStun,
-        Action endStun)
+        Action endStun,
+        Action<int> applyHeal)
     {
         _applyDotDamage = applyDotDamage;
         _applyStun = applyStun;
         _endStun = endStun;
+        _applyHeal = applyHeal;
     }
 
     /// <summary>
@@ -38,6 +41,11 @@ public class StatusEffectFactory
                 result.EffectDuration,
                 _applyStun,
                 _endStun
+            ),
+            StatusEffectType.HealOverTime => new HotEffect(
+                result.EffectDuration,
+                result.PerTickHeal,
+                _applyHeal
             ),
             StatusEffectType.None => null,
             _ => null,

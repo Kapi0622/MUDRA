@@ -45,8 +45,14 @@ namespace MUDRA.Data
         [Tooltip("付与する副次効果")] 
         public StatusEffectType statusEffect;
 
-        [Tooltip("副次効果の持続時間（秒）")] 
+        [Tooltip("副次効果の持続時間（秒）")]
         public float statusEffectDuration;
+
+        [Header("回復")]
+        [Tooltip("回復の総量。statusEffectにHealOverTimeを指定した時のみ使用し、" +
+                 "statusEffectDuration秒かけて分割で回復する。0なら回復なし。\n" +
+                 "basePower=0 / healPower>0 なら純粋回復、両方>0ならドレインとして機能する")]
+        public float healPower;
 
         [Header("演出")] 
         [Tooltip("術エフェクトのPrefab")]

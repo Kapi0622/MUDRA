@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 32bfa61176028064fbc0af36eca758e0, type: 3}
-  m_Name: MudballToss
+  m_Name: EA_FlameBurst
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
-  attackName: "\u6CE5\u584A\u6295\u3052"
-  damage: 10
-  chargeTime: 1.5
+  attackName: "\u7206\u708E"
+  damage: 22
+  chargeTime: 1.8
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 0}

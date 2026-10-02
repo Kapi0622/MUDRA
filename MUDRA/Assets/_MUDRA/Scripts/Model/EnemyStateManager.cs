@@ -21,7 +21,8 @@ public class EnemyStateManager : IDisposable
     public Observable<EnemyAction> OnAttackExecuted => _onAttackExecuted;
 
     // --- 行動データ ---
-    private readonly EnemyData _enemyData;
+    // セクション遷移で差し替わるためreadonlyにできない
+    private EnemyData _enemyData;
     private int _patternIndex;
 
     // --- ループ制御 ---
@@ -30,6 +31,23 @@ public class EnemyStateManager : IDisposable
     public EnemyStateManager(EnemyData enemyData)
     {
         _enemyData = enemyData;
+    }
+
+    /// <summary>
+    /// 交戦相手を差し替えて行動ループを開始し直す。
+    /// セクション遷移時にSectionProgressManagerから呼ぶ。
+    ///
+    /// インスタンスを作り直さないのは、OnAttackExecuted等の購読と
+    /// StatusEffectFactoryが握っているApplyStun/EndStunのdelegateを
+    /// 生かしたままにするため。保持している状態は
+    /// _enemyData / _patternIndex / _loopCts の3つだけなので、
+    /// ここでリセットすれば新規生成と同じ状態になる。
+    /// </summary>
+    public void SetEnemy(EnemyData enemyData)
+    {
+        StopLoop();
+        _enemyData = enemyData;
+        StartLoop();    // _patternIndexはStartLoop内で0に戻る
     }
 
     /// <summary>

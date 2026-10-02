@@ -1,0 +1,7 @@
+# リポジトリ直下用。Unityプロジェクト内の除外設定は MUDRA/.gitignore
+
+# 配布用パッケージ（MediaPipeUnity など。100MBを超えてGitHubに push できない）
+*.unitypackage
+
+# IDEの個人設定
+.idea/

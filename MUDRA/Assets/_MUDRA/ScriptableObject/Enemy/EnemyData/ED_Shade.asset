@@ -10,23 +10,20 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
-  m_Name: ClayDoll
+  m_Name: ED_Shade
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
-  enemyName: "\u6CE5\u4EBA\u5F62"
+  enemyName: "\u5F71\u6CD5\u5E2B"
   sprite: {fileID: 0}
-  maxHp: 200
-  weakElement: 0
+  maxHp: 400
+  weakElement: 5
   weakMultiplier: 1.5
   actionPattern:
-  - attackData: {fileID: 11400000, guid: c8d7c91dddb614542aeaf058f36ff7df, type: 2}
+  - attackData: {fileID: 11400000, guid: 464367406e814b0488d309b5a822e04e, type: 2}
     isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: 464367406e814b0488d309b5a822e04e, type: 2}
+    isHeavy: 0
+    intervalAfter: 4
+  - attackData: {fileID: 11400000, guid: b6dac819d6790024898d3680be1f8234, type: 2}
+    isHeavy: 1
     intervalAfter: 3
-  - attackData: {fileID: 11400000, guid: c8d7c91dddb614542aeaf058f36ff7df, type: 2}
-    isHeavy: 0
-    intervalAfter: 3
-  - attackData: {fileID: 11400000, guid: c8d7c91dddb614542aeaf058f36ff7df, type: 2}
-    isHeavy: 0
-    intervalAfter: 3
-  - attackData: {fileID: 11400000, guid: 86e699b629b15c8428890f527a8492ce, type: 2}
-    isHeavy: 0
-    intervalAfter: 5

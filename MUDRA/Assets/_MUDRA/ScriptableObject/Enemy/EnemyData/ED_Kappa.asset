@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 726d7cb91da36ad489e6dc8f1e1f0076, type: 3}
+  m_Name: ED_Kappa
+  m_EditorClassIdentifier: Assembly-CSharp::EnemyData
+  enemyName: "\u6CB3\u7AE5"
+  sprite: {fileID: 0}
+  maxHp: 300
+  weakElement: 2
+  weakMultiplier: 1.5
+  actionPattern:
+  - attackData: {fileID: 11400000, guid: a48233b5b4928194fbafcbc4f88a5f12, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: a48233b5b4928194fbafcbc4f88a5f12, type: 2}
+    isHeavy: 0
+    intervalAfter: 0.8
+  - attackData: {fileID: 11400000, guid: a48233b5b4928194fbafcbc4f88a5f12, type: 2}
+    isHeavy: 0
+    intervalAfter: 4
