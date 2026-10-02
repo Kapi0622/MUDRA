@@ -34,13 +34,18 @@
 
 ```mermaid
 flowchart LR
-    ED["EnemyData（ボス1体）<br/>maxHp<br/>weakElement<br/>weakMultiplier"]
+    SD["StageData<br/>sections : StageSection 配列<br/>先頭から順に進行"]
+    SS["StageSection（struct）<br/>enemyData / isBoss"]
+    ED["EnemyData（雑魚・ボス共通）<br/>maxHp<br/>weakElement<br/>weakMultiplier"]
     AP["actionPattern : EnemyAction 配列<br/>順に実行し末尾で先頭へ戻る"]
     EA["EnemyAction（struct）<br/>isHeavy … 大技フラグ。ガード軽減率が変わる<br/>intervalAfter … この行動後の待機秒数"]
     AD["EnemyAttackData（攻撃テンプレート）<br/>複数の敵で使い回せる<br/>attackName / damage / chargeTime<br/>effectPrefab / attackSE"]
 
+    SD --> SS -->|"enemyData"| ED
     ED --> AP --> EA -->|"attackData"| AD
 ```
+
+雑魚とボスに構造上の差は無く、`EnemyData` のパラメータで差をつける。`isBoss` は現状デバッグメニューの「ボスへ飛ぶ」でしか使っていない（演出用の判定はB4）。
 
 ### enum（`Data/SpellEnums.cs`）
 
@@ -120,11 +125,17 @@ public readonly struct SpellCastResult
 ReadOnlyReactiveProperty<int>  PlayerHp / BossHp   // 内部は ReactiveProperty
 ReadOnlyReactiveProperty<int>  ComboCount
 ReadOnlyReactiveProperty<bool> IsBattleActive
-Observable<bool>               OnBattleEnd         // true = 勝利
-int PlayerMaxHp / BossMaxHp                        // 不変
+Observable<bool>               OnBattleEnd         // 現在の敵1体との決着。true = 撃破
+Observable<EnemyData>          OnEnemyChanged      // SetEnemy で敵が差し替わった（HPバー再初期化用）
+int PlayerMaxHp                                    // 不変
+int BossMaxHp                                      // SetEnemy で変わる
 ```
 
-### ダメージの4経路
+### 敵の差し替え
+
+`SetEnemy(enemyData)` は `SectionProgressManager` から呼ばれ、敵データ・BossHp・BossMaxHp を差し替えて `_isBattleActive` を true に戻す。**プレイヤーHPとコンボには触らない**（セクション間の引き継ぎ）。`BattleModel` 自身はセクションの概念を持たない。
+
+### ダメージ・回復の5経路
 
 | メソッド | 呼び出し元 | 内容 |
 |---|---|---|
@@ -132,6 +143,7 @@ int PlayerMaxHp / BossMaxHp                        // 不変
 | `ApplyDotDamage(damage)` | `DotEffect` から `Action` 経由で毎秒 | ボスHPのみ減らす。**コンボ・速度倍率は乗せない**（初撃のみ適用の方針） |
 | `ApplyEnemyDamage(action, isGuarding)` | `BattlePresenter`（`OnAttackExecuted` 購読） | ガード中なら軽減率を掛けてプレイヤーHP減 |
 | `ApplyMisfireDamage()`（private） | 上記から | **MaxHPの5%**のセルフダメージ + コンボリセット |
+| `ApplyHeal(amount)` | `HotEffect` から `Action` 経由で毎秒 | プレイヤーHPを MaxHP 上限で回復。勝敗に関与しないので `CheckBattleEnd` は呼ばない |
 
 ### 定数
 
@@ -141,7 +153,7 @@ int PlayerMaxHp / BossMaxHp                        // 不変
 | `HeavyGuardRate` | 0.3 | 大技（`isHeavy`）をガードしたときの倍率 |
 | `MisfireDamageRate` | 0.05 | 暴発セルフダメージ（MaxHP比） |
 
-すべての経路が最後に `CheckBattleEnd()` を通り、どちらかのHPが0になった時点で `_isBattleActive = false` にして `OnBattleEnd` を1回だけ流す。
+回復以外のすべての経路が最後に `CheckBattleEnd()` を通り、どちらかのHPが0になった時点で `_isBattleActive = false` にして `OnBattleEnd` を1回だけ流す。
 
 ### 2段階初期化
 
@@ -150,7 +162,8 @@ var battleModel = new BattleModel(playerMaxHp, enemyData);
 var factory = new StatusEffectFactory(
     battleModel.ApplyDotDamage,      // Action<int>
     enemyStateManager.ApplyStun,     // Action
-    enemyStateManager.EndStun);      // Action
+    enemyStateManager.EndStun,       // Action
+    battleModel.ApplyHeal);          // Action<int>
 battleModel.SetStatusEffectDependencies(statusEffectManager, factory);
 ```
 
@@ -158,7 +171,7 @@ battleModel.SetStatusEffectDependencies(statusEffectManager, factory);
 
 ### デバッグ専用メンバ
 
-`#if UNITY_EDITOR || DEVELOPMENT_BUILD` で囲われた `IsInvincible` / `DebugModifyPlayerHp` / `DebugModifyBossHp`。`DebugMenuView` から操作する。無敵中でも**暴発のコンボリセットだけは発生する**（ダメージだけ無効化）。
+`#if UNITY_EDITOR || DEVELOPMENT_BUILD` で囲われた `IsInvincible` / `DebugModifyPlayerHp` / `DebugModifyBossHp` / `DebugResetPlayerState`（ステージジャンプ用。HP全回復・コンボ0）。`DebugMenuView` から操作する。無敵中でも**暴発のコンボリセットだけは発生する**（ダメージだけ無効化）。
 
 ---
 
@@ -212,10 +225,11 @@ public interface IStatusEffect
 
 | クラス | 役割 |
 |---|---|
-| `StatusEffectManager` | アクティブな効果をListで保持。`BattlePresenter.Update()` から `Tick(deltaTime)`。**同種の効果は重複不可**（既に同じ `Type` があれば無視）。バトル終了時は `ClearAll()` |
-| `StatusEffectFactory` | `DamageResult.AppliedEffect` を見て `DotEffect` / `StunEffect` を生成。`None` なら null。生成に必要な処理は全て `Action` で受け取っており、**BattleModel / EnemyStateManager への参照を持たない** |
+| `StatusEffectManager` | アクティブな効果をListで保持。`BattlePresenter.Update()` から `Tick(deltaTime)`。**同種の効果は重複不可**（既に同じ `Type` があれば無視）。セクション遷移時は `ClearEnemyEffects()`（HoT以外を除去）、ステージ決着時は `ClearAll()` |
+| `StatusEffectFactory` | `DamageResult.AppliedEffect` を見て `DotEffect` / `StunEffect` / `HotEffect` を生成。`None` なら null。生成に必要な処理は全て `Action` で受け取っており、**BattleModel / EnemyStateManager への参照を持たない** |
 | `DotEffect` | 残り時間を減らしつつ、1.0秒 tick ごとに `_applyDamage(perTickDamage)` を呼ぶ。初撃は `BattleModel` 側で処理済みなので、ここは tick のスケジュール管理のみ |
 | `StunEffect` | `OnApply` で `EnemyStateManager.ApplyStun()`、`OnExpire` で `EndStun()`。時間管理は `OnTick` |
+| `HotEffect` | `DotEffect` と同形で、1.0秒 tick ごとに `ApplyHeal` を呼ぶ。**唯一プレイヤーに付く効果**で、セクション遷移で消えない。回復量 `PerTickHeal` は Strategy ではなく `BattleModel` が `SpellData.healPower ÷ tick数` で埋める（弱点・コンボ倍率を回復に乗せないため） |
 
 ### GuardWindowManager
 
@@ -272,7 +286,8 @@ stateDiagram-v2
 | メソッド | 動作 |
 |---|---|
 | `StartLoop()` | 既存ループを止めてから `_patternIndex = 0` で開始。`actionPattern` 未設定なら `LogError` |
-| `StopLoop()` | CTSキャンセル + Idleへ。バトル終了・シーン破棄時 |
+| `StopLoop()` | CTSキャンセル + Idleへ。ステージ決着・シーン破棄時 |
+| `SetEnemy(enemyData)` | `StopLoop` → 敵データ差し替え → `StartLoop`。セクション遷移で使う。インスタンスを作り直さないので購読と `StatusEffectFactory` のデリゲートが生きたまま残る |
 | `ApplyStun()` | ループを止めて `Stunned` へ。**`_patternIndex` は保持する** |
 | `EndStun()` | Idle に戻して**中断された位置からループ再開** |
 
@@ -319,6 +334,7 @@ private void HandleSignConfirmed(HandSign sign)
 | 購読するストリーム | 呼ぶもの |
 |---|---|
 | `BattleModel.PlayerHp` / `BossHp`（`.Skip(1)`） | `HpBarView.SetHp(hp, maxHp)` ※初期表示は `InitializeHp` で別途 |
+| `BattleModel.OnEnemyChanged` | ボスHPバーを `InitializeHp` で新しい敵の MaxHp に合わせ直す |
 | `BattleModel.ComboCount` / `OnBattleEnd` | 現状 `Debug.Log` のみ（B4で演出接続） |
 | `EnemyStateManager.OnAttackExecuted` | `BattleModel.ApplyEnemyDamage(action, guardWindow.IsGuarding)` |
 | `EnemyStateManager.CurrentPhase` | `Debug.Log` |
@@ -363,12 +379,59 @@ private void HandleSignConfirmed(HandSign sign)
 | 敵は Stateパターンではなく enum + UniTaskループ | 状態ごとの振る舞いが薄く、時間駆動のシーケンスなのでループのほうが素直 | A2 |
 | `StatusEffectFactory` に `Action` を注入 | Model同士がクラス参照を持たず、循環依存を作らない | A5 |
 | DoT の倍率は初撃のみ | tick まで倍率を乗せると総ダメージが膨らみすぎる | A3 / A5 |
+| セクション進行を `SectionProgressManager` に集約 | 肥大化気味の `BattleModel` にセクション概念を持ち込まない。`BattleModel` は1体との決着だけ通知する | B3 |
+| セクション遷移で Model を作り直さない | 敵データの差し替えだけで済み、購読やデリゲートの張り直しが一切不要になる | B3 |
+| セクション遷移を非同期にする | `OnBattleEnd` は `StatusEffectManager.Tick` の走査中にも同期発火するため、その場で状態を変えるとリストを壊す | B3 |
+| HoT だけ遷移時に持ち越す | 回復術の直後に敵を倒すと回復が消える理不尽を避ける。敵に付く効果は従来どおりクリア | B3 |
 
 ---
 
 ## 10. 気をつける点
 
-- `BattlePresenter.Initialize` の引数名が `_playerHpBarView` / `_bossHpBarView` とフィールド名と同じため、**フィールドへの代入が行われていない**。購読ラムダが引数をクロージャで捕まえているので動作はしている
+- `OnBattleEnd(true)` は**ステージクリアではなく「今の敵を倒した」**の意味。ステージ単位の決着は `SectionProgressManager.OnStageCleared` / `OnGameOver` を購読する
+- 敵・攻撃・ステージの数値は `Editor/B3ContentGenerator.cs` の定義表が正。アセットを Inspector で直接変えても、生成メニューを再実行すると上書きされる（演出系フィールドは上書きしない）
 - `SpellEffectView` は `SpellData.effectPrefab` を見ないので、全術で同じエフェクトが出る（B4で接続予定）
 - `SequenceGuideView.GetSignDisplayName()` は `Release` / `Cancel` / `Guard` を持たない。ただしこれらは `sequence` に入らないので実害は無い
 - `BattleModel.ResolveCalculator()` は呼ばれるたびに Calculator を `new` する。ステートレスなので問題は無いが、再利用の余地はある
+
+---
+
+## 11. SectionProgressManager — セクション進行
+
+`Model/SectionProgressManager.cs`（B3）。1ステージ = 道中雑魚×N + ボス×1 のセクションを先頭から順に進める。セクションの概念を持つのはこのクラスだけ。
+
+### 公開API
+
+```csharp
+ReadOnlyReactiveProperty<int>          CurrentSectionIndex  // 0始まり
+ReadOnlyReactiveProperty<SectionPhase> CurrentPhase         // InBattle / Transitioning / StageCleared / GameOver
+Observable<StageSection> OnSectionStarted   // 敵出現・背景切替のトリガ（B4の受け口。現状は未購読）
+Observable<int>          OnSectionCleared   // 撃破したセクションのindex
+Observable<Unit>         OnStageCleared / OnGameOver
+StageData CurrentStage / StageSection CurrentSection / int SectionCount
+
+void StartStage(StageData stage, int startIndex = 0)  // 再入可能。ステージ切替にも使う
+void DebugJumpToSection(int index)                    // #if デバッグ専用
+```
+
+### 流れ
+
+```mermaid
+flowchart TD
+    START["StartStage"] --> ENTER["EnterSection(i)<br/>ClearEnemyEffects → BattleModel.SetEnemy<br/>→ EnemyStateManager.SetEnemy → OnSectionStarted"]
+    ENTER --> BATTLE["交戦中"]
+    BATTLE -->|"OnBattleEnd(false)"| GO["GameOver"]
+    BATTLE -->|"OnBattleEnd(true)"| ADV["AdvanceAsync<br/>OnSectionCleared"]
+    ADV -->|"最終セクション"| CLR["StageCleared"]
+    ADV -->|"それ以外：1.5秒待機"| ENTER
+```
+
+`GameOver` / `StageCleared` の後片付け（`ClearAll` → `StopLoop`）は `BattleInitializer` が購読して行う。
+
+### 気をつける点
+
+- **`OnBattleEnd` の購読はコンストラクタで行う。** `StartStage` はステージ切替で何度も呼ばれるため、そちらで購読すると決着1回で `HandleBattleEnd` が複数回走り、セクションが飛ぶ
+- **遷移は必ず `await` を挟む。** `OnBattleEnd` は `ApplyDotDamage` 経由で `StatusEffectManager.Tick` の走査中にも同期発火する。その通知スタック上で効果のクリアや敵の差し替えを行うとリストを壊す
+- 遷移待機は `_transitionCts` で管理し、`StartStage` / ジャンプ / `Dispose` の先頭で `CancelTransition()` する。これが無いと待機明けに古い遷移先へ勝手に進む
+- `EnterSection` は敵データ未設定で中断する場合も**先に index を更新する**。ステージ切替直後に中断すると、`_stageData` だけ新しく index が古いまま残り、`CurrentSection` が範囲外になるため
+- `DebugJumpToSection` は `ClearEnemyEffects` ではなく `ClearAll` を使い、HoT も落とす（素の状態で観察するため）

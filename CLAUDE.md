@@ -4,13 +4,14 @@
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
 Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B2（両手印対応）まで完了。次は B3（全ステージ実装）。**
+現在地: **β版 B3（全ステージ実装）まで完了。次は B4（バトル演出・UI強化）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の45ファイル・3,071行が全て。** 小さい。
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の50ファイル・約4,390行が全て。** 小さい。
+（うち `Editor/B3ContentGenerator.cs` 約560行は敵・ステージSOの生成ツールで、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
   （`MUDRA/Assets/MediaPipeUnity/`, `MUDRA/Packages/`, `MUDRA/Assets/TextMesh Pro/`）

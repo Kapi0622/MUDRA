@@ -1,6 +1,6 @@
 # 📘 仕様書：「MUDRA」
 
-> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/09/18（開発中断を踏まえB3以降の日程を再設定） **ステータス:** v1.4 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
+> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/02（B3完了：セクション進行・回復・敵/ステージデータを反映） **ステータス:** v1.5 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
 
 ---
 
@@ -129,10 +129,11 @@ Scripts/
 |クラス名|責務|区分|
 |---|---|---|
 |`SpellSequenceModel`|プレイヤーの手印入力をQueueで管理し、SpellDataのsequenceと前方一致で照合する。発動印・解除印のトリガー処理を行う|Pure C#|
-|`BattleModel`|プレイヤーHP・ボスHP・コンボカウント等のバトルデータを保持し、ダメージ計算Strategyを呼び出す。StatusEffect基盤への副次効果付与も担う|Pure C#|
+|`BattleModel`|プレイヤーHP・ボスHP・コンボカウント等のバトルデータを保持し、ダメージ計算Strategyを呼び出す。StatusEffect基盤への副次効果付与も担う。担当するのは「現在の敵1体との決着」までで、セクションの概念は持たない。`SetEnemy`で交戦相手を差し替える（プレイヤーHP・コンボは保持）|Pure C#|
+|`SectionProgressManager`|ステージ内のセクション進行を管理する。`BattleModel.OnBattleEnd`を購読し、次セクションへ進むか・ステージクリアか・敗北かを判断する。遷移時はModelを作り直さず、`BattleModel`/`EnemyStateManager`の敵データを差し替える|Pure C#|
 |`GameStateManager`|ゲーム全体のフェーズ（Title / InGame / Result）を管理する|Pure C#|
 |`PlayerStateManager`|プレイヤーの行動フェーズ（Idle / Chanting / Releasing）を管理する。ガードはPlayerPhaseとは独立した`GuardWindowManager`で管理する|Pure C#|
-|`EnemyStateManager`|敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用）。外部からのStun付与/解除メソッドを公開する|Pure C#|
+|`EnemyStateManager`|敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用）。外部からのStun付与/解除メソッドを公開する。セクション遷移では`SetEnemy`で敵データを差し替えてループを再開する|Pure C#|
 |`GuardWindowManager`|ガード受付窓（0.5秒）を管理する。Guard印確定で窓が開き、時間経過で自動終了。PlayerPhaseとは独立して動作し、詠唱中でもガード可能|Pure C#|
 
 #### StatusEffect
@@ -142,7 +143,8 @@ Scripts/
 |`IStatusEffect`|時限効果（DoT・Stun・Slow等）の共通インターフェース。OnApply/OnTick/OnExpireのライフサイクルフックを定義|Interface|
 |`DotEffect`|DoTのtick駆動ロジック。毎秒perTickDamageをBattleModelに適用する|Pure C#|
 |`StunEffect`|Stun開始/終了をEnemyStateManagerに委譲する|Pure C#|
-|`StatusEffectManager`|アクティブな時限効果をコレクションで管理し、毎フレームTickで駆動する。同種効果の重複は無視する|Pure C#|
+|`HotEffect`|継続回復（HoT）。毎秒perTickHealをBattleModelに適用する。他の効果と違い適用先はプレイヤー|Pure C#|
+|`StatusEffectManager`|アクティブな時限効果をコレクションで管理し、毎フレームTickで駆動する。同種効果の重複は無視する。セクション遷移時は`ClearEnemyEffects`（HoT以外を除去）、ステージ決着時は`ClearAll`|Pure C#|
 |`StatusEffectFactory`|DamageResultの情報からIStatusEffectを生成するファクトリ|Pure C#|
 
 #### Strategy
@@ -293,6 +295,7 @@ public enum StatusEffectType
     Slow,               // スロウ（敵の行動間隔を延長）
     Stun,               // スタン（敵の行動を一時停止）
     DamageOverTime,     // DoT（継続ダメージ）
+    HealOverTime,       // HoT（継続回復）。適用先はプレイヤー
 }
 
 /// <summary>
@@ -391,6 +394,10 @@ public class SpellData : ScriptableObject
     [Tooltip("副次効果の持続時間（秒）")]
     public float statusEffectDuration;
 
+    [Header("回復")]
+    [Tooltip("回復の総量。statusEffect = HealOverTime の時のみ使用し、持続時間で分割して回復する")]
+    public float healPower;  // basePower=0なら純粋回復、両方>0ならドレイン
+
     [Header("演出")]
     [Tooltip("術エフェクトのPrefab")]
     public GameObject effectPrefab;
@@ -481,7 +488,7 @@ public struct StageSection
 /// セクションを先頭から順に進行し、全セクション完了でステージクリアとなる。
 /// プレイヤーHPはセクション間で引き継ぐ（リソース管理要素）。
 /// </summary>
-[CreateAssetMenu(fileName = "NewStage", menuName = "InJutsushi/StageData")]
+[CreateAssetMenu(fileName = "NewStage", menuName = "MUDRA/Stage Data")]
 public class StageData : ScriptableObject
 {
     public string stageName;
@@ -500,6 +507,18 @@ public class StageData : ScriptableObject
     public Sprite bossBackgroundSprite;
 }
 ```
+
+#### アセット命名規則（B3で制定）
+
+ファイル名は英語（ASCII）の `プレフィックス_PascalCase` とし、日本語の表示名は `attackName` / `enemyName` / `stageName` フィールドに持たせる。河童・鵺・火車など英語圏でも通じる妖怪名はローマ字表記。
+
+| 種別 | プレフィックス | 例 |
+|---|---|---|
+| EnemyAttackData | `EA_` | `EA_MudSplash` |
+| EnemyData | `ED_` | `ED_MudBlob` |
+| StageData | `SD_` | `SD_Stage01_SealedVillage` |
+
+※ 術（SpellData）は対象外（既存のまま）。
 
 ### 3-3. 補助データ構造
 
@@ -1275,10 +1294,10 @@ MLモデルを使わない理由は以下の通り。
 | **各術の具体的数値** | A3で仮値設定済み（風刃30 / 雷連撃50 / 火炎弾35） | B8で調整 |
 | **Stun完封対策** | 未実装（免疫期間 or 効果時間逓減 or 確率化） | B8で対応 |
 | **ビジュアル：2D or HD-2D** | **2Dで確定（B1）。** 背景・キャラ共にAsepriteベースの2D。演出・アニメーション（パーティクル、LitMotionトゥイーン、画面エフェクト）で単調さを回避する方針。HD-2Dはβ後の展望としてSprite差し替えパスを維持する | ✅ B1で確定済み |
-| **雑魚敵のユニーク種類数** | 未設定。ステージ間で使い回し可能。8〜12種程度を想定 | B3で確定 |
-| **コンボカウントのセクション間引き継ぎ** | 未決定 | B3で確定 |
-| **StatusEffectのセクション間引き継ぎ** | 未決定（セクション遷移時にClearAllするか持ち越すか） | B3で確定 |
-| **回復手段** | 未実装。HP引き継ぎ制のため、回復術の追加 or セクション間微量回復が必要になる可能性あり | B3〜B8で検討 |
+| **雑魚敵のユニーク種類数** | **ユニーク8種 + 派生3種（計11種）で確定。** 派生種は元の敵と同じ攻撃を使い、HPと行動間隔だけを変える | ✅ B3で確定済み |
+| **コンボカウントのセクション間引き継ぎ** | **引き継ぐ。** 暴発時のみリセット | ✅ B3で確定済み |
+| **StatusEffectのセクション間引き継ぎ** | **敵に付いた効果は遷移時に除去する。** 例外としてプレイヤーに付くHoTのみ持ち越す（回復術の直後に敵を倒すと回復が消える理不尽を避けるため） | ✅ B3で確定済み |
+| **回復手段** | **専用の印は作らず、通常の術と同じ扱いのHoTとして実装（B3）。** `SpellData.healPower` で回復量を指定する。セクション間の自動回復は無し。回復術の数・回復量はB8で調整 | ✅ 仕組みはB3で確定。数値はB8 |
 
 ---
 
@@ -1373,8 +1392,8 @@ MLモデルを使わない理由は以下の通り。
 | フェーズ     | 日数  | 内容                                                                 |
 | -------- | --- | ------------------------------------------------------------------ |
 | 設計・基盤    | 2日  | StageData再設計（セクション配列）、セクション進行管理モデル、BattleModelのHP引き継ぎ、敵差し替え再初期化フロー |
-| ボスコンテンツ  | 2日  | ボスドット絵×4、EnemyData/EnemyAttackData SO×4、行動パターン設計                   |
-| 雑魚コンテンツ  | 2日  | 雑魚ドット絵（ユニーク8〜12種）、EnemyData SO、行動パターン                              |
+| ボスコンテンツ  | 2日  | ボスEnemyData SO×4、行動パターン設計（ドット絵はB4以降）                        |
+| 雑魚コンテンツ  | 2日  | 雑魚EnemyData SO×11（ユニーク8 + 派生3）、行動パターン。攻撃データは全23種          |
 | ステージ組み立て | 1日  | StageData SO×4のセクション構成、通し動作確認                                      |
 
 #### B4：バトル演出・UI強化の内訳
