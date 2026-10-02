@@ -80,6 +80,12 @@ public class BattleInitializer : MonoBehaviour
             return false;
         }
 
+        if (FirstStage.sections[0].enemyData == null)
+        {
+            Debug.LogError($"[BattleInitializer] {FirstStage.stageName} のセクション0のenemyDataが未設定です");
+            return false;
+        }
+
         return true;
     }
 

@@ -25,8 +25,8 @@ Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。�
 
 - **サブエージェント（Explore / general-purpose）は使わない。** この規模では自前コードを全部読んでも
   約40kトークンで済み、探索を挟むほうが高くつく。必要なファイルを直接読むこと
-- **検索は必ず `MUDRA/Assets/_MUDRA/Scripts` にスコープする。** 無指定の `grep -r` や `**/*.cs` は
-  9割がサードパーティに当たる
+- 自前コードの検索は `MUDRA/Assets/_MUDRA/Scripts` にスコープする。** 無指定の `grep -r` や `**/*.cs` は
+  9割がサードパーティに当たる。`.asset`、`.meta`、文書は対象を指定して検索する
 - **`.unity` / `.asset` を Read しない。** `InGame.unity` は80KBのYAMLで、読むと約25kトークンを
   消費して得られるのはコンポーネント20個の配線だけ。代わりに:
   - 値を見たいだけなら `grep -n '^  fieldName' <file>`
