@@ -17,6 +17,7 @@ public class BattleInitializer : MonoBehaviour
     [Header("Presenter参照")]
     [SerializeField] private HandSignPresenter _handSignPresenter;
     [SerializeField] private BattlePresenter _battlePresenter;
+    [SerializeField] private EnemyPresenter _enemyPresenter;
 
     [Header("Input")]
     [SerializeField] private MediaPipeHandLandmarkProvider _provider;
@@ -141,6 +142,12 @@ public class BattleInitializer : MonoBehaviour
             _bossHpBarView
         );
 
+        _enemyPresenter.Initialize(
+            _sectionProgressManager,
+            _enemyStateManager,
+            _battleModel
+        );
+
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         var debugMenu = FindFirstObjectByType<DebugMenuView>();
         if (debugMenu != null)
@@ -196,5 +203,7 @@ public class BattleInitializer : MonoBehaviour
         _playerStateManager?.Dispose();
         _enemyStateManager?.Dispose();
         _battleModel?.Dispose();
+        _statusEffectManager?.Dispose();
+        _guardWindowManager?.Dispose();
     }
 }

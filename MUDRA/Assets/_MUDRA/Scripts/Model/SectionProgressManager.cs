@@ -18,8 +18,14 @@ using R3;
 public class SectionProgressManager : IDisposable
 {
     // --- 定数 ---
-    /// <summary>敵撃破から次の敵が出現するまでの待機時間（秒）。B4で前進演出を入れる枠</summary>
-    private const float TransitionDuration = 1.5f;
+    /// <summary>
+    /// 敵撃破から次の敵が出現するまでの待機時間（秒）。
+    /// この間にViewが撃破演出→前進スクロールを流す（B4）。
+    /// Modelは演出の完了を待てない（Viewを知らない）ため、演出の尺の合計をここで確保している。
+    /// EnemyView.DefeatDuration(0.8) + BackgroundView.AdvanceDuration(1.2) に余白を足した値。
+    /// View側の尺を変えたらこの値も合わせること。
+    /// </summary>
+    private const float TransitionDuration = 2.5f;
 
     // --- R3通知 ---
     private readonly ReactiveProperty<int> _currentSectionIndex = new(0);
@@ -28,6 +34,10 @@ public class SectionProgressManager : IDisposable
 
     private readonly ReactiveProperty<SectionPhase> _currentPhase = new(SectionPhase.InBattle);
     public ReadOnlyReactiveProperty<SectionPhase> CurrentPhase => _currentPhase;
+
+    private readonly Subject<StageData> _onStageStarted = new();
+    /// <summary>ステージ開始時に発火。ステージ名表示のトリガ（B4）。直後に先頭セクションのOnSectionStartedが続く</summary>
+    public Observable<StageData> OnStageStarted => _onStageStarted;
 
     private readonly Subject<StageSection> _onSectionStarted = new();
     /// <summary>セクション開始時に発火。敵の出現演出・背景切替のトリガ（B4で使用）</summary>
@@ -117,6 +127,7 @@ public class SectionProgressManager : IDisposable
 
         _stageData = stageData;
 
+        _onStageStarted.OnNext(stageData);
         EnterSection(startIndex);
     }
 
@@ -204,6 +215,14 @@ public class SectionProgressManager : IDisposable
 
         try
         {
+            // 通知スタックから抜けてから、倒した敵を止める。
+            // 止めないと遷移待機の間も倒した敵の行動ループが回り続け、
+            // （ダメージはBattleModel側で弾かれるものの）予告・攻撃の演出が死んだ敵から出てしまう（B4で顕在化）。
+            // 効果のクリアを先にする: Stunの解除（EndStun）がループを再開させても、後のStopLoopで確実に止まる
+            await UniTask.Yield(_transitionCts.Token);
+            _statusEffectManager.ClearEnemyEffects();
+            _enemyStateManager.StopLoop();
+
             await UniTask.Delay(
                 TimeSpan.FromSeconds(TransitionDuration),
                 cancellationToken: _transitionCts.Token
@@ -261,6 +280,7 @@ public class SectionProgressManager : IDisposable
         _disposables.Dispose();
         _currentSectionIndex.Dispose();
         _currentPhase.Dispose();
+        _onStageStarted.Dispose();
         _onSectionStarted.Dispose();
         _onSectionCleared.Dispose();
         _onStageCleared.Dispose();

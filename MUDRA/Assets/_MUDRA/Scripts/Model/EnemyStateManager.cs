@@ -9,6 +9,14 @@ using R3;
 /// </summary>
 public class EnemyStateManager : IDisposable
 {
+    // --- 定数 ---
+    /// <summary>
+    /// 行動ループ開始から1手目のChargingに入るまでの待機（秒）。
+    /// 敵の登場演出の間に予告が始まると、登場と予告が重なってGuardのタイミングが読めなくなるため（B4）。
+    /// Stun解除からの再開には入れない（行動を遅らせるとStunの効果が実質延びてしまう）。
+    /// </summary>
+    private const float FirstActionDelay = 1.0f;
+
     // --- R3通知 ---
     private readonly ReactiveProperty<EnemyPhase> _currentPhase = new(EnemyPhase.Idle);
     public ReadOnlyReactiveProperty<EnemyPhase> CurrentPhase => _currentPhase;
@@ -65,7 +73,7 @@ public class EnemyStateManager : IDisposable
         
         _loopCts = new CancellationTokenSource();
         _patternIndex = 0;
-        RunLoopAsync(_loopCts.Token).Forget();
+        RunLoopAsync(_loopCts.Token, FirstActionDelay).Forget();
     }
 
     /// <summary>
@@ -80,10 +88,18 @@ public class EnemyStateManager : IDisposable
         _currentAction.Value = null;
     }
 
-    private async UniTaskVoid RunLoopAsync(CancellationToken ct)
+    private async UniTaskVoid RunLoopAsync(CancellationToken ct, float initialDelay = 0f)
     {
         try
         {
+            if (initialDelay > 0f)
+            {
+                await UniTask.Delay(
+                    TimeSpan.FromSeconds(initialDelay),
+                    cancellationToken: ct
+                );
+            }
+
             while (!ct.IsCancellationRequested)
             {
                 var action = _enemyData.actionPattern[_patternIndex];
