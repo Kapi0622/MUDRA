@@ -43,10 +43,12 @@ public class BattleResultView : MonoBehaviour
         _canvasGroup.alpha = 0f;
     }
 
-    /// <summary>ステージクリア（最後の敵を討伐）。</summary>
-    public void ShowClear()
+    /// <summary>
+    /// ステージクリア（最後の敵を討伐）。ボスの撃破演出を見せてから出すため、開始をdelay秒遅らせられる。
+    /// </summary>
+    public void ShowClear(float delay)
     {
-        Show(ClearText, ClearColor);
+        Show(ClearText, ClearColor, delay);
     }
 
     /// <summary>プレイヤーの敗北。</summary>
@@ -64,7 +66,7 @@ public class BattleResultView : MonoBehaviour
     }
 
     /// <summary>大きい状態から縮みながらフェードインし、そのまま残す。</summary>
-    private void Show(string text, Color color)
+    private void Show(string text, Color color, float delay = 0f)
     {
         EnsureInitialized();
         CancelMotions();
@@ -73,11 +75,14 @@ public class BattleResultView : MonoBehaviour
         _resultText.color = color;
 
         var rect = _resultText.rectTransform;
+        _canvasGroup.alpha = 0f;
         _scaleHandle = LMotion.Create(ScaleFrom, 1f, ShowDuration)
+            .WithDelay(delay)
             .WithEase(Ease.OutCubic)
             .Bind(s => rect.localScale = new Vector3(s, s, 1f));
 
         _fadeHandle = LMotion.Create(0f, 1f, ShowDuration)
+            .WithDelay(delay)
             .WithEase(Ease.OutQuad)
             .Bind(a => _canvasGroup.alpha = a);
     }

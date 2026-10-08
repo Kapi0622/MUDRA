@@ -51,13 +51,15 @@ public class StageTitleView : MonoBehaviour
         Show(stageName, StageColor);
     }
 
-    /// <summary>ボス登場時にボス名を表示する。</summary>
-    public void ShowBossTitle(string bossName)
+    /// <summary>
+    /// ボス登場時にボス名を表示する。登場シーケンスの咆哮に合わせるため、開始をdelay秒遅らせる。
+    /// </summary>
+    public void ShowBossTitle(string bossName, float delay)
     {
-        Show(bossName, BossColor);
+        Show(bossName, BossColor, delay);
     }
 
-    private void Show(string text, Color color)
+    private void Show(string text, Color color, float delay = 0f)
     {
         EnsureInitialized();
         CancelCurrentMotions();
@@ -67,11 +69,13 @@ public class StageTitleView : MonoBehaviour
 
         var rect = _titleText.rectTransform;
         _slideHandle = LMotion.Create(SlideDistance, 0f, FadeInDuration)
+            .WithDelay(delay)
             .WithEase(Ease.OutCubic)
             .Bind(y => rect.anchoredPosition = _basePosition + new Vector2(0f, y));
 
         _canvasGroup.alpha = 0f;
         _fadeHandle = LMotion.Create(0f, 1f, FadeInDuration)
+            .WithDelay(delay)
             .WithEase(Ease.OutQuad)
             .WithOnComplete(() =>
             {

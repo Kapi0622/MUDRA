@@ -1,5 +1,6 @@
 using UnityEngine;
 using R3;
+using MUDRA.Data;
 
 /// <summary>
 /// 敵・背景・ステージ名・決着表示の演出を配線する（B4。仕様書 §8-3 Enemy MVP）。
@@ -16,7 +17,14 @@ public class EnemyPresenter : MonoBehaviour
     [SerializeField] private StageTitleView _stageTitleView;
     [SerializeField] private BattleResultView _battleResultView;
 
+    // ボス戦専用の演出（B4）。カメラとフラッシュはBattlePresenterと共有するViewだが、参照を持つだけで状態は持ち合わない
+    [Header("ボス戦の演出")]
+    [SerializeField] private BossEncounterView _bossEncounterView;
+    [SerializeField] private CameraShakeView _cameraShakeView;
+    [SerializeField] private ScreenFlashView _screenFlashView;
+
     private SectionProgressManager _sectionProgressManager;
+    private PresentationTimingData _timing;
 
     private readonly CompositeDisposable _disposables = new();
 
@@ -26,9 +34,11 @@ public class EnemyPresenter : MonoBehaviour
     public void Initialize(
         SectionProgressManager sectionProgressManager,
         EnemyStateManager enemyStateManager,
-        BattleModel battleModel)
+        BattleModel battleModel,
+        PresentationTimingData timing)
     {
         _sectionProgressManager = sectionProgressManager;
+        _timing = timing;
 
         // --- ステージ開始 → ステージ名 ---
         sectionProgressManager.OnStageStarted
@@ -36,8 +46,11 @@ public class EnemyPresenter : MonoBehaviour
             .AddTo(_disposables);
 
         // --- 決着 → 討伐/敗北の表示。戦闘が再開したら消す（デバッグのステージ/セクションジャンプ） ---
+        // ボスを倒した時は撃破演出を見せ切ってから「討伐」を出す。
+        // OnStageClearedの時点ではCurrentSectionはまだ撃破したセクションを指している
         sectionProgressManager.OnStageCleared
-            .Subscribe(_ => _battleResultView.ShowClear())
+            .Subscribe(_ => _battleResultView.ShowClear(
+                _sectionProgressManager.CurrentSection.isBoss ? _timing.BossDefeatDuration : 0f))
             .AddTo(_disposables);
 
         sectionProgressManager.OnGameOver
@@ -72,6 +85,10 @@ public class EnemyPresenter : MonoBehaviour
             {
                 var attack = action.Value.attackData;
                 _enemyView.PlayCharging(attack.attackName, attack.chargeTime, action.Value.isHeavy);
+
+                // ボスの大技だけ、画面全体でも危険を伝える
+                if (action.Value.isHeavy && _sectionProgressManager.CurrentSection.isBoss)
+                    _bossEncounterView.ShowHeavyWarning(attack.attackName);
             })
             .AddTo(_disposables);
 
@@ -96,23 +113,45 @@ public class EnemyPresenter : MonoBehaviour
         var enemy = section.enemyData;
         _enemyView.Appear(enemy.sprite, enemy.enemyName, section.isBoss);
 
+        // ボスは登場シーケンス。各Viewが PresentationTimingData の同じ時間表で動く
         if (section.isBoss)
-            _stageTitleView.ShowBossTitle(enemy.enemyName);
+        {
+            _bossEncounterView.PlayEncounter();
+            _cameraShakeView.ShakeBossRoar(_timing.roar);
+            _stageTitleView.ShowBossTitle(enemy.enemyName, _timing.roar);
+        }
     }
 
     private void HandleSectionCleared(int clearedIndex)
     {
-        _enemyView.PlayDefeat();
+        _bossEncounterView.HideHeavyWarning();
+
+        // OnSectionClearedの時点ではCurrentSectionはまだ撃破したセクションを指している
+        if (_sectionProgressManager.CurrentSection.isBoss)
+        {
+            _bossEncounterView.PlayHitStop();
+            _screenFlashView.FlashBossDefeat();
+            _cameraShakeView.ShakeBossDefeat();
+            _enemyView.PlayBossDefeat();
+        }
+        else
+        {
+            _enemyView.PlayDefeat();
+        }
 
         // 最終セクション（ボス）の撃破はステージクリアで、先へは進まない
         bool hasNextSection = clearedIndex < _sectionProgressManager.SectionCount - 1;
         if (hasNextSection)
-            _backgroundView.PlayAdvance(EnemyView.DefeatDuration);
+            _backgroundView.PlayAdvance(_timing.NormalDefeatDuration);
     }
 
     private void HandleEnemyPhase(EnemyPhase phase)
     {
         _enemyView.SetStunned(phase == EnemyPhase.Stunned);
+
+        // ボスの大技予告は予告中だけ。攻撃・Stun・ループ停止のどれで抜けても消す
+        if (phase != EnemyPhase.Charging)
+            _bossEncounterView.HideHeavyWarning();
 
         switch (phase)
         {

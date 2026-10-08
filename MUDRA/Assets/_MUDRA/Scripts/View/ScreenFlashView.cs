@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using LitMotion;
+using MUDRA.Data;
 
 /// <summary>
 /// 画面全体の色フラッシュ（B4）。プレイヤー側の被弾・ガード成功・暴発を色で区別して伝える。
@@ -16,12 +17,16 @@ public class ScreenFlashView : MonoBehaviour
     private const float MisfireAlpha = 0.4f;
     private const float FlashDuration = 0.35f;
     private const float HeavyFlashDuration = 0.5f;
+    private const float BossDefeatAlpha = 0.85f;
+    private const float BossDefeatFlashDuration = 0.8f;
 
-    // --- 色定義 ---
+    // --- 色定義（ガードの色はBattlePaletteData） ---
     private static readonly Color DamageColor = new Color(1f, 0.1f, 0.1f);
-    private static readonly Color GuardColor = new Color(0.6f, 0.85f, 1f);
     private static readonly Color MisfireColor = new Color(0.6f, 0.2f, 0.9f);
+    private static readonly Color BossDefeatColor = Color.white;
 
+    [Tooltip("ガード成功の色。ガード時の被ダメージ数字と同じ色を使う")]
+    [SerializeField] private BattlePaletteData _palette;
     [SerializeField] private Image _flashImage;
 
     private MotionHandle _flashHandle;
@@ -42,13 +47,21 @@ public class ScreenFlashView : MonoBehaviour
     /// <summary>ガード受付中に攻撃を受けた（ガード成功）。</summary>
     public void FlashGuard()
     {
-        Flash(GuardColor, GuardAlpha, FlashDuration);
+        Flash(_palette.guard, GuardAlpha, FlashDuration);
     }
 
     /// <summary>暴発のセルフダメージを受けた。</summary>
     public void FlashMisfire()
     {
         Flash(MisfireColor, MisfireAlpha, FlashDuration);
+    }
+
+    /// <summary>
+    /// ボスを倒した。ヒットストップ中は白いまま止まり、時間が戻ってからゆっくり引く。
+    /// </summary>
+    public void FlashBossDefeat()
+    {
+        Flash(BossDefeatColor, BossDefeatAlpha, BossDefeatFlashDuration);
     }
 
     /// <summary>

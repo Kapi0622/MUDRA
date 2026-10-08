@@ -1,0 +1,25 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 223b83d5d96a47f4fa78578d62334d55, type: 3}
+  m_Name: PL_Battle
+  m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.BattlePaletteData
+  dot: {r: 0.75, g: 0.45, b: 0.9, a: 1}
+  heal: {r: 0.4, g: 1, b: 0.5, a: 1}
+  guard: {r: 0.6, g: 0.85, b: 1, a: 1}
+  weakness: {r: 1, g: 0.85, b: 0.2, a: 1}
+  wind: {r: 0.35, g: 0.8, b: 0.45, a: 1}
+  earth: {r: 0.7, g: 0.5, b: 0.25, a: 1}
+  thunder: {r: 0.85, g: 0.75, b: 0.1, a: 1}
+  water: {r: 0.2, g: 0.45, b: 0.9, a: 1}
+  fire: {r: 0.9, g: 0.3, b: 0.1, a: 1}
+  light: {r: 0.95, g: 0.9, b: 0.7, a: 1}
+  unknownElement: {r: 0.5, g: 0.5, b: 0.5, a: 1}

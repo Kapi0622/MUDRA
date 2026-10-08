@@ -22,12 +22,14 @@ public class SpellTelopView : MonoBehaviour
     private const float ScaleFrom = 0.6f;
     private const float ScaleTo = 1f;
     private const float BandSlideDuration = 0.2f;
-    private const float BandSlideDistance = 2400f;  // 画面幅（参照解像度1920）より大きく取り、画面外から入れる
     private const float BandAlpha = 0.75f;
 
     // --- 色定義 ---
     private static readonly Color CutInTextColor = Color.white;
     private static readonly Color MisfireColor = new Color(1f, 0.3f, 0.3f);    // 暴発: 赤系
+
+    [Tooltip("属性ごとの帯の色")]
+    [SerializeField] private BattlePaletteData _palette;
 
     [Header("テロップ表示用テキスト")]
     [SerializeField] private TextMeshProUGUI _telopText;
@@ -53,7 +55,7 @@ public class SpellTelopView : MonoBehaviour
     /// </summary>
     public void ShowCutIn(string spellName, ElementType element, Sprite cutInSprite)
     {
-        var bandColor = ElementColor(element);
+        var bandColor = _palette.ElementColor(element);
         bandColor.a = BandAlpha;
         _cutInBand.color = bandColor;
         _cutInBand.enabled = true;
@@ -64,7 +66,7 @@ public class SpellTelopView : MonoBehaviour
         Show(spellName, CutInTextColor);
 
         var bandRect = _cutInBand.rectTransform;
-        _bandHandle = LMotion.Create(-BandSlideDistance, 0f, BandSlideDuration)
+        _bandHandle = LMotion.Create(-BattleUiConstants.OffscreenSlideDistance, 0f, BandSlideDuration)
             .WithEase(Ease.OutCubic)
             .Bind(x => bandRect.anchoredPosition = new Vector2(x, bandRect.anchoredPosition.y));
     }
@@ -112,23 +114,6 @@ public class SpellTelopView : MonoBehaviour
                     .Bind(a => _canvasGroup.alpha = a);
             })
             .Bind(a => _canvasGroup.alpha = a);
-    }
-
-    /// <summary>
-    /// 属性ごとの帯の色。術エフェクト（パーティクル）の色と揃えている。
-    /// </summary>
-    private static Color ElementColor(ElementType element)
-    {
-        return element switch
-        {
-            ElementType.Wind => new Color(0.35f, 0.8f, 0.45f),
-            ElementType.Earth => new Color(0.7f, 0.5f, 0.25f),
-            ElementType.Thunder => new Color(0.85f, 0.75f, 0.1f),
-            ElementType.Water => new Color(0.2f, 0.45f, 0.9f),
-            ElementType.Fire => new Color(0.9f, 0.3f, 0.1f),
-            ElementType.Light => new Color(0.95f, 0.9f, 0.7f),
-            _ => Color.gray,
-        };
     }
 
     private void CancelCurrentMotions()

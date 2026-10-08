@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ED_MudBlob
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u6CE5\u3053\u308D"
-  sprite: {fileID: 0}
+  sprite: {fileID: -7738198492612722147, guid: fd9cc801101117b4295a79521964ea47, type: 3}
   maxHp: 200
   weakElement: 0
   weakMultiplier: 1.5

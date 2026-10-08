@@ -3,6 +3,7 @@ using UnityEngine;
 using UnityEngine.Pool;
 using TMPro;
 using LitMotion;
+using MUDRA.Data;
 
 /// <summary>
 /// 浮き上がって消えるダメージ数字・回復量のView（B4）。
@@ -31,18 +32,16 @@ public class DamageNumberView : MonoBehaviour
     private const float LabelSize = 40f;
     private const float LabelOffsetY = 70f;
 
-    // --- 色定義 ---
+    // --- 色定義（弱点・DoT・回復・ガードの色はBattlePaletteData） ---
     private static readonly Color HitColor = Color.white;
-    private static readonly Color WeakColor = new Color(1f, 0.85f, 0.2f);
-    private static readonly Color DotColor = new Color(1f, 0.55f, 0.15f);
-    private static readonly Color HealColor = new Color(0.4f, 1f, 0.5f);
     private static readonly Color PlayerDamageColor = new Color(1f, 0.3f, 0.3f);
-    private static readonly Color GuardedDamageColor = new Color(0.6f, 0.85f, 1f);
     private static readonly Color LabelColor = new Color(1f, 0.95f, 0.7f);
 
     private const string WeakLabel = "弱点！";
     private const string SpeedLabel = "迅速！";
 
+    [Tooltip("弱点・DoT・回復・ガードの数字の色。敵のフラッシュ・画面フラッシュと同じ色を使う")]
+    [SerializeField] private BattlePaletteData _palette;
     [Tooltip("複製元のテキスト。非アクティブにしておく")]
     [SerializeField] private TextMeshProUGUI _template;
     [Tooltip("数字を並べる親。画面全体に広げたRectTransform")]
@@ -73,7 +72,7 @@ public class DamageNumberView : MonoBehaviour
     {
         var origin = EnemyPosition();
         float size = isWeakness ? WeakSize : NormalSize;
-        var color = isWeakness ? WeakColor : HitColor;
+        var color = isWeakness ? _palette.weakness : HitColor;
 
         int count = Mathf.Max(1, hitCount);
         for (int i = 0; i < count; i++)
@@ -93,13 +92,13 @@ public class DamageNumberView : MonoBehaviour
     /// <summary>DoTのtickダメージ。毎秒出るので小さく控えめにする。</summary>
     public void ShowDotTick(int damage)
     {
-        Spawn(damage.ToString(), EnemyPosition() + RandomOffset(), SmallSize, DotColor, 0f);
+        Spawn(damage.ToString(), EnemyPosition() + RandomOffset(), SmallSize, _palette.dot, 0f);
     }
 
     /// <summary>回復量。プレイヤー側に緑で出す。</summary>
     public void ShowHeal(int amount)
     {
-        Spawn("+" + amount, PlayerPosition() + RandomOffset(), SmallSize, HealColor, 0f);
+        Spawn("+" + amount, PlayerPosition() + RandomOffset(), SmallSize, _palette.heal, 0f);
     }
 
     /// <summary>プレイヤーの被弾。ガードで軽減した時は青く小さく出す。</summary>
@@ -107,7 +106,7 @@ public class DamageNumberView : MonoBehaviour
     {
         Spawn(damage.ToString(), PlayerPosition() + RandomOffset(),
             wasGuarded ? SmallSize : NormalSize,
-            wasGuarded ? GuardedDamageColor : PlayerDamageColor, 0f);
+            wasGuarded ? _palette.guard : PlayerDamageColor, 0f);
     }
 
     /// <summary>

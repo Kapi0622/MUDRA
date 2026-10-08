@@ -1,5 +1,6 @@
 using UnityEngine;
 using LitMotion;
+using MUDRA.Data;
 
 /// <summary>
 /// バトル背景のView（B4）。道中/ボスの背景切替と、セクション間の前進演出を担う。
@@ -14,8 +15,7 @@ using LitMotion;
 public class BackgroundView : MonoBehaviour
 {
     // --- 前進演出 ---
-    /// <summary>前進演出の全体の長さ。SectionProgressManager.TransitionDurationはこれと撃破演出の合計以上にすること</summary>
-    public const float AdvanceDuration = 1.2f;
+    // 全体の長さはPresentationTimingData.advanceDuration（Modelの遷移待機に含まれる）
     private const float AdvanceZoomPortion = 0.75f;     // 全体のうちズーム＋暗転に使う割合（残りが明転）
     private const float AdvanceZoomScale = 1.3f;
     private const float AdvanceDimBrightness = 0.15f;
@@ -25,6 +25,8 @@ public class BackgroundView : MonoBehaviour
 
     private static readonly Color BossFallbackTint = new Color(0.65f, 0.4f, 0.4f);
 
+    [Tooltip("前進演出の長さ。Modelの遷移待機はここから計算される")]
+    [SerializeField] private PresentationTimingData _timing;
     [SerializeField] private SpriteRenderer _spriteRenderer;
     [SerializeField] private Camera _camera;
     [Tooltip("StageDataの背景が未設定のときに使う既定背景")]
@@ -78,7 +80,7 @@ public class BackgroundView : MonoBehaviour
     {
         TryCancel(ref _advanceHandle);
 
-        _advanceHandle = LMotion.Create(0f, 1f, AdvanceDuration)
+        _advanceHandle = LMotion.Create(0f, 1f, _timing.advanceDuration)
             .WithDelay(delay)
             .Bind(t =>
             {

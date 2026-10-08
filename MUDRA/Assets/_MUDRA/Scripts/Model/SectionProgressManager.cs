@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using MUDRA.Data;
 using R3;
 
 /// <summary>
@@ -17,16 +18,6 @@ using R3;
 /// </summary>
 public class SectionProgressManager : IDisposable
 {
-    // --- 定数 ---
-    /// <summary>
-    /// 敵撃破から次の敵が出現するまでの待機時間（秒）。
-    /// この間にViewが撃破演出→前進スクロールを流す（B4）。
-    /// Modelは演出の完了を待てない（Viewを知らない）ため、演出の尺の合計をここで確保している。
-    /// EnemyView.DefeatDuration(0.8) + BackgroundView.AdvanceDuration(1.2) に余白を足した値。
-    /// View側の尺を変えたらこの値も合わせること。
-    /// </summary>
-    private const float TransitionDuration = 2.5f;
-
     // --- R3通知 ---
     private readonly ReactiveProperty<int> _currentSectionIndex = new(0);
     /// <summary>現在のセクション番号（0始まり）</summary>
@@ -60,6 +51,13 @@ public class SectionProgressManager : IDisposable
     private readonly EnemyStateManager _enemyStateManager;
     private readonly StatusEffectManager _statusEffectManager;
 
+    /// <summary>
+    /// 演出の時間表。Modelは演出の完了を待てない（Viewを知らない）ため、
+    /// 撃破→次の敵の出現、出現→1手目の予告の間は、ここから計算した「演出の尺＋余白」だけ待つ（B4）。
+    /// 待機時間は尺から計算されるので、Viewの尺を変えても食い違わない。
+    /// </summary>
+    private readonly PresentationTimingData _timing;
+
     // --- 進行状態 ---
     private StageData _stageData;
 
@@ -78,11 +76,13 @@ public class SectionProgressManager : IDisposable
     public SectionProgressManager(
         BattleModel battleModel,
         EnemyStateManager enemyStateManager,
-        StatusEffectManager statusEffectManager)
+        StatusEffectManager statusEffectManager,
+        PresentationTimingData timing)
     {
         _battleModel = battleModel;
         _enemyStateManager = enemyStateManager;
         _statusEffectManager = statusEffectManager;
+        _timing = timing;
 
         // StartStageではなくここで購読する。
         // StartStageはステージ切替で複数回呼ばれうるため、
@@ -164,7 +164,9 @@ public class SectionProgressManager : IDisposable
         _statusEffectManager.ClearEnemyEffects();
 
         _battleModel.SetEnemy(section.enemyData);
-        _enemyStateManager.SetEnemy(section.enemyData);
+        _enemyStateManager.SetEnemy(
+            section.enemyData,
+            section.isBoss ? _timing.BossEntryDelay : _timing.NormalEntryDelay);
 
         _currentPhase.Value = SectionPhase.InBattle;
 
@@ -224,7 +226,7 @@ public class SectionProgressManager : IDisposable
             _enemyStateManager.StopLoop();
 
             await UniTask.Delay(
-                TimeSpan.FromSeconds(TransitionDuration),
+                TimeSpan.FromSeconds(_timing.TransitionDuration),
                 cancellationToken: _transitionCts.Token
             );
         }

@@ -16,6 +16,10 @@ public class CameraShakeView : MonoBehaviour
     private const float HeavyShakeDuration = 0.45f;
     private const float ShakeFrequencyX = 37f;
     private const float ShakeFrequencyY = 29f;      // X と周期をずらして単調な往復にしない
+    private const float BossRoarAmplitude = 0.4f;
+    private const float BossRoarDuration = 0.6f;
+    private const float BossDefeatAmplitude = 0.5f;
+    private const float BossDefeatDuration = 0.8f;
 
     private Vector3 _basePosition;
     private MotionHandle _shakeHandle;
@@ -38,14 +42,27 @@ public class CameraShakeView : MonoBehaviour
         Shake(GuardAmplitude, ShakeDuration);
     }
 
+    /// <summary>ボスの咆哮（登場シーケンスの山場）。登場の開始からdelay秒後に揺らす。</summary>
+    public void ShakeBossRoar(float delay)
+    {
+        Shake(BossRoarAmplitude, BossRoarDuration, delay);
+    }
+
+    /// <summary>ボスの撃破。ヒットストップ中は止まり、時間が戻ってから揺れる。</summary>
+    public void ShakeBossDefeat()
+    {
+        Shake(BossDefeatAmplitude, BossDefeatDuration);
+    }
+
     /// <summary>
     /// 減衰する揺れ。連続で呼ばれたら前の揺れを止め、基準位置から揺れ直す。
     /// </summary>
-    private void Shake(float amplitude, float duration)
+    private void Shake(float amplitude, float duration, float delay = 0f)
     {
         if (_shakeHandle.IsActive()) _shakeHandle.Cancel();
 
         _shakeHandle = LMotion.Create(1f, 0f, duration)
+            .WithDelay(delay)
             .WithOnComplete(() => transform.localPosition = _basePosition)
             .WithOnCancel(() => transform.localPosition = _basePosition)
             .Bind(decay =>

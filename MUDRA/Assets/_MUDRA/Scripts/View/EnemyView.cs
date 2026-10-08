@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 using LitMotion;
+using MUDRA.Data;
 
 /// <summary>
 /// 敵1体の見た目と演出を担うView（B4）。
@@ -10,18 +11,20 @@ using LitMotion;
 /// 演出は同時に重なる（予告中に被弾する、Stun中にDoTが入る等）。
 /// 各演出がSpriteRendererやTransformを直接書き換えると互いを上書きしてしまうため、
 /// 演出ごとに「自分の成分」だけを持たせ、ApplyVisual() で1か所に合成して反映する。
-///   色   = 基本色(Stun/仮素材の色) → 予告の明滅 → 被弾フラッシュ → 透明度
+///   色   = 基本色(Stun/仮素材の色) → 影(ボス登場) → 予告の明滅 → 被弾フラッシュ → 透明度
 ///   位置 = 登場スライド + 踏み込み + 揺れ
 ///   拡縮 = 基準 × ボス倍率 × 踏み込みの膨らみ × 撃破の縮小
 ///
 /// 階層は「ルート(このコンポーネント) / Body(SpriteRenderer)」の2段。
 /// 動かすのはBodyだけにし、ルートの位置は動かさない。
 /// 術エフェクトの出現位置（EffectSpawnPoint）はルートの子に置くので、演出の揺れに引きずられない。
+///
+/// 登場・撃破の尺はModelの待機や他のViewと揃える必要があるためPresentationTimingDataに、
+/// 他のViewと共有する色はBattlePaletteDataに置く。このViewに閉じた値は下のconst。
 /// </summary>
 public class EnemyView : MonoBehaviour
 {
     // --- 登場 ---
-    private const float AppearDuration = 0.6f;
     private const float AppearSlideDistance = 10f;      // 画面右外から滑り込む距離（ワールド単位）
     private const float BossScaleMultiplier = 1.6f;
 
@@ -30,7 +33,7 @@ public class EnemyView : MonoBehaviour
     private const float ChargePulseStartHz = 1.5f;
     private const float ChargePulseEndHz = 8f;
     private const float ChargeTintMax = 0.75f;
-    private const string HeavyAttackPrefix = "大技 ";
+    private const string HeavyAttackPrefix = BattleUiConstants.HeavyAttackLabel + " ";
     private const float MinChargeDuration = 0.01f;      // chargeTime=0のデータでも0除算にしない
 
     // --- 攻撃 ---
@@ -54,29 +57,35 @@ public class EnemyView : MonoBehaviour
     private const float StunWobbleAngle = 8f;
     private const float StunWobbleHalfPeriod = 0.35f;
 
-    // --- 撃破 ---
-    private const float DefeatBlinkDuration = 0.4f;
+    // --- 撃破（長さはPresentationTimingData） ---
     private const int DefeatBlinkCount = 4;
-    private const float DefeatVanishDuration = 0.4f;
     private const float DefeatEndScale = 0.5f;
     private const float DefeatBlinkAlpha = 0.2f;
 
-    /// <summary>撃破演出の全体の長さ。Presenterが前進演出の開始を遅らせるのに使う</summary>
-    public const float DefeatDuration = DefeatBlinkDuration + DefeatVanishDuration;
+    // --- ボス撃破（長さはPresentationTimingData） ---
+    private const int BossDefeatBlinkCount = 10;
+    private const float BossDefeatEndScale = 0.3f;
+    private const float BossDefeatEffectLifetime = 3f;  // 撃破パーティクルの保険の破棄時間
 
-    // --- 色定義 ---
+    // --- 色定義（DoT・弱点の色はBattlePaletteData） ---
     private static readonly Color NormalChargeColor = new Color(1f, 0.75f, 0.2f);   // 通常攻撃の予告: 橙
     private static readonly Color HeavyChargeColor = new Color(1f, 0.15f, 0.15f);   // 大技の予告: 赤
     private static readonly Color HitFlashColor = new Color(1f, 0.25f, 0.25f);
-    private static readonly Color WeakHitFlashColor = new Color(1f, 0.9f, 0.3f);
-    private static readonly Color DotFlashColor = new Color(1f, 0.5f, 0.1f);
     private static readonly Color StunColor = new Color(0.6f, 0.6f, 0.8f);
+
+    [Header("共有データ")]
+    [Tooltip("登場・撃破の尺。Modelの待機やボス演出の他のViewと同じ時間表を使う")]
+    [SerializeField] private PresentationTimingData _timing;
+    [Tooltip("DoT・弱点ヒットのフラッシュの色")]
+    [SerializeField] private BattlePaletteData _palette;
 
     [Header("本体")]
     [SerializeField] private Transform _body;
     [SerializeField] private SpriteRenderer _spriteRenderer;
     [Tooltip("EnemyData.spriteが未設定の敵に使う仮スプライト")]
     [SerializeField] private Sprite _fallbackSprite;
+    [Tooltip("ボス撃破時に敵の位置に出す爆散パーティクル")]
+    [SerializeField] private GameObject _bossDefeatEffectPrefab;
 
     [Header("攻撃予告UI（BattleCanvas上）")]
     [SerializeField] private CanvasGroup _chargeGroup;
@@ -96,6 +105,7 @@ public class EnemyView : MonoBehaviour
     private Color _flashColor;
     private float _flash;                       // 0〜1
     private float _alpha = 1f;
+    private float _silhouette;                  // 0〜1。ボスの登場で黒い影から色が付いていく
     private float _appearOffsetX;
     private float _lungeOffsetY;
     private float _shakeOffsetX;
@@ -110,6 +120,7 @@ public class EnemyView : MonoBehaviour
     private MotionHandle _shakeHandle;
     private MotionHandle _stunHandle;
     private MotionHandle _defeatHandle;
+    private MotionHandle _revealHandle;
 
     private bool _isInitialized;
 
@@ -138,7 +149,10 @@ public class EnemyView : MonoBehaviour
     /// 敵を登場させる。画面右外から滑り込みながらフェードインする。
     /// 前の敵の演出状態はここで全てリセットする。
     /// spriteがnullなら仮スプライトを使い、名前から決めた色で塗り分けて別の敵だと分かるようにする。
-    /// 登場の長さはEnemyStateManager.FirstActionDelay（1手目までの待機）に収めること。
+    /// 登場の長さはPresentationTimingDataにあり、Modelの1手目までの待機はそこから計算される。
+    ///
+    /// ボスは滑り込まず、黒い影の状態でその場にフェードインしてから色が付く（登場シーケンスの一部）。
+    /// 暗転・咆哮はBossEncounterView等が同じ時間表（PresentationTimingData）で動く。
     /// </summary>
     public void Appear(Sprite sprite, string enemyName, bool isBoss)
     {
@@ -150,7 +164,13 @@ public class EnemyView : MonoBehaviour
         _baseColor = sprite != null ? Color.white : PlaceholderColor(enemyName);
         _bossScale = isBoss ? BossScaleMultiplier : 1f;
 
-        _appearHandle = LMotion.Create(1f, 0f, AppearDuration)
+        if (isBoss)
+        {
+            AppearAsBoss();
+            return;
+        }
+
+        _appearHandle = LMotion.Create(1f, 0f, _timing.normalAppearDuration)
             .WithEase(Ease.OutCubic)
             .Bind(t =>
             {
@@ -227,16 +247,16 @@ public class EnemyView : MonoBehaviour
     /// </summary>
     public void PlayHit(bool isWeakness)
     {
-        Flash(isWeakness ? WeakHitFlashColor : HitFlashColor, 1f, HitFlashDuration);
+        Flash(isWeakness ? _palette.weakness : HitFlashColor, 1f, HitFlashDuration);
         Shake(isWeakness ? WeakHitShakeAmplitude : HitShakeAmplitude);
     }
 
     /// <summary>
-    /// DoTのtick被弾。術の被弾より控えめな橙のフラッシュのみ（毎秒来るので揺らさない）。
+    /// DoTのtick被弾。術の被弾より控えめな紫のフラッシュのみ（毎秒来るので揺らさない）。
     /// </summary>
     public void PlayDotTick()
     {
-        Flash(DotFlashColor, DotFlashStrength, DotFlashDuration);
+        Flash(_palette.dot, DotFlashStrength, DotFlashDuration);
     }
 
     /// <summary>
@@ -269,31 +289,95 @@ public class EnemyView : MonoBehaviour
     }
 
     /// <summary>
-    /// 撃破演出。点滅したあと、縮みながら消える。長さはDefeatDuration。
+    /// 撃破演出。点滅したあと、縮みながら消える。長さはPresentationTimingData.NormalDefeatDuration。
     /// </summary>
     public void PlayDefeat()
+    {
+        PlayDefeatMotion(
+            _timing.normalDefeatBlinkDuration, DefeatBlinkCount,
+            _timing.normalDefeatVanishDuration, DefeatEndScale, spawnBurst: false);
+    }
+
+    /// <summary>
+    /// ボスの撃破演出。雑魚より長く点滅し、消え始めると同時に爆散パーティクルを出す。
+    /// 長さはPresentationTimingData.BossDefeatDuration。ヒットストップ・白フラッシュは別のViewが同時に出す。
+    /// </summary>
+    public void PlayBossDefeat()
+    {
+        PlayDefeatMotion(
+            _timing.bossDefeatBlinkDuration, BossDefeatBlinkCount,
+            _timing.bossDefeatVanishDuration, BossDefeatEndScale, spawnBurst: true);
+    }
+
+    /// <summary>
+    /// 撃破演出の本体。前半は一定間隔で点滅、後半は縮小しながらフェードアウト。
+    /// </summary>
+    private void PlayDefeatMotion(float blinkDuration, int blinkCount, float vanishDuration, float endScale, bool spawnBurst)
     {
         // 予告・Stun・被弾フラッシュの途中で倒されても、素の状態から撃破演出を始める
         CancelAllMotions();
         ResetVisualState();
 
-        _defeatHandle = LMotion.Create(0f, 1f, DefeatDuration)
+        float total = blinkDuration + vanishDuration;
+        bool hasBurst = false;
+        _defeatHandle = LMotion.Create(0f, 1f, total)
             .Bind(t =>
             {
-                float elapsed = t * DefeatDuration;
-                if (elapsed < DefeatBlinkDuration)
+                float elapsed = t * total;
+                if (elapsed < blinkDuration)
                 {
-                    // 前半: 一定間隔で表示/非表示を切り替える
-                    int step = (int)(elapsed / DefeatBlinkDuration * DefeatBlinkCount * 2f);
+                    int step = (int)(elapsed / blinkDuration * blinkCount * 2f);
                     _alpha = step % 2 == 0 ? 1f : DefeatBlinkAlpha;
                 }
                 else
                 {
-                    // 後半: 縮小しながらフェードアウト
-                    float v = (elapsed - DefeatBlinkDuration) / DefeatVanishDuration;
+                    if (spawnBurst && !hasBurst)
+                    {
+                        hasBurst = true;
+                        SpawnDefeatBurst();
+                    }
+
+                    float v = (elapsed - blinkDuration) / vanishDuration;
                     _alpha = 1f - v;
-                    _vanishScale = Mathf.Lerp(1f, DefeatEndScale, v);
+                    _vanishScale = Mathf.Lerp(1f, endScale, v);
                 }
+                ApplyVisual();
+            });
+    }
+
+    private void SpawnDefeatBurst()
+    {
+        if (_bossDefeatEffectPrefab == null) return;
+
+        // 揺れているBodyではなく、動かないルートの位置に出す
+        var instance = Instantiate(_bossDefeatEffectPrefab, transform.position, Quaternion.identity);
+        Destroy(instance, BossDefeatEffectLifetime);
+    }
+
+    /// <summary>
+    /// ボスの登場。その場で黒い影としてフェードインし、少し間を置いて本来の色に戻る。
+    /// </summary>
+    private void AppearAsBoss()
+    {
+        _alpha = 0f;
+        _silhouette = 1f;
+        ApplyVisual();
+
+        _appearHandle = LMotion.Create(0f, 1f, _timing.silhouetteFadeDuration)
+            .WithDelay(_timing.silhouetteStart)
+            .WithEase(Ease.InQuad)
+            .Bind(a =>
+            {
+                _alpha = a;
+                ApplyVisual();
+            });
+
+        _revealHandle = LMotion.Create(1f, 0f, _timing.revealDuration)
+            .WithDelay(_timing.revealStart)
+            .WithEase(Ease.OutQuad)
+            .Bind(s =>
+            {
+                _silhouette = s;
                 ApplyVisual();
             });
     }
@@ -331,6 +415,7 @@ public class EnemyView : MonoBehaviour
     {
         EnsureInitialized();
         var color = _isStunned ? _baseColor * StunColor : _baseColor;
+        color = Color.Lerp(color, Color.black, _silhouette);
         color = Color.Lerp(color, _chargeColor, _chargeTint);
         color = Color.Lerp(color, _flashColor, _flash);
         color.a = _alpha;
@@ -354,6 +439,7 @@ public class EnemyView : MonoBehaviour
         _shakeOffsetX = 0f;
         _punchScale = 1f;
         _vanishScale = 1f;
+        _silhouette = 0f;
     }
 
     /// <summary>
@@ -384,6 +470,7 @@ public class EnemyView : MonoBehaviour
         TryCancel(ref _shakeHandle);
         TryCancel(ref _stunHandle);
         TryCancel(ref _defeatHandle);
+        TryCancel(ref _revealHandle);
     }
 
     /// <summary>

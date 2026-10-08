@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ED_MudGolem
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u6CE5\u4EBA\u5F62"
-  sprite: {fileID: -7153053430564936571, guid: 5f9b2c30df3263644987e5ccb2e61fba, type: 3}
+  sprite: {fileID: 9138598349407737955, guid: 3120371ec55061a41a0e522491384e8d, type: 3}
   maxHp: 800
   weakElement: 0
   weakMultiplier: 1.5

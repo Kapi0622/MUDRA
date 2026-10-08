@@ -2,9 +2,9 @@
 
 > **ドキュメント種別:** アーキテクチャ復習ドキュメント
 > **作成日:** 2026/09/18
-> **最終更新:** 2026/10/02（B3完了時点に更新）
-> **対象コミット:** `bf45ea2`（stagedata,enemydataの生成）
-> **対象コード:** `Assets/_MUDRA/Scripts`（50ファイル / 約4,390行。うちEditor生成ツール1本・約560行）
+> **最終更新:** 2026/10/05（B4完了時点に更新）
+> **対象コミット:** `b4034df` + B4の未コミット変更
+> **対象コード:** `Assets/_MUDRA/Scripts`（64ファイル / 約6,560行。うちEditor生成ツール1本・約590行）
 > **ステータス:** 現状スナップショット
 
 ---
@@ -50,11 +50,12 @@ DIコンテナは**使っていない**。手書きの Composition Root（`Battl
 ```
 Assets/_MUDRA/
 ├── Scenes/InGame.unity          … 唯一のシーン
-├── ScriptableObject/            … 術・敵・攻撃・ステージの定義アセット
+├── ScriptableObject/            … 術・敵・攻撃・ステージの定義アセット、演出の時間表・色（Presentation/）
 ├── Prefabs/ Particle/ Sprites/ Fonts/
 └── Scripts/
     ├── Data/                    … ScriptableObject定義とenum
     │   SpellData / EnemyData / EnemyAttackData / EnemyAction / StageData(+StageSection) / SpellEnums
+    │   PresentationTimingData（演出の時間表） / BattlePaletteData（意味の色）
     ├── Input/                   … 手印認識（namespace MUDRA.HandTracking）
     │   IHandLandmarkProvider / MediaPipeHandLandmarkProvider
     │   HandTrackingService(484行・中核) / HandLandmark / FingerState / HandSignEnum
@@ -67,9 +68,13 @@ Assets/_MUDRA/
     │   ├── StatusEffect/        … 時限効果（DoT/Stun/HoT）とガード受付窓
     │   └── Strategy/            … ダメージ計算3種
     ├── Presenter/               … Model購読 → View呼び出しの配線のみ
-    │   BattleInitializer(起動) / HandSignPresenter / BattlePresenter
-    ├── View/                    … 表示専用MonoBehaviour。Modelを知らない
-    │   HpBarView / SequenceGuideView / SpellTelopView / SpellEffectView
+    │   BattleInitializer(起動) / HandSignPresenter / BattlePresenter / EnemyPresenter
+    ├── View/                    … 表示専用MonoBehaviour。Modelを知らない（詳細は 02 §12）
+    │   HUD:  HpBarView / SequenceGuideView / SpellTelopView / DamageNumberView / ComboView
+    │         StatusIconView / StageTitleView / BattleResultView / GuardView / ScreenFlashView
+    │   世界: EnemyView / BackgroundView / SpellEffectView / CameraShakeView
+    │   ボス: BossEncounterView
+    │   共有: BattleUiConstants（調整対象でない共有値）
     ├── Debug/                   … #if UNITY_EDITOR || DEVELOPMENT_BUILD
     │   DebugKeyboardInput / DebugMenuView / ThumbAngleDebugger / HandTrackingActiveTest
     └── Editor/                  … ビルド対象外。ランタイムから参照しない
@@ -203,10 +208,15 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | GameObject | 載っているもの |
 |---|---|
 | `Solution` | MediaPipe の `HandLandmarkerRunner`（カメラ入力〜推論） |
+| `Main Canvas`（Screen Space - Camera） | MediaPipe サンプル由来。右下のカメラ映像。Sorting Layer `CameraPreview`（最前面） |
 | Provider用 | `MediaPipeHandLandmarkProvider` + `TempHandTrackingRunner` + `HandTrackingActiveTest` |
-| Presenter用 | `BattleInitializer` / `HandSignPresenter` / `BattlePresenter` |
-| Canvas配下 | `HpBarView`×2（プレイヤー/ボス）/ `SequenceGuideView` / `SpellTelopView` / `SpellEffectView` |
+| `BattleSystem` | `BattleInitializer` / `HandSignPresenter` / `BattlePresenter` / `EnemyPresenter` |
+| `BattleField`（ワールド） | `Background`（`BackgroundView`）/ `Enemy`（`EnemyView`、子に `Body` と `EffectSpawnPoint`）/ `PlayerEffectSpawnPoint` / `BossDimOverlay` |
+| `BattleCanvas`（Overlay・HUD） | HPバー×2 / ガイド / テロップ / 数字 / コンボ / 状態アイコン / ステージ名 / 決着 / フラッシュ / ガード枠 / ボス演出 |
+| `Main Camera` | Orthographic（size 5）。`CameraShakeView` |
 | Debug用 | `DebugMenuView` / `DebugKeyboardInput` |
+
+**描画順（B4）:** Sorting Layer `Background` < `Enemy` < `Effect` < `CameraPreview`、その上に Overlay の `BattleCanvas`。背景・敵・術エフェクトはワールドの SpriteRenderer / Particle System で描き、HUD だけ Overlay に置く（Overlay に背景や敵を置くとパーティクルが裏に隠れるため）。
 
 `BattleInitializer` の設定値: 術7種すべて登録 / `_allStages` = SD_Stage01〜04 / `_playerMaxHp` = 100。
 
@@ -245,8 +255,8 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | 未実装のもの | 仕様書の該当箇所 | 影響 |
 |---|---|---|
 | `GameStateManager` / `GamePhase` | §4-1 | 画面遷移が無い。InGame直起動のみ（B5） |
-| `EnemyPresenter` / `EnemyView` | §2 | 敵の見た目・攻撃演出が無く、`Debug.Log` のみ（B4） |
-| 演出系フィールドの読み出し | §3-2 | `EnemyData.sprite` / `EnemyAttackData.effectPrefab` / `StageData` の背景・`isBoss` は**どこからも読まれていない**。受け口は `SectionProgressManager.OnSectionStarted`（B4） |
+| 本番のアート | §9-4 | 敵は既定スプライト＋名前から決めた色、背景は1枚の仮素材。`EnemyData.sprite` / `StageData` の背景 / `SpellData.cutInSprite` / `EnemyAttackData.effectPrefab` を差し替えるだけで入る |
+| リザルト画面 | §4-1 | 決着は `BattleResultView` の「討伐」「敗北」表示のみ（B5） |
 | キャリブレーション / チュートリアル | §4-1 | しきい値は C# の const 固定（B6） |
 | サウンド（`castSE` / `attackSE` / `bgm`） | §3-2 | フィールドはあるが未使用（B7） |
 | `StatusEffectType.Slow` | §3-1 | enumにあるが実装クラスが無い |
@@ -282,6 +292,7 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 1. Project ビューで右クリック → `Create > MUDRA > SpellData`
 2. `sequence` に詠唱印を並べる（発動印 `Release` は**含めない**）
 3. `BattleInitializer` の `_allSpells` に登録する
+4. 演出: `effectPrefab`（`Particle/Spell/PS_*.prefab` を参考に）と `element`（カットインの帯の色）を設定する。自分に掛ける術は `effectOnCaster` を true にする
 
 ### 新しい印を追加する
 
