@@ -51,6 +51,28 @@ public class BattleModel : IDisposable
     /// </summary>
     public Observable<EnemyData> OnEnemyChanged => _onEnemyChanged;
 
+    // --- 演出用の出来事通知（B4） ---
+    // HPのReactivePropertyは「値がいくつになったか」しか伝えられず、
+    // ダメージ数字・弱点表示・被弾/ガード演出に必要な「何が起きたか」が分からないため、
+    // HP変化とは別に出来事そのものを流す。いずれもHPを書き換えた直後・CheckBattleEndより前に発火し、
+    // トドメの一撃でも演出が出るようにしている。
+
+    private readonly Subject<DamageResult> _onSpellHit = new();
+    /// <summary>術が敵に命中した時に発火。ダメージ数字・弱点/速度ボーナス表示・MultiHit時間差表示に使う</summary>
+    public Observable<DamageResult> OnSpellHit => _onSpellHit;
+
+    private readonly Subject<int> _onDotTick = new();
+    /// <summary>DoTのtickダメージが敵に入った時に発火。引数はダメージ量</summary>
+    public Observable<int> OnDotTick => _onDotTick;
+
+    private readonly Subject<PlayerDamageInfo> _onPlayerDamaged = new();
+    /// <summary>プレイヤーがダメージを受けた時に発火（敵の攻撃・暴発の両方）。無敵モード中は発火しない</summary>
+    public Observable<PlayerDamageInfo> OnPlayerDamaged => _onPlayerDamaged;
+
+    private readonly Subject<int> _onHealed = new();
+    /// <summary>プレイヤーが回復した時に発火。引数はMaxHPでクランプした後の実回復量</summary>
+    public Observable<int> OnHealed => _onHealed;
+
     // --- 敵データ ---
     // セクション遷移で差し替わるためreadonlyにできない
     private EnemyData _enemyData;
@@ -106,7 +128,13 @@ public class BattleModel : IDisposable
         if (!_isBattleActive.Value) return;
         if (amount <= 0) return;
 
+        int before = _playerHp.Value;
         _playerHp.Value = Math.Min(PlayerMaxHp, _playerHp.Value + amount);
+
+        // 満タン時は実回復量0になる。「+0」を出しても意味がないので通知しない
+        int healed = _playerHp.Value - before;
+        if (healed > 0)
+            _onHealed.OnNext(healed);
     }
 
     /// <summary>
@@ -130,6 +158,7 @@ public class BattleModel : IDisposable
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damageResult.TotalDamage);
         _comboCount.Value++;
+        _onSpellHit.OnNext(damageResult);
 
         // --- 副次効果の付与 ---
         if (_statusEffectFactory != null && _statusEffectManager != null)
@@ -158,6 +187,7 @@ public class BattleModel : IDisposable
         if (!_isBattleActive.Value) return;
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damage);
+        _onDotTick.OnNext(damage);
         CheckBattleEnd();
     }
 
@@ -181,6 +211,7 @@ public class BattleModel : IDisposable
         }
 
         _playerHp.Value = Math.Max(0, _playerHp.Value - baseDamage);
+        _onPlayerDamaged.OnNext(new PlayerDamageInfo(baseDamage, isGuarding, action.isHeavy, isMisfire: false));
         CheckBattleEnd();
     }
 
@@ -200,6 +231,7 @@ public class BattleModel : IDisposable
         int damage = (int)(PlayerMaxHp * MisfireDamageRate);
         _playerHp.Value = Math.Max(0, _playerHp.Value - damage);
         _comboCount.Value = 0;
+        _onPlayerDamaged.OnNext(new PlayerDamageInfo(damage, wasGuarded: false, isHeavy: false, isMisfire: true));
         CheckBattleEnd();
     }
 
@@ -282,5 +314,9 @@ public class BattleModel : IDisposable
         _isBattleActive.Dispose();
         _onBattleEnd.Dispose();
         _onEnemyChanged.Dispose();
+        _onSpellHit.Dispose();
+        _onDotTick.Dispose();
+        _onPlayerDamaged.Dispose();
+        _onHealed.Dispose();
     }
 }

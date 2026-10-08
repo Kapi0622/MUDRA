@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 13d380b5150fc794195cc670e59bfb80, type: 3}
+  m_Name: PT_Battle
+  m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.PresentationTimingData
+  normalAppearDuration: 0.6
+  normalDefeatBlinkDuration: 0.4
+  normalDefeatVanishDuration: 0.4
+  advanceDuration: 1.2
+  dimFadeInDuration: 0.3
+  bandInDuration: 0.3
+  bandOutStart: 1.3
+  bandOutDuration: 0.3
+  silhouetteStart: 0.6
+  silhouetteFadeDuration: 0.8
+  revealStart: 1.6
+  revealDuration: 0.4
+  roar: 2
+  dimFadeOutDuration: 0.4
+  hitStopRealtime: 0.2
+  bossDefeatBlinkDuration: 1
+  bossDefeatVanishDuration: 1
+  normalEntryPadding: 0.4
+  transitionPadding: 0.5
+  bossEntryPadding: 0.6

@@ -58,10 +58,14 @@ namespace MUDRA.Data
         [Tooltip("術エフェクトのPrefab")]
         public GameObject effectPrefab;
 
+        [Tooltip("エフェクトを術者（プレイヤー）側に出すか。回復術など自分に掛ける術でtrueにする（B4）。\n" +
+                 "falseなら敵側（着弾点）に出す")]
+        public bool effectOnCaster;
+
         [Tooltip("発動時のSE")] 
         public AudioClip castSE;
 
         [Tooltip("カットイン演出のSprite（術名テロップ）")] 
         public Sprite cutInSprite;
     }
-}
+}

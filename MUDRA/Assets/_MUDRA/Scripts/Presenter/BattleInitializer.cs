@@ -17,6 +17,7 @@ public class BattleInitializer : MonoBehaviour
     [Header("Presenter参照")]
     [SerializeField] private HandSignPresenter _handSignPresenter;
     [SerializeField] private BattlePresenter _battlePresenter;
+    [SerializeField] private EnemyPresenter _enemyPresenter;
 
     [Header("Input")]
     [SerializeField] private MediaPipeHandLandmarkProvider _provider;
@@ -26,6 +27,8 @@ public class BattleInitializer : MonoBehaviour
     [Tooltip("全ステージ。起動時は要素0から開始する。デバッグメニューのステージジャンプ候補にもなる")]
     [SerializeField] private StageData[] _allStages;
     [SerializeField] private int _playerMaxHp = 100;
+    [Tooltip("演出の時間表。Modelの待機時間とViewの尺を同じ表から決める")]
+    [SerializeField] private PresentationTimingData _presentationTiming;
 
     [Header("View")]
     [SerializeField] private HpBarView _playerHpBarView;
@@ -118,7 +121,8 @@ public class BattleInitializer : MonoBehaviour
         _sectionProgressManager = new SectionProgressManager(
             _battleModel,
             _enemyStateManager,
-            _statusEffectManager
+            _statusEffectManager,
+            _presentationTiming
         );
     }
 
@@ -139,6 +143,13 @@ public class BattleInitializer : MonoBehaviour
             _guardWindowManager,
             _playerHpBarView,
             _bossHpBarView
+        );
+
+        _enemyPresenter.Initialize(
+            _sectionProgressManager,
+            _enemyStateManager,
+            _battleModel,
+            _presentationTiming
         );
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -196,5 +207,7 @@ public class BattleInitializer : MonoBehaviour
         _playerStateManager?.Dispose();
         _enemyStateManager?.Dispose();
         _battleModel?.Dispose();
+        _statusEffectManager?.Dispose();
+        _guardWindowManager?.Dispose();
     }
 }

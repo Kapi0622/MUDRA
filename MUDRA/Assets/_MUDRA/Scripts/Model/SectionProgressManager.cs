@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using MUDRA.Data;
 using R3;
 
 /// <summary>
@@ -17,10 +18,6 @@ using R3;
 /// </summary>
 public class SectionProgressManager : IDisposable
 {
-    // --- 定数 ---
-    /// <summary>敵撃破から次の敵が出現するまでの待機時間（秒）。B4で前進演出を入れる枠</summary>
-    private const float TransitionDuration = 1.5f;
-
     // --- R3通知 ---
     private readonly ReactiveProperty<int> _currentSectionIndex = new(0);
     /// <summary>現在のセクション番号（0始まり）</summary>
@@ -28,6 +25,10 @@ public class SectionProgressManager : IDisposable
 
     private readonly ReactiveProperty<SectionPhase> _currentPhase = new(SectionPhase.InBattle);
     public ReadOnlyReactiveProperty<SectionPhase> CurrentPhase => _currentPhase;
+
+    private readonly Subject<StageData> _onStageStarted = new();
+    /// <summary>ステージ開始時に発火。ステージ名表示のトリガ（B4）。直後に先頭セクションのOnSectionStartedが続く</summary>
+    public Observable<StageData> OnStageStarted => _onStageStarted;
 
     private readonly Subject<StageSection> _onSectionStarted = new();
     /// <summary>セクション開始時に発火。敵の出現演出・背景切替のトリガ（B4で使用）</summary>
@@ -50,6 +51,13 @@ public class SectionProgressManager : IDisposable
     private readonly EnemyStateManager _enemyStateManager;
     private readonly StatusEffectManager _statusEffectManager;
 
+    /// <summary>
+    /// 演出の時間表。Modelは演出の完了を待てない（Viewを知らない）ため、
+    /// 撃破→次の敵の出現、出現→1手目の予告の間は、ここから計算した「演出の尺＋余白」だけ待つ（B4）。
+    /// 待機時間は尺から計算されるので、Viewの尺を変えても食い違わない。
+    /// </summary>
+    private readonly PresentationTimingData _timing;
+
     // --- 進行状態 ---
     private StageData _stageData;
 
@@ -68,11 +76,13 @@ public class SectionProgressManager : IDisposable
     public SectionProgressManager(
         BattleModel battleModel,
         EnemyStateManager enemyStateManager,
-        StatusEffectManager statusEffectManager)
+        StatusEffectManager statusEffectManager,
+        PresentationTimingData timing)
     {
         _battleModel = battleModel;
         _enemyStateManager = enemyStateManager;
         _statusEffectManager = statusEffectManager;
+        _timing = timing;
 
         // StartStageではなくここで購読する。
         // StartStageはステージ切替で複数回呼ばれうるため、
@@ -117,6 +127,7 @@ public class SectionProgressManager : IDisposable
 
         _stageData = stageData;
 
+        _onStageStarted.OnNext(stageData);
         EnterSection(startIndex);
     }
 
@@ -153,7 +164,9 @@ public class SectionProgressManager : IDisposable
         _statusEffectManager.ClearEnemyEffects();
 
         _battleModel.SetEnemy(section.enemyData);
-        _enemyStateManager.SetEnemy(section.enemyData);
+        _enemyStateManager.SetEnemy(
+            section.enemyData,
+            section.isBoss ? _timing.BossEntryDelay : _timing.NormalEntryDelay);
 
         _currentPhase.Value = SectionPhase.InBattle;
 
@@ -204,8 +217,16 @@ public class SectionProgressManager : IDisposable
 
         try
         {
+            // 通知スタックから抜けてから、倒した敵を止める。
+            // 止めないと遷移待機の間も倒した敵の行動ループが回り続け、
+            // （ダメージはBattleModel側で弾かれるものの）予告・攻撃の演出が死んだ敵から出てしまう（B4で顕在化）。
+            // 効果のクリアを先にする: Stunの解除（EndStun）がループを再開させても、後のStopLoopで確実に止まる
+            await UniTask.Yield(_transitionCts.Token);
+            _statusEffectManager.ClearEnemyEffects();
+            _enemyStateManager.StopLoop();
+
             await UniTask.Delay(
-                TimeSpan.FromSeconds(TransitionDuration),
+                TimeSpan.FromSeconds(_timing.TransitionDuration),
                 cancellationToken: _transitionCts.Token
             );
         }
@@ -261,6 +282,7 @@ public class SectionProgressManager : IDisposable
         _disposables.Dispose();
         _currentSectionIndex.Dispose();
         _currentPhase.Dispose();
+        _onStageStarted.Dispose();
         _onSectionStarted.Dispose();
         _onSectionCleared.Dispose();
         _onStageCleared.Dispose();

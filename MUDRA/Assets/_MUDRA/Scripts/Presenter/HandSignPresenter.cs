@@ -165,8 +165,9 @@ public class HandSignPresenter : MonoBehaviour
         if (result.IsSuccess)
         {
             Debug.Log($"[SpellSequence] 発動成功: {result.Spell.spellName} (SpeedBonus: {result.SpeedBonus})");
-            _spellEffectView.PlayEffect();
-            _spellTelopView.ShowSpellName(result.Spell.spellName);
+            var spell = result.Spell;
+            _spellEffectView.PlaySpellEffect(spell.effectPrefab, spell.effectOnCaster);
+            _spellTelopView.ShowCutIn(spell.spellName, spell.element, spell.cutInSprite);
         }
         else
         {

@@ -1,6 +1,6 @@
 # 📘 仕様書：「MUDRA」
 
-> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/02（B3完了：セクション進行・回復・敵/ステージデータを反映） **ステータス:** v1.5 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
+> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/05（B4完了：バトル演出・UI・ボス戦専用演出を反映） **ステータス:** v1.6 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
 
 ---
 
@@ -134,7 +134,7 @@ Scripts/
 |`GameStateManager`|ゲーム全体のフェーズ（Title / InGame / Result）を管理する|Pure C#|
 |`PlayerStateManager`|プレイヤーの行動フェーズ（Idle / Chanting / Releasing）を管理する。ガードはPlayerPhaseとは独立した`GuardWindowManager`で管理する|Pure C#|
 |`EnemyStateManager`|敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用）。外部からのStun付与/解除メソッドを公開する。セクション遷移では`SetEnemy`で敵データを差し替えてループを再開する|Pure C#|
-|`GuardWindowManager`|ガード受付窓（0.5秒）を管理する。Guard印確定で窓が開き、時間経過で自動終了。PlayerPhaseとは独立して動作し、詠唱中でもガード可能|Pure C#|
+|`GuardWindowManager`|ガード受付窓（1秒）を管理する。Guard印確定で窓が開き、時間経過で自動終了。PlayerPhaseとは独立して動作し、詠唱中でもガード可能|Pure C#|
 
 #### StatusEffect
 
@@ -162,18 +162,32 @@ Scripts/
 
 |クラス名|責務|区分|
 |---|---|---|
-|`BattlePresenter`|BattleModel ↔ BattleView の仲介|MonoBehaviour|
-|`EnemyPresenter`|EnemyStateManager ↔ EnemyView の仲介|MonoBehaviour|
-|`HandSignPresenter`|SpellSequenceModel ↔ HandSignView の仲介（印の表示・確定演出のトリガー）|MonoBehaviour|
+|`BattlePresenter`|HP・被弾・ガード・ダメージ数字・コンボ・状態アイコンの配線。敵の攻撃と術の発動結果を`BattleModel`に渡す|MonoBehaviour|
+|`EnemyPresenter`|ステージ進行に沿った表示（敵・背景・ステージ名・決着・ボス戦専用演出）の配線。表示専用でModelを操作しない|MonoBehaviour|
+|`HandSignPresenter`|印の確定を`SpellSequenceModel`に振り分け、ガイド・術エフェクト・カットインの表示を配線する|MonoBehaviour|
 |`BattleInitializer`|全ModelとPresenterの生成・注入を一元管理する。Presenter-in-Presenter依存を避けるため、各Modelの生成責務をここに集約する。Script Execution OrderをPresenter群より先行させる|MonoBehaviour|
 
 #### View Layer
 
 |クラス名|責務|区分|
 |---|---|---|
-|`BattleView`|HPバー・術名テロップ・発動エフェクト・リザルト画面など、バトル画面のUI描画全般|MonoBehaviour|
-|`EnemyView`|ボスキャラの表示・攻撃予告演出・被弾リアクション|MonoBehaviour|
-|`HandSignView`|カメラプレビュー表示・ランドマークオーバーレイ・印シーケンスガイド・印確定エフェクト|MonoBehaviour|
+|`HpBarView`|HPバー（即時追従＋遅延追従の2層）。プレイヤー・敵で共用|MonoBehaviour|
+|`SequenceGuideView`|印シーケンスの候補ガイドと印確定エフェクト|MonoBehaviour|
+|`SpellTelopView`|術名カットイン（属性色の帯）・暴発表示|MonoBehaviour|
+|`SpellEffectView`|術エフェクト・敵の攻撃エフェクトのPrefab再生（敵側/プレイヤー側の2か所）|MonoBehaviour|
+|`EnemyView`|敵の表示・登場・攻撃予告・攻撃・被弾・Stun・撃破。ボスの登場（影から出現）と撃破（爆散）|MonoBehaviour|
+|`BackgroundView`|道中/ボスの背景切替、セクション間の前進演出|MonoBehaviour|
+|`StageTitleView`|ステージ名・ボス名の表示|MonoBehaviour|
+|`ScreenFlashView`|画面全体の色フラッシュ（被弾・ガード成功・暴発・ボス撃破）|MonoBehaviour|
+|`CameraShakeView`|カメラの揺れ。ワールドだけが揺れ、HUDは揺れない|MonoBehaviour|
+|`GuardView`|ガード受付中の構え枠と、ガード成功の「防」|MonoBehaviour|
+|`DamageNumberView`|ダメージ数字・回復量（MultiHitの時間差表示、弱点・速度ボーナスのラベル）|MonoBehaviour|
+|`ComboView`|コンボ数「n 連」とコンボ切れの演出|MonoBehaviour|
+|`StatusIconView`|継続中の効果のアイコン（蝕＝DoT・封＝Stun・癒＝HoT）|MonoBehaviour|
+|`BattleResultView`|「討伐」「敗北」の決着表示（B5のリザルト画面までの仮）|MonoBehaviour|
+|`BossEncounterView`|ボス戦専用の画面演出（登場時の暗転と帯・大技の特別予告・撃破時のヒットストップ）|MonoBehaviour|
+
+> **B4での変更:** 当初の`BattleView` / `HandSignView`のような大きなViewは作らず、演出の単位ごとに小さなViewに分けた。各Viewは命令的メソッドを公開するだけでModelを知らない。ボス演出のように複数のViewにまたがる演出は、各Viewが「開始までの遅延」を受け取り、秒数を時間表`PresentationTimingData`に集約して順番を揃える（Presenterにタイマーを持たせないため）。
 
 #### Data Layer
 
@@ -185,6 +199,8 @@ Scripts/
 |`EnemyAction`|行動パターン1要素分のデータ（`EnemyAttackData`参照・大技フラグ・行動後の待機時間）|Serializable struct|
 |`StageSection`|ステージ内の1セクション分のデータ（敵データ参照・ボスフラグ）|Serializable struct|
 |`StageData`|ステージ定義データ（セクション配列・背景・BGM）。1ステージは道中雑魚×N + ボス×1のセクションで構成される|ScriptableObject|
+|`PresentationTimingData`|演出の時間表（複数のクラスにまたがる尺）。Modelの待機時間もここから計算する（B4）|ScriptableObject|
+|`BattlePaletteData`|複数のViewで使う意味の色（DoT・回復・ガード・弱点・属性）（B4）|ScriptableObject|
 
 ### 2-2. インターフェース定義
 
@@ -401,6 +417,9 @@ public class SpellData : ScriptableObject
     [Header("演出")]
     [Tooltip("術エフェクトのPrefab")]
     public GameObject effectPrefab;
+
+    [Tooltip("エフェクトを術者（プレイヤー）側に出すか。回復術など自分に掛ける術でtrue（B4）")]
+    public bool effectOnCaster;
 
     [Tooltip("発動時のSE")]
     public AudioClip castSE;
@@ -1127,63 +1146,98 @@ InGame開始
 
 ## 8. MVP構成
 
+> **B4で実装に合わせて更新した。** 通知は常に Model →（R3）→ Presenter →（メソッド呼び出し）→ View の一方向。
+> 生成と注入は`BattleInitializer`に集約し、Presenterは`Initialize`でModelを、`[SerializeField]`でViewを受け取る。
+
 ### 8-1. Battle MVP
 
-プレイヤーHP・ボスHP・術名テロップ・コンボ表示など、バトル画面の主要UIを担当。
+HP・被弾・ガード・ダメージ数字・コンボ・状態アイコンを担当。
 
 |役割|クラス|担当|
 |---|---|---|
-|Model|`BattleModel`|HP管理・ダメージ計算・勝敗判定|
-|View|`BattleView`|HPバー・術名テロップ・コンボ数・リザルト画面|
-|Presenter|`BattlePresenter`|ModelのReactivePropertyをSubscribeしてViewを更新|
+|Model|`BattleModel`|HP・コンボ・勝敗。出来事の通知（`OnSpellHit` / `OnDotTick` / `OnPlayerDamaged` / `OnHealed`）|
+|Model|`GuardWindowManager`|ガード受付窓（`IsGuarding`）|
+|Model|`StatusEffectManager`|効果の付与・解除の通知（`OnEffectApplied` / `OnEffectRemoved`）|
+|View|`HpBarView` / `ScreenFlashView` / `CameraShakeView` / `GuardView` / `DamageNumberView` / `ComboView` / `StatusIconView`|表示|
+|Presenter|`BattlePresenter`|上記の配線。敵の攻撃・術の発動結果を`BattleModel`に渡す|
 
 ```csharp
-// BattlePresenter の購読イメージ（現行）
-battleModel.PlayerHp.Subscribe(hp => battleView.UpdatePlayerHpBar(hp));
-battleModel.BossHp.Subscribe(hp => battleView.UpdateBossHpBar(hp));
-battleModel.ComboCount.Subscribe(count => battleView.UpdateComboDisplay(count));
-battleModel.OnBattleEnd.Subscribe(isWin => battleView.ShowResult(isWin));
-
-// 成功と暴発は別ストリーム（A4でSpellCastResultの単一ストリームに統合予定）
-spellSequenceModel.OnSpellCast.Subscribe(spell => {
-    battleView.PlaySpellEffect(spell);
-    battleView.ShowCutIn(spell);
+// BattlePresenter の購読（抜粋）
+battleModel.OnPlayerDamaged.Subscribe(info => {
+    damageNumberView.ShowPlayerDamage(info.Damage, info.WasGuarded);
+    if (info.IsMisfire)       screenFlashView.FlashMisfire();
+    else if (info.WasGuarded) { guardView.PlayGuardSuccess(); screenFlashView.FlashGuard(); cameraShakeView.ShakeGuard(); }
+    else                      { screenFlashView.FlashDamage(info.IsHeavy); cameraShakeView.ShakeDamage(info.IsHeavy); }
 });
-spellSequenceModel.OnSequenceReset.Subscribe(reason => {
-    if (reason == SequenceResetReason.Misfire)
-        battleView.PlayMisfireEffect();
-});
+guardWindowManager.IsGuarding.Subscribe(guardView.SetStance);
+battleModel.OnSpellHit.Where(r => r.TotalDamage > 0)   // 回復術（威力0）は除く
+    .Subscribe(r => damageNumberView.ShowSpellHit(r.PerHitDamage, r.HitCount, r.IsWeakness, r.HasSpeedBonus));
+battleModel.ComboCount.Subscribe(comboView.SetCombo);
+statusEffectManager.OnEffectApplied.Subscribe(type => statusIconView.SetEffectActive(type, true));
 ```
 
 ### 8-2. HandSign MVP
 
-カメラプレビュー・ランドマーク描画・印シーケンスガイド・印確定演出を担当。
+印の確定・シーケンスガイド・術の発動演出を担当。
 
 |役割|クラス|担当|
 |---|---|---|
-|Model|`SpellSequenceModel`|入力履歴・照合状態|
-|View|`HandSignView`|カメラプレビュー・ランドマーク描画・シーケンスガイドUI・印確定エフェクト|
-|Presenter|`HandSignPresenter`|印の確定通知をViewに伝達|
+|Model|`SpellSequenceModel`|入力履歴・照合状態・発動結果（`OnSpellCast`）|
+|View|`SequenceGuideView` / `SpellTelopView` / `SpellEffectView`|ガイド・カットイン・術エフェクト|
+|Presenter|`HandSignPresenter`|印の振り分け（詠唱/発動/解除/ガード）と表示の配線|
 
 > **責務:** `HandTrackingService.Tick()`の毎フレーム駆動も担っている。旧名`SpellSequenceRunner`からB1でリネーム済み。
 
 ```csharp
-// HandSignPresenter の購読イメージ
-// 印1つ1つの確定はHandTrackingServiceから、シーケンス全体の状態はSpellSequenceModelから受ける
-handTrackingService.OnHandSignRecognized.Subscribe(sign => handSignView.ShowSignConfirmed(sign));
-spellSequenceModel.OnSequenceReset.Subscribe(reason => handSignView.ResetSequenceDisplay(reason));
-spellSequenceModel.OnChantStarted.Subscribe(_ => handSignView.StartSequenceDisplay());
+// 術の発動 → 術ごとのエフェクト + カットイン
+spellSequenceModel.OnSpellCast.Subscribe(result => {
+    if (result.IsSuccess) {
+        spellEffectView.PlaySpellEffect(result.Spell.effectPrefab, result.Spell.effectOnCaster);
+        spellTelopView.ShowCutIn(result.Spell.spellName, result.Spell.element, result.Spell.cutInSprite);
+    } else {
+        spellTelopView.ShowMisfire();
+    }
+});
 ```
 
 ### 8-3. Enemy MVP
 
-ボスの表示・攻撃予告演出・被弾リアクションを担当。
+ステージ進行に沿った表示（敵・背景・ステージ名・決着・ボス戦専用演出）を担当。表示専用で、Modelは操作しない。
 
 |役割|クラス|担当|
 |---|---|---|
-|Model|`EnemyStateManager`|ボスの行動フェーズ管理|
-|View|`EnemyView`|ボスアニメーション・攻撃予告演出・被弾リアクション|
-|Presenter|`EnemyPresenter`|Stateの変化をViewの演出に変換|
+|Model|`SectionProgressManager`|ステージ/セクションの開始・撃破・決着の通知|
+|Model|`EnemyStateManager`|敵の行動フェーズと現在の行動（攻撃名・chargeTime・大技か）|
+|View|`EnemyView` / `BackgroundView` / `StageTitleView` / `BattleResultView` / `BossEncounterView`|表示|
+|Presenter|`EnemyPresenter`|上記の配線|
+
+```csharp
+// セクション開始 → 背景切替 + 敵の登場。ボスは登場シーケンス
+sectionProgressManager.OnSectionStarted.Subscribe(section => {
+    backgroundView.SetBackground(section.isBoss ? stage.bossBackgroundSprite : stage.roadBackgroundSprite, section.isBoss);
+    enemyView.Appear(enemy.sprite, enemy.enemyName, section.isBoss);
+    if (section.isBoss) {
+        bossEncounterView.PlayEncounter();
+        cameraShakeView.ShakeBossRoar(timing.roar);   // timing: PresentationTimingData
+        stageTitleView.ShowBossTitle(enemy.enemyName, timing.roar);
+    }
+});
+// 攻撃予告は CurrentAction 側で出す（フェーズ→行動の順に値が変わるため）
+enemyStateManager.CurrentAction.Where(a => a.HasValue && phase == EnemyPhase.Charging)
+    .Subscribe(a => enemyView.PlayCharging(a.attackName, a.chargeTime, a.isHeavy));
+```
+
+#### 演出の尺とModelの待機
+
+Modelは演出の完了を待てないため、「演出の尺の合計＋余白」だけ待つ。尺と余白は`PresentationTimingData`（アセット`PT_Battle`）にあり、`BattleInitializer`が`SectionProgressManager`に注入する。待機時間は尺から計算するプロパティなので、View側の尺を変えれば自動で追従する。
+
+|プロパティ|計算式|初期値での値|
+|---|---|---|
+|`TransitionDuration`|`NormalDefeatDuration` + `advanceDuration` + `transitionPadding`|0.8 + 1.2 + 0.5 = 2.5秒|
+|`NormalEntryDelay`|`normalAppearDuration` + `normalEntryPadding`。この間は1手目の予告を出さない|0.6 + 0.4 = 1.0秒|
+|`BossEntryDelay`|`EncounterDuration`（`roar` + `dimFadeOutDuration`）+ `bossEntryPadding`|2.4 + 0.6 = 3.0秒|
+
+余白は`[Min(0)]`なので、待機が演出より短くなることはない。
 
 ---
 
@@ -1297,6 +1351,7 @@ MLモデルを使わない理由は以下の通り。
 | **雑魚敵のユニーク種類数** | **ユニーク8種 + 派生3種（計11種）で確定。** 派生種は元の敵と同じ攻撃を使い、HPと行動間隔だけを変える | ✅ B3で確定済み |
 | **コンボカウントのセクション間引き継ぎ** | **引き継ぐ。** 暴発時のみリセット | ✅ B3で確定済み |
 | **StatusEffectのセクション間引き継ぎ** | **敵に付いた効果は遷移時に除去する。** 例外としてプレイヤーに付くHoTのみ持ち越す（回復術の直後に敵を倒すと回復が消える理不尽を避けるため） | ✅ B3で確定済み |
+| **StatusEffectの表現** | **属性ではなく効果の種類で表す（B4）。** アイコンはDoT＝「蝕」（暗い紫）、Stun＝「封」（白銀）、HoT＝「癒」（緑）。DoTのtickの数字・敵のフラッシュも紫。火以外のDoT・雷以外のStunを作っても違和感が出ないようにするため。付けた術の属性色まで出す案は、別属性のDoT/Stunが実際に増えたらB8で検討する | ✅ B4で確定済み |
 | **回復手段** | **専用の印は作らず、通常の術と同じ扱いのHoTとして実装（B3）。** `SpellData.healPower` で回復量を指定する。セクション間の自動回復は無し。回復術の数・回復量はB8で調整 | ✅ 仕組みはB3で確定。数値はB8 |
 
 ---
@@ -1403,6 +1458,8 @@ MLモデルを使わない理由は以下の通り。
 **プレイヤー側演出：** 被弾フィードバック（画面フラッシュ等）、Guard成功フィードバック、術発動エフェクト（Particle System、×術数分）、カットイン演出
 
 **バトルUI：** コンボカウント表示、ダメージ数字表示（フローティングテキスト）、弱点ヒット/速度ボーナス表示、DoT継続中アイコン、MultiHit時間差表示、ステージ名表示
+
+> **進捗実績:** B3（09/18〜10/02）・B4（10/02〜10/05）完了。B4では内訳に加え、ボス戦専用演出（登場シーケンス・大技の特別予告・撃破演出）を実装した。アートは仮素材で、本番素材は`EnemyData.sprite` / `StageData`の背景 / `SpellData.cutInSprite`を差し替えるだけで入る。詳細は dev_log_B4。
 
 #### B5：ゲームフロー実装の内訳
 

@@ -4,14 +4,14 @@
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
 Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B3（全ステージ実装）まで完了。次は B4（バトル演出・UI強化）。**
+現在地: **β版 B4（バトル演出・UI強化）まで完了。次は B5（ゲームフロー実装）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の50ファイル・約4,390行が全て。** 小さい。
-（うち `Editor/B3ContentGenerator.cs` 約560行は敵・ステージSOの生成ツールで、ランタイムからは参照しない）
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の64ファイル・約6,560行が全て。** 小さい。
+（うち `Editor/B3ContentGenerator.cs` 約590行は敵・ステージSOの生成ツールで、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
   （`MUDRA/Assets/MediaPipeUnity/`, `MUDRA/Packages/`, `MUDRA/Assets/TextMesh Pro/`）
@@ -104,4 +104,4 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 - **動作確認はカメラ不要のキーボードモードで行える。**
   `HandSignPresenter` の `_debugKeyboardInput` に `DebugKeyboardInput` を割り当てると有効になる。
   `1`〜`5`=詠唱印 / `U`=合 / `Space`=発動 / `Backspace`=解除 / `G`=ガード / `R`=リロード、`F1`=デバッグメニュー
-- コミットメッセージは既存形式に合わせる: `feat:B3 <日本語の要約>`。**指示があるまでコミットしない**
+- コミットメッセージは既存形式に合わせる: `feat:B<番号> <日本語の要約>`（例: `feat:B4 ...`）。**指示があるまでコミットしない**

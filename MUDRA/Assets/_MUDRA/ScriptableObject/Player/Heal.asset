@@ -24,6 +24,7 @@ MonoBehaviour:
   statusEffect: 4
   statusEffectDuration: 5
   healPower: 10
-  effectPrefab: {fileID: 0}
+  effectPrefab: {fileID: 6622600924471458250, guid: cb7a87b02abb5c8428a58db81f6b51f9, type: 3}
+  effectOnCaster: 1
   castSE: {fileID: 0}
   cutInSprite: {fileID: 0}

@@ -1,13 +1,27 @@
+using System;
 using System.Collections.Generic;
 using MUDRA.Data;
+using R3;
 
 /// <summary>
 /// アクティブな時限効果をコレクションで管理し、毎フレームTickで駆動する。
 /// BattlePresenter.Update()からTick(deltaTime)を呼ぶ。
 /// </summary>
-public class StatusEffectManager
+public class StatusEffectManager : IDisposable
 {
     private readonly List<IStatusEffect> _activeEffects = new();
+
+    // --- 演出用の通知（B4） ---
+    // 継続中アイコンの表示に使う。同種重複不可なので「Typeが付いた/外れた」だけで状態を再現できる。
+    // 解除は期限切れ・ClearEnemyEffects・ClearAllのどの経路でも必ず流す（アイコンの消し忘れを防ぐ）。
+
+    private readonly Subject<StatusEffectType> _onEffectApplied = new();
+    /// <summary>効果が新たに付与された時に発火。重複で無視された場合は発火しない</summary>
+    public Observable<StatusEffectType> OnEffectApplied => _onEffectApplied;
+
+    private readonly Subject<StatusEffectType> _onEffectRemoved = new();
+    /// <summary>効果が終了した時に発火（期限切れ・強制解除の両方）</summary>
+    public Observable<StatusEffectType> OnEffectRemoved => _onEffectRemoved;
 
     /// <summary>
     /// 効果を登録して開始する。
@@ -24,6 +38,7 @@ public class StatusEffectManager
 
         effect.OnApply();
         _activeEffects.Add(effect);
+        _onEffectApplied.OnNext(effect.Type);
     }
 
     /// <summary>
@@ -40,8 +55,10 @@ public class StatusEffectManager
 
             if (i < _activeEffects.Count && _activeEffects[i].IsExpired)
             {
-                _activeEffects[i].OnExpire();
+                var expired = _activeEffects[i];
+                expired.OnExpire();
                 _activeEffects.RemoveAt(i);
+                _onEffectRemoved.OnNext(expired.Type);
             }
         }
     }
@@ -62,8 +79,10 @@ public class StatusEffectManager
         {
             if (_activeEffects[i].Type == StatusEffectType.HealOverTime) continue;
 
-            _activeEffects[i].OnExpire();
+            var removed = _activeEffects[i];
+            removed.OnExpire();
             _activeEffects.RemoveAt(i);
+            _onEffectRemoved.OnNext(removed.Type);
         }
     }
 
@@ -75,7 +94,14 @@ public class StatusEffectManager
         for (int i = _activeEffects.Count - 1; i >= 0; i--)
         {
             _activeEffects[i].OnExpire();
+            _onEffectRemoved.OnNext(_activeEffects[i].Type);
         }
         _activeEffects.Clear();
     }
-}
+
+    public void Dispose()
+    {
+        _onEffectApplied.Dispose();
+        _onEffectRemoved.Dispose();
+    }
+}

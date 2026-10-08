@@ -25,10 +25,11 @@
 | `hitCount` | MultiHit時のヒット数 | ✅ |
 | `statusEffect` / `statusEffectDuration` | 副次効果の種類と持続秒数 | ✅ |
 | `rangeType` | `AttackRangeType` | ⚠️ 未使用 |
-| `icon` / `description` / `cutInSprite` | 図鑑・演出用 | ⚠️ 未使用 |
-| `effectPrefab` / `castSE` | 術ごとの演出とSE | ⚠️ 未使用（B4/B7で接続） |
-
-> **注意:** `SpellEffectView` は `SpellData.effectPrefab` ではなく**自分の `[SerializeField] _effectPrefab`** を使う。つまり現在どの術を撃っても同じエフェクトが出る。
+| `icon` / `description` | 図鑑用 | ⚠️ 未使用 |
+| `cutInSprite` | カットインの帯に載せる絵 | ✅（B4。未設定なら帯と術名だけ） |
+| `effectPrefab` | 術ごとのエフェクト | ✅（B4。未設定なら `SpellEffectView` の既定エフェクト） |
+| `effectOnCaster` | エフェクトを術者側に出すか（回復術で true） | ✅（B4） |
+| `castSE` | 発動時のSE | ⚠️ 未使用（B7で接続） |
 
 ### EnemyData / EnemyAttackData / EnemyAction
 
@@ -45,7 +46,7 @@ flowchart LR
     ED --> AP --> EA -->|"attackData"| AD
 ```
 
-雑魚とボスに構造上の差は無く、`EnemyData` のパラメータで差をつける。`isBoss` は現状デバッグメニューの「ボスへ飛ぶ」でしか使っていない（演出用の判定はB4）。
+雑魚とボスに構造上の差は無く、`EnemyData` のパラメータで差をつける。`isBoss` は演出（背景切替・ボス戦専用演出）、1手目までの待機（ボスは長い）、デバッグメニューの「ボスへ飛ぶ」で使う。
 
 ### enum（`Data/SpellEnums.cs`）
 
@@ -127,6 +128,11 @@ ReadOnlyReactiveProperty<int>  ComboCount
 ReadOnlyReactiveProperty<bool> IsBattleActive
 Observable<bool>               OnBattleEnd         // 現在の敵1体との決着。true = 撃破
 Observable<EnemyData>          OnEnemyChanged      // SetEnemy で敵が差し替わった（HPバー再初期化用）
+// --- 演出用の出来事通知（B4）。HPを書き換えた直後・CheckBattleEndの前に発火（トドメでも演出が出る） ---
+Observable<DamageResult>       OnSpellHit          // 術の命中（回復術も流れる。TotalDamage=0）
+Observable<int>                OnDotTick           // DoTのtickダメージ
+Observable<PlayerDamageInfo>   OnPlayerDamaged     // 被弾（敵の攻撃・暴発）。量・ガード有無・大技か・暴発か。無敵中は流れない
+Observable<int>                OnHealed            // 実回復量（満タンで0なら流れない）
 int PlayerMaxHp                                    // 不変
 int BossMaxHp                                      // SetEnemy で変わる
 ```
@@ -204,7 +210,7 @@ public interface IDamageCalculator
 
 > **MultiHitの端数について:** 1ヒットをintに丸めてから掛けるため、同じ `basePower` の SingleHit より合計が微妙に低くなる。**仕様として許容**するとコード中に明記されている。
 
-`DamageResult` は public field を持つ mutable struct。`TotalDamage` / `PerHitDamage` / `HitCount` / `IsWeakness` / `HasSpeedBonus` / `AppliedEffect` / `EffectDuration` / `PerTickDamage` / `TickCount`。`PerHitDamage` と `HitCount` は View 側の時間差ヒット表示用に用意されているが**まだ使われていない**（B4）。
+`DamageResult` は public field を持つ mutable struct。`TotalDamage` / `PerHitDamage` / `HitCount` / `IsWeakness` / `HasSpeedBonus` / `AppliedEffect` / `EffectDuration` / `PerTickDamage` / `TickCount`。`PerHitDamage` と `HitCount` は `DamageNumberView` の MultiHit 時間差表示で使う（B4）。
 
 ---
 
@@ -225,7 +231,7 @@ public interface IStatusEffect
 
 | クラス | 役割 |
 |---|---|
-| `StatusEffectManager` | アクティブな効果をListで保持。`BattlePresenter.Update()` から `Tick(deltaTime)`。**同種の効果は重複不可**（既に同じ `Type` があれば無視）。セクション遷移時は `ClearEnemyEffects()`（HoT以外を除去）、ステージ決着時は `ClearAll()` |
+| `StatusEffectManager` | 付与・解除を `OnEffectApplied` / `OnEffectRemoved` で通知する（解除は期限切れ・`ClearEnemyEffects`・`ClearAll` の全経路。状態アイコン用・B4）。アクティブな効果をListで保持。`BattlePresenter.Update()` から `Tick(deltaTime)`。**同種の効果は重複不可**（既に同じ `Type` があれば無視）。セクション遷移時は `ClearEnemyEffects()`（HoT以外を除去）、ステージ決着時は `ClearAll()` |
 | `StatusEffectFactory` | `DamageResult.AppliedEffect` を見て `DotEffect` / `StunEffect` / `HotEffect` を生成。`None` なら null。生成に必要な処理は全て `Action` で受け取っており、**BattleModel / EnemyStateManager への参照を持たない** |
 | `DotEffect` | 残り時間を減らしつつ、1.0秒 tick ごとに `_applyDamage(perTickDamage)` を呼ぶ。初撃は `BattleModel` 側で処理済みなので、ここは tick のスケジュール管理のみ |
 | `StunEffect` | `OnApply` で `EnemyStateManager.ApplyStun()`、`OnExpire` で `EndStun()`。時間管理は `OnTick` |
@@ -236,14 +242,13 @@ public interface IStatusEffect
 `IStatusEffect` ではなく単体のクラス。`BattlePresenter.Update()` から `Tick(deltaTime)` で駆動。
 
 ```csharp
-Activate()          // Guard印確定時に呼ぶ。受付窓を開く
-bool IsGuarding     // 残り時間 > 0
+Activate()                              // Guard印確定時に呼ぶ。受付窓を開く
+ReadOnlyReactiveProperty<bool> IsGuarding  // 残り時間 > 0。開閉の2回だけ通知（構え枠の表示用・B4）
 private const float WindowDuration = 1f;
 ```
 
 > **設計意図:** A5 で「構え続けるガード」から**タイミングガード**に方針転換した。`PlayerPhase` から独立させているので、**詠唱中でもガードできる**。`PlayerPhase` に `Guarding` を追加しなかったのはこのため（仕様書 §4-2）。
->
-> ※ クラスのXMLコメントは「0.5秒の受付窓」と書いているが、定数は `1f`。実装値は1秒。
+
 
 ---
 
@@ -285,9 +290,9 @@ stateDiagram-v2
 
 | メソッド | 動作 |
 |---|---|
-| `StartLoop()` | 既存ループを止めてから `_patternIndex = 0` で開始。`actionPattern` 未設定なら `LogError` |
+| `StartLoop(firstActionDelay)` | 既存ループを止めてから `_patternIndex = 0` で開始。1手目の Charging の前に `firstActionDelay` 秒待つ（登場演出と予告を重ねないため・B4）。`actionPattern` 未設定なら `LogError` |
 | `StopLoop()` | CTSキャンセル + Idleへ。ステージ決着・シーン破棄時 |
-| `SetEnemy(enemyData)` | `StopLoop` → 敵データ差し替え → `StartLoop`。セクション遷移で使う。インスタンスを作り直さないので購読と `StatusEffectFactory` のデリゲートが生きたまま残る |
+| `SetEnemy(enemyData, firstActionDelay)` | `StopLoop` → 敵データ差し替え → `StartLoop`。待機時間は `SectionProgressManager` が決める（雑魚1.0秒・ボス3.0秒）。セクション遷移で使う。インスタンスを作り直さないので購読と `StatusEffectFactory` のデリゲートが生きたまま残る |
 | `ApplyStun()` | ループを止めて `Stunned` へ。**`_patternIndex` は保持する** |
 | `EndStun()` | Idle に戻して**中断された位置からループ再開** |
 
@@ -322,7 +327,7 @@ private void HandleSignConfirmed(HandSign sign)
 |---|---|
 | `HandTrackingService.OnHandSignRecognized` | `HandleSignConfirmed`（上記）/ デバッグテキスト更新 |
 | `SpellSequenceModel.OnSignAdded` | `SequenceGuideView.UpdateGuide(MatchCandidates, InputCount)` + `PlayConfirmEffect()` |
-| `OnSpellCast` | ガイド `Clear()` → 成功なら `SpellEffectView.PlayEffect()` + `SpellTelopView.ShowSpellName()`、暴発なら `ShowMisfire()` |
+| `OnSpellCast` | ガイド `Clear()` → 成功なら `SpellEffectView.PlaySpellEffect(effectPrefab, effectOnCaster)` + `SpellTelopView.ShowCutIn(spellName, element, cutInSprite)`、暴発なら `ShowMisfire()` |
 | `OnSpellCast`（成功のみ） | `PlayerStateManager.HandleSpellCast()` |
 | `OnSpellCast`（暴発のみ） / `OnSequenceReset` | `PlayerStateManager.HandleSequenceReset()` |
 | `OnChantStarted` | `PlayerStateManager.HandleChantStarted()` |
@@ -335,13 +340,34 @@ private void HandleSignConfirmed(HandSign sign)
 |---|---|
 | `BattleModel.PlayerHp` / `BossHp`（`.Skip(1)`） | `HpBarView.SetHp(hp, maxHp)` ※初期表示は `InitializeHp` で別途 |
 | `BattleModel.OnEnemyChanged` | ボスHPバーを `InitializeHp` で新しい敵の MaxHp に合わせ直す |
-| `BattleModel.ComboCount` / `OnBattleEnd` | 現状 `Debug.Log` のみ（B4で演出接続） |
-| `EnemyStateManager.OnAttackExecuted` | `BattleModel.ApplyEnemyDamage(action, guardWindow.IsGuarding)` |
-| `EnemyStateManager.CurrentPhase` | `Debug.Log` |
+| `BattleModel.ComboCount` | `ComboView.SetCombo` |
+| `BattleModel.OnSpellHit`（`TotalDamage > 0` のみ）/ `OnDotTick` / `OnHealed` | `DamageNumberView` |
+| `BattleModel.OnPlayerDamaged` | 数字 ＋ 暴発 / ガード成功 / 被弾（大技か）でフラッシュ・揺れ・「防」を出し分け |
+| `GuardWindowManager.IsGuarding` | `GuardView.SetStance`（構え枠） |
+| `StatusEffectManager.OnEffectApplied` / `OnEffectRemoved` | `StatusIconView.SetEffectActive` |
+| `EnemyStateManager.OnAttackExecuted` | `BattleModel.ApplyEnemyDamage(action, guardWindow.IsGuarding)` ＋ 敵の攻撃エフェクト |
 | `SpellSequenceModel.OnSpellCast` | `BattleModel.ApplySpellDamage(result)` |
 | `SpellSequenceModel.OnSequenceReset` | `Debug.Log`（UI演出フックの予定地） |
 
 `.Skip(1)` は `ReactiveProperty` が購読時に現在値を流すため、初期値での余計なアニメーションを避ける目的。
+
+B4で増えた View（フラッシュ・揺れ・ガード・数字・コンボ・アイコン）は `Initialize` の引数ではなく `[SerializeField]` で受け取る（引数を増やし続けないため。`HandSignPresenter` と同じやり方）。
+
+### EnemyPresenter（B4）
+
+ステージ進行に沿った表示を配線する。**表示専用で Model を操作しない**（ダメージ適用は `BattlePresenter` に残す）。
+
+| 購読するストリーム | 呼ぶもの |
+|---|---|
+| `SectionProgressManager.OnStageStarted` | `StageTitleView.ShowStageTitle` |
+| `OnSectionStarted` | `BattleResultView.Hide` → `BackgroundView.SetBackground`（`isBoss` で道中/ボス）→ `EnemyView.Appear`。ボスなら登場シーケンス（`BossEncounterView.PlayEncounter` / `CameraShakeView.ShakeBossRoar` / `StageTitleView.ShowBossTitle`） |
+| `OnSectionCleared` | ボスならヒットストップ・白フラッシュ・大揺れ・`PlayBossDefeat`、雑魚なら `PlayDefeat`。次があれば `BackgroundView.PlayAdvance` |
+| `OnStageCleared` / `OnGameOver` | `BattleResultView`（ボス撃破時は撃破演出の後に「討伐」） |
+| `EnemyStateManager.CurrentPhase` | Stun表示 / 攻撃 / 予告を消す。Charging 以外ならボスの大技予告も消す |
+| `EnemyStateManager.CurrentAction`（Charging 中のみ） | `EnemyView.PlayCharging`。ボスの大技なら `BossEncounterView.ShowHeavyWarning` |
+| `BattleModel.OnSpellHit`（`TotalDamage > 0` のみ）/ `OnDotTick` | `EnemyView.PlayHit` / `PlayDotTick` |
+
+> **注意:** 攻撃予告は `CurrentPhase` ではなく `CurrentAction` の側で出す。`EnemyStateManager` はフェーズ→行動の順に値を書き換えるため、フェーズの通知時点ではまだ新しい攻撃名・`chargeTime` が取れない。
 
 ### BattleInitializer
 
@@ -361,6 +387,8 @@ private void HandleSignConfirmed(HandSign sign)
 | `SpellEffectView` | `PlayEffect` | `_spawnPoint` に `_effectPrefab` を Instantiate。保険として `_safetyDestroyDelay` 後に強制破棄 |
 
 `MotionHandle` は struct なので、キャンセル前に必ず `IsActive()` を確認するのが共通の作法。
+
+B4 で `SpellTelopView` は `ShowSpellName` → `ShowCutIn`（属性色の帯）に、`SpellEffectView` は `PlaySpellEffect` / `PlayEnemyAttackEffect`（出現位置が敵側/プレイヤー側の2つ）に変わった。B4 で増えた View は §12。
 
 ---
 
@@ -390,7 +418,6 @@ private void HandleSignConfirmed(HandSign sign)
 
 - `OnBattleEnd(true)` は**ステージクリアではなく「今の敵を倒した」**の意味。ステージ単位の決着は `SectionProgressManager.OnStageCleared` / `OnGameOver` を購読する
 - 敵・攻撃・ステージの数値は `Editor/B3ContentGenerator.cs` の定義表が正。アセットを Inspector で直接変えても、生成メニューを再実行すると上書きされる（演出系フィールドは上書きしない）
-- `SpellEffectView` は `SpellData.effectPrefab` を見ないので、全術で同じエフェクトが出る（B4で接続予定）
 - `SequenceGuideView.GetSignDisplayName()` は `Release` / `Cancel` / `Guard` を持たない。ただしこれらは `sequence` に入らないので実害は無い
 - `BattleModel.ResolveCalculator()` は呼ばれるたびに Calculator を `new` する。ステートレスなので問題は無いが、再利用の余地はある
 
@@ -405,7 +432,8 @@ private void HandleSignConfirmed(HandSign sign)
 ```csharp
 ReadOnlyReactiveProperty<int>          CurrentSectionIndex  // 0始まり
 ReadOnlyReactiveProperty<SectionPhase> CurrentPhase         // InBattle / Transitioning / StageCleared / GameOver
-Observable<StageSection> OnSectionStarted   // 敵出現・背景切替のトリガ（B4の受け口。現状は未購読）
+Observable<StageData>    OnStageStarted     // ステージ開始（ステージ名表示・B4）。直後に先頭セクションの OnSectionStarted が続く
+Observable<StageSection> OnSectionStarted   // 敵出現・背景切替のトリガ（EnemyPresenter が購読）
 Observable<int>          OnSectionCleared   // 撃破したセクションのindex
 Observable<Unit>         OnStageCleared / OnGameOver
 StageData CurrentStage / StageSection CurrentSection / int SectionCount
@@ -423,7 +451,7 @@ flowchart TD
     BATTLE -->|"OnBattleEnd(false)"| GO["GameOver"]
     BATTLE -->|"OnBattleEnd(true)"| ADV["AdvanceAsync<br/>OnSectionCleared"]
     ADV -->|"最終セクション"| CLR["StageCleared"]
-    ADV -->|"それ以外：1.5秒待機"| ENTER
+    ADV -->|"それ以外：倒した敵を止めて 2.5秒待機"| ENTER
 ```
 
 `GameOver` / `StageCleared` の後片付け（`ClearAll` → `StopLoop`）は `BattleInitializer` が購読して行う。
@@ -435,3 +463,53 @@ flowchart TD
 - 遷移待機は `_transitionCts` で管理し、`StartStage` / ジャンプ / `Dispose` の先頭で `CancelTransition()` する。これが無いと待機明けに古い遷移先へ勝手に進む
 - `EnterSection` は敵データ未設定で中断する場合も**先に index を更新する**。ステージ切替直後に中断すると、`_stageData` だけ新しく index が古いまま残り、`CurrentSection` が範囲外になるため
 - `DebugJumpToSection` は `ClearEnemyEffects` ではなく `ClearAll` を使い、HoT も落とす（素の状態で観察するため）
+- **撃破直後に倒した敵を止める（B4）。** `AdvanceAsync` は1フレーム待ってから `ClearEnemyEffects` → `StopLoop` を行う。止めないと遷移待機中も倒した敵の行動ループが回り、死んだ敵から予告・攻撃の演出が出る（ダメージは `_isBattleActive` で弾かれていたので B3 までは表に出なかった）
+- **演出の尺だけ待つ（B4）。** Model は View を知らず演出の完了を待てないため、`PresentationTimingData` から計算した「尺の合計＋余白」だけ待つ：`TransitionDuration` 2.5秒（撃破0.8 + 前進1.2 + 余白0.5）、`NormalEntryDelay` 1.0秒・`BossEntryDelay` 3.0秒（登場演出の間は1手目の予告を出さない）。いずれも尺から計算するプロパティなので、View の尺を変えれば自動で追従する
+
+---
+
+## 12. 演出レイヤー（B4）
+
+`Scripts/View/`。B4 で増えた View の一覧と、演出まわりの作り方の決まり。
+
+### 描画構成
+
+| 置き場所 | 中身 |
+|---|---|
+| ワールド（Sorting Layer `Background` < `Enemy` < `Effect`） | 背景・敵・暗転（ボス登場）・術エフェクト。カメラの揺れはここだけに効く |
+| `Main Canvas`（`CameraPreview` レイヤー） | 右下のカメラ映像 |
+| `BattleCanvas`（Overlay） | HUD 全部。奥から フラッシュ・ガード枠・大技ビネット → HPバー等 → 数字・テロップ → ボスの帯・決着表示 |
+
+### B4 で増えた View
+
+| View | 公開メソッド | 中身 |
+|---|---|---|
+| `EnemyView` | `Appear` / `PlayCharging` / `HideChargeGauge` / `PlayAttack` / `PlayHit` / `PlayDotTick` / `SetStunned` / `PlayDefeat` / `PlayBossDefeat` | 敵1体。ルート（動かない・`EffectSpawnPoint` を持つ）と `Body`（動く・SpriteRenderer）の2段 |
+| `BackgroundView` | `SetBackground` / `PlayAdvance` | 背景の切替（違う背景の時だけ明転）、前進演出（ズーム＋暗転→明転）。拡大率はカメラから cover fit で計算 |
+| `StageTitleView` | `ShowStageTitle` / `ShowBossTitle(name, delay)` | 画面下にステージ名・ボス名 |
+| `ScreenFlashView` | `FlashDamage(isHeavy)` / `FlashGuard` / `FlashMisfire` / `FlashBossDefeat` | 全画面の色フラッシュ。色の意味づけは View が持つ |
+| `CameraShakeView` | `ShakeDamage(isHeavy)` / `ShakeGuard` / `ShakeBossRoar(delay)` / `ShakeBossDefeat` | Main Camera の減衰する揺れ |
+| `GuardView` | `SetStance` / `PlayGuardSuccess` | 受付中の構え枠と、成功時の「防」。枠だけ出て「防」が出なければ早すぎたと分かる |
+| `DamageNumberView` | `ShowSpellHit` / `ShowDotTick` / `ShowHeal` / `ShowPlayerDamage` | 浮き上がる数字。テンプレートを `ObjectPool` で使い回す。Model の型は知らず、Presenter が分解した値を受け取る |
+| `ComboView` | `SetCombo` | 2以上で「n 連」、0 に戻ったら落ちて消える |
+| `StatusIconView` | `SetEffectActive(type, isActive)` | 蝕（DoT）・封（Stun）・癒（HoT）。属性ではなく効果の種類で表す |
+| `BattleResultView` | `ShowClear(delay)` / `ShowGameOver` / `Hide` | 仮の決着表示（B5 のリザルト画面まで） |
+| `BossEncounterView` | `PlayEncounter` / `ShowHeavyWarning` / `HideHeavyWarning` / `PlayHitStop` | ボス登場の暗転と「強敵出現」の帯、大技の特別予告、撃破時のヒットストップ（`Time.timeScale`） |
+
+### 作り方の決まり
+
+- **成分ごとに持って1か所で合成する。** 演出は同時に重なるため、`EnemyView` / `BackgroundView` は演出ごとの成分（明滅・フラッシュ・影・透明度・揺れ・拡縮）を別々に持ち、`ApplyVisual()` で合成して書き込む。演出同士が上書きし合わない
+- **初期化を Awake 任せにしない。** 最初の敵の登場やコンボ0は `BattleInitializer.Awake` から流れてくるので、View の Awake より先に呼ばれることがある。`EnsureInitialized()` で「最初に使われた時か Awake の早いほう」で1回だけ初期化する
+- **複数のクラスにまたがる尺は時間表（`PresentationTimingData`、アセット `PT_Battle`）に置く。** ボスの登場・撃破の秒数、雑魚の登場・撃破、前進演出の長さを集め、各 View が「開始までの遅延」を受け取る。Presenter は同じ瞬間に全部を呼ぶだけ（タイマーを持たない）。ボス登場の順番が崩れる値を入れると `OnValidate` が警告する
+- **複数の View で使う意味の色はパレット（`BattlePaletteData`、アセット `PL_Battle`）に置く。** DoT・回復・ガード・弱点・属性の色。1つの View でしか使わない色や、各 View に閉じた振幅・倍率はその View の const に残す
+- **調整対象でない共有値は `BattleUiConstants`。** 帯を画面外に出す距離、「大技」の語
+
+### 仮素材
+
+| 素材 | 今 | 差し替え先 |
+|---|---|---|
+| 敵 | 既定スプライト＋敵名から決めた色（ボスは1.6倍） | `EnemyData.sprite` |
+| 背景 | 1枚の絵。ボス戦で背景が未設定なら暗い赤に沈める | `StageData.roadBackgroundSprite` / `bossBackgroundSprite` |
+| 術エフェクト | `Particle/Spell/PS_*.prefab`（スクリプト生成・属性色） | `SpellData.effectPrefab` |
+| カットインの絵 | 無し（帯と術名のみ） | `SpellData.cutInSprite` |
+| 敵の攻撃エフェクト | 無し（フラッシュと揺れのみ） | `EnemyAttackData.effectPrefab` |

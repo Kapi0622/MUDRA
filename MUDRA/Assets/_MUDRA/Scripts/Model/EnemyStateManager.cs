@@ -43,17 +43,24 @@ public class EnemyStateManager : IDisposable
     /// _enemyData / _patternIndex / _loopCts の3つだけなので、
     /// ここでリセットすれば新規生成と同じ状態になる。
     /// </summary>
-    public void SetEnemy(EnemyData enemyData)
+    /// <param name="firstActionDelay">1手目の予告に入るまでの待機（秒）。StartLoopを参照</param>
+    public void SetEnemy(EnemyData enemyData, float firstActionDelay)
     {
         StopLoop();
         _enemyData = enemyData;
-        StartLoop();    // _patternIndexはStartLoop内で0に戻る
+        StartLoop(firstActionDelay);    // _patternIndexはStartLoop内で0に戻る
     }
 
     /// <summary>
     /// 行動ループを開始する。バトル開始時に呼ぶ。
     /// </summary>
-    public void StartLoop()
+    /// <param name="firstActionDelay">
+    /// 1手目のChargingに入るまでの待機（秒）。敵の登場演出の間に予告が始まると、
+    /// 登場と予告が重なってGuardのタイミングが読めなくなるため（B4）。
+    /// 長さは演出の尺で決まり、ボスとそれ以外で違うので呼び出し側（SectionProgressManager）が決める。
+    /// Stun解除からの再開には入れない（行動を遅らせるとStunの効果が実質延びてしまう）。
+    /// </param>
+    public void StartLoop(float firstActionDelay)
     {
         StopLoop();
 
@@ -65,7 +72,7 @@ public class EnemyStateManager : IDisposable
         
         _loopCts = new CancellationTokenSource();
         _patternIndex = 0;
-        RunLoopAsync(_loopCts.Token).Forget();
+        RunLoopAsync(_loopCts.Token, firstActionDelay).Forget();
     }
 
     /// <summary>
@@ -80,10 +87,18 @@ public class EnemyStateManager : IDisposable
         _currentAction.Value = null;
     }
 
-    private async UniTaskVoid RunLoopAsync(CancellationToken ct)
+    private async UniTaskVoid RunLoopAsync(CancellationToken ct, float initialDelay = 0f)
     {
         try
         {
+            if (initialDelay > 0f)
+            {
+                await UniTask.Delay(
+                    TimeSpan.FromSeconds(initialDelay),
+                    cancellationToken: ct
+                );
+            }
+
             while (!ct.IsCancellationRequested)
             {
                 var action = _enemyData.actionPattern[_patternIndex];

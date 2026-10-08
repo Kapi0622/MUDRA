@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ED_WitheredKodama
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u67AF\u308C\u6728\u970A"
-  sprite: {fileID: 0}
+  sprite: {fileID: -6136024688074073093, guid: 9b9ae6c5b12a9244a8f83cfca05c9f9c, type: 3}
   maxHp: 250
   weakElement: 4
   weakMultiplier: 1.5
