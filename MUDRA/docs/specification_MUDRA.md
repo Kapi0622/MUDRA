@@ -187,7 +187,7 @@ Scripts/
 |`BattleResultView`|「討伐」「敗北」の決着表示（B5のリザルト画面までの仮）|MonoBehaviour|
 |`BossEncounterView`|ボス戦専用の画面演出（登場時の暗転と帯・大技の特別予告・撃破時のヒットストップ）|MonoBehaviour|
 
-> **B4での変更:** 当初の`BattleView` / `HandSignView`のような大きなViewは作らず、演出の単位ごとに小さなViewに分けた。各Viewは命令的メソッドを公開するだけでModelを知らない。ボス演出のように複数のViewにまたがる演出は、各Viewが「開始までの遅延」を受け取り、秒数を`BossPresentationTiming`に集約して順番を揃える（Presenterにタイマーを持たせないため）。
+> **B4での変更:** 当初の`BattleView` / `HandSignView`のような大きなViewは作らず、演出の単位ごとに小さなViewに分けた。各Viewは命令的メソッドを公開するだけでModelを知らない。ボス演出のように複数のViewにまたがる演出は、各Viewが「開始までの遅延」を受け取り、秒数を時間表`PresentationTimingData`に集約して順番を揃える（Presenterにタイマーを持たせないため）。
 
 #### Data Layer
 
@@ -199,6 +199,8 @@ Scripts/
 |`EnemyAction`|行動パターン1要素分のデータ（`EnemyAttackData`参照・大技フラグ・行動後の待機時間）|Serializable struct|
 |`StageSection`|ステージ内の1セクション分のデータ（敵データ参照・ボスフラグ）|Serializable struct|
 |`StageData`|ステージ定義データ（セクション配列・背景・BGM）。1ステージは道中雑魚×N + ボス×1のセクションで構成される|ScriptableObject|
+|`PresentationTimingData`|演出の時間表（複数のクラスにまたがる尺）。Modelの待機時間もここから計算する（B4）|ScriptableObject|
+|`BattlePaletteData`|複数のViewで使う意味の色（DoT・回復・ガード・弱点・属性）（B4）|ScriptableObject|
 
 ### 2-2. インターフェース定義
 
@@ -1216,8 +1218,8 @@ sectionProgressManager.OnSectionStarted.Subscribe(section => {
     enemyView.Appear(enemy.sprite, enemy.enemyName, section.isBoss);
     if (section.isBoss) {
         bossEncounterView.PlayEncounter();
-        cameraShakeView.ShakeBossRoar(BossPresentationTiming.Roar);
-        stageTitleView.ShowBossTitle(enemy.enemyName, BossPresentationTiming.Roar);
+        cameraShakeView.ShakeBossRoar(timing.roar);   // timing: PresentationTimingData
+        stageTitleView.ShowBossTitle(enemy.enemyName, timing.roar);
     }
 });
 // 攻撃予告は CurrentAction 側で出す（フェーズ→行動の順に値が変わるため）
@@ -1227,13 +1229,15 @@ enemyStateManager.CurrentAction.Where(a => a.HasValue && phase == EnemyPhase.Cha
 
 #### 演出の尺とModelの待機
 
-Modelは演出の完了を待てないため、演出の尺の合計を`SectionProgressManager`の定数として確保する。View側の尺を変えたら合わせること。
+Modelは演出の完了を待てないため、「演出の尺の合計＋余白」だけ待つ。尺と余白は`PresentationTimingData`（アセット`PT_Battle`）にあり、`BattleInitializer`が`SectionProgressManager`に注入する。待機時間は尺から計算するプロパティなので、View側の尺を変えれば自動で追従する。
 
-|定数|値|中身|
+|プロパティ|計算式|初期値での値|
 |---|---|---|
-|`TransitionDuration`|2.5秒|撃破演出0.8 + 前進演出1.2 + 余白|
-|`NormalEntryDelay`|1.0秒|雑魚の登場0.6 + 余白。この間は1手目の予告を出さない|
-|`BossEntryDelay`|3.0秒|ボスの登場シーケンス2.4 + 余白|
+|`TransitionDuration`|`NormalDefeatDuration` + `advanceDuration` + `transitionPadding`|0.8 + 1.2 + 0.5 = 2.5秒|
+|`NormalEntryDelay`|`normalAppearDuration` + `normalEntryPadding`。この間は1手目の予告を出さない|0.6 + 0.4 = 1.0秒|
+|`BossEntryDelay`|`EncounterDuration`（`roar` + `dimFadeOutDuration`）+ `bossEntryPadding`|2.4 + 0.6 = 3.0秒|
+
+余白は`[Min(0)]`なので、待機が演出より短くなることはない。
 
 ---
 

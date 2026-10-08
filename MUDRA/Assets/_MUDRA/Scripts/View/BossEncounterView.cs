@@ -44,9 +44,24 @@ public class BossEncounterView : MonoBehaviour
     private MotionHandle _vignetteHandle;
     private MotionHandle _heavyTextHandle;
     private bool _isHitStopping;
+    private bool _isInitialized;
 
     private void Awake()
     {
+        EnsureInitialized();
+    }
+
+    /// <summary>
+    /// 初期化を1回だけ行う。Awakeを待たずに公開メソッドからも呼ぶ。
+    /// 最初のセクションがボスだと、PlayEncounterはBattleInitializer.Awake内のStartStageから流れてくるため、
+    /// オブジェクト間のAwake順によってはこのViewのAwakeより先に呼ばれる。
+    /// その後にAwakeで初期化すると、表示し始めた「強敵出現」の帯を消してしまう。
+    /// </summary>
+    private void EnsureInitialized()
+    {
+        if (_isInitialized) return;
+        _isInitialized = true;
+
         SetDimAlpha(0f);
         SetImageAlpha(_vignette, 0f);
         _heavyTextGroup.alpha = 0f;
@@ -58,6 +73,7 @@ public class BossEncounterView : MonoBehaviour
     /// </summary>
     public void PlayEncounter()
     {
+        EnsureInitialized();
         CancelEncounterMotions();
 
         // 暗転: フェードイン → 咆哮まで維持 → フェードアウト
@@ -91,6 +107,7 @@ public class BossEncounterView : MonoBehaviour
     /// </summary>
     public void ShowHeavyWarning(string attackName)
     {
+        EnsureInitialized();
         CancelWarningMotions();
 
         _heavyText.text = HeavyPrefix + attackName;

@@ -138,6 +138,8 @@ Model は View を知らないので演出の完了を待てない。そこで�
 
 最初の敵の登場・ステージ名・コンボ0などは `BattleInitializer.Awake` 内の `StartStage` と購読から流れてくるため、オブジェクト間の Awake 順によっては View の Awake より先に公開メソッドが呼ばれる。`EnemyView` / `StageTitleView` / `ComboView` / `StatusIconView` / `BattleResultView` は `EnsureInitialized()` で「最初に使われた時か Awake の早いほう」で1回だけ初期化する。特に `EnemyView` は基準の拡縮を記録するので、順番が逆だと拡縮0を基準にして敵が見えなくなる。
 
+> B4後に `BossEncounterView` も同じ形にした。最初のセクションがボスだと、後から走る Awake が表示し始めた「強敵出現」の帯を消していたため。
+
 ### 3-9. 回復術で被弾演出を出さない
 
 回復術（威力0）も `OnSpellHit` を流すため、敵が被弾フラッシュし、「0」の数字も出てしまう。Presenter 側で `TotalDamage > 0` のときだけ被弾演出・数字を出す。`OnSpellHit` 自体は回復術でも流す（コンボは加算されるため、「術が成立した」通知としては正しい）。
