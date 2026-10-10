@@ -615,6 +615,30 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 1006057041}
     m_Modifications:
+    - target: {fileID: -8837774153085666347, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
+      propertyPath: _landmarkRadius
+      value: 45
+      objectReference: {fileID: 0}
+    - target: {fileID: -8837774153085666347, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
+      propertyPath: _connectionColor.b
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: -8837774153085666347, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
+      propertyPath: _connectionColor.g
+      value: 0.92
+      objectReference: {fileID: 0}
+    - target: {fileID: -8837774153085666347, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
+      propertyPath: _leftLandmarkColor.g
+      value: 0.25
+      objectReference: {fileID: 0}
+    - target: {fileID: -8837774153085666347, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
+      propertyPath: _rightLandmarkColor.b
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: -8837774153085666347, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
+      propertyPath: _rightLandmarkColor.g
+      value: 0.6
+      objectReference: {fileID: 0}
     - target: {fileID: 7434967355688441420, guid: 87a9be2a7620991a78342ef9a56fa62c, type: 3}
       propertyPath: m_Name
       value: Multi HandLandmarkList Annotation
@@ -3529,7 +3553,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1408001608}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 35e1b5b5c6976cb4caa6422a60672ff0, type: 3}
   m_Name: 
@@ -3569,7 +3593,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1408001608}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3f6979f08660e7d45957883d5d2f3976, type: 3}
   m_Name: 
@@ -4107,6 +4131,7 @@ MonoBehaviour:
   _sequenceGuideView: {fileID: 821531495}
   _spellTelopView: {fileID: 340701382}
   _debugKeyboardInput: {fileID: 0}
+  _logHandSignJudgement: 0
 --- !u!114 &1560692252
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6108,35 +6133,35 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485022354238, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485022354238, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485022354238, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 1335
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485022354238, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -30
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485785395896, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchorMax.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485785395896, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchorMin.y
-      value: 1
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485785395896, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchoredPosition.x
-      value: 1197
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 5158692485785395896, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchoredPosition.y
-      value: -30
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8571076842338426121, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_Name
@@ -6255,12 +6280,20 @@ PrefabInstance:
       value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8571076843876106073, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
+      propertyPath: m_AnchorMax.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8571076843876106073, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
+      propertyPath: m_AnchorMin.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 8571076843876106073, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchoredPosition.y
       value: -3
       objectReference: {fileID: 0}
     - target: {fileID: 8571076843876106078, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 8571076843980202029, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: contents
@@ -6273,6 +6306,10 @@ PrefabInstance:
     - target: {fileID: 8571076844135231237, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_IsActive
       value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 8571076844135231239, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
+      propertyPath: m_RaycastTarget
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 8571076844286272849, guid: 140d1d2c406167c50819d89f86d9092e, type: 3}
       propertyPath: m_AnchorMax.y
