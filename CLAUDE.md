@@ -4,13 +4,13 @@
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
 Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B4（バトル演出・UI強化）まで完了。次は B5（ゲームフロー実装）。**
+現在地: **β版 B4.5（手印認識の改善）まで完了。次は B5（ゲームフロー実装）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の64ファイル・約6,560行が全て。** 小さい。
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の66ファイル・約7,100行が全て。** 小さい。
 （うち `Editor/B3ContentGenerator.cs` 約590行は敵・ステージSOの生成ツールで、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
@@ -61,6 +61,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 |---|---|
 | `MUDRA/docs/architecture/` 3本 | **現コードの断面図。調査はまずここから** |
 | `MUDRA/docs/specification_MUDRA.md` | 設計の正典（v1.3）。**未実装のものも含む。**§指定で部分読み |
+| `MUDRA/docs/hand_sign_tuning.md` | 手印認識の閾値の調整手順。判定の違和感を直すときに読む |
 | `MUDRA/docs/devlog/dev_log_*.md` | 当時のスナップショット。設計理由を追う時だけ該当1本 |
 | `README.md` / `docs/proposal_MUDRA.md` | 企画・世界観。実装作業では通常不要 |
 
