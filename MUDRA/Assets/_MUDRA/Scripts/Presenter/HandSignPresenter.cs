@@ -19,6 +19,9 @@ public class HandSignPresenter : MonoBehaviour
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField, Tooltip("アタッチするとカメラをバイパスしてキーボード入力でテスト可能")]
         private DebugKeyboardInput _debugKeyboardInput;
+
+        [SerializeField, Tooltip("オンにすると手印判定の経過（候補切替・確定・合の保持）をログに出す。閾値の調整用")]
+        private bool _logHandSignJudgement;
     #endif
 
 
@@ -66,6 +69,9 @@ public class HandSignPresenter : MonoBehaviour
     #endif
         {
             // 通常モード: HandTrackingService 経由
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            _handTrackingService.IsDebugLogEnabled = _logHandSignJudgement;
+    #endif
             _handTrackingService.OnHandSignRecognized
                 .Subscribe(HandleSignConfirmed)
                 .AddTo(_disposables);
@@ -130,7 +136,7 @@ public class HandSignPresenter : MonoBehaviour
         if (_debugKeyboardInput != null) return; // キーボードモードではTick不要
     #endif
 
-        _handTrackingService.Tick();
+        _handTrackingService.Tick(Time.deltaTime);
     }
 
     private void OnDestroy()

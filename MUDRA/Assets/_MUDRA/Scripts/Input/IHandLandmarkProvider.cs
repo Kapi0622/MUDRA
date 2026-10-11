@@ -25,5 +25,13 @@ namespace MUDRA.HandTracking
         /// 該当する手が検出されていない場合はnullを返す。
         /// </summary>
         bool? IsLeftHand(int handIndex);
+
+        /// <summary>
+        /// 推論結果を受け取るたびに1ずつ増える番号。
+        /// 判定側は毎描画フレーム呼ばれるが、推論結果の更新はそれより粗い（約35回/秒）。
+        /// この値の変化で「新しい推論結果が届いたか」を見分け、手の速さなど
+        /// 推論間の差分を使う計算で、同じ古い結果を重複して扱わないようにする。
+        /// </summary>
+        int ResultVersion { get; }
     }
 }

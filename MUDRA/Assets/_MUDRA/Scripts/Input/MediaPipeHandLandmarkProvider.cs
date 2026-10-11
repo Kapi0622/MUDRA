@@ -29,6 +29,10 @@ namespace MUDRA.HandTracking
         private int _detectedHandCount;
 
         public int DetectedHandCount => _detectedHandCount;
+
+        private int _resultVersion;
+
+        public int ResultVersion => _resultVersion;
         
         // 各手の左右情報（true = 左手、null = 未検出）
         private readonly bool?[] _cachedIsLeftHand = new bool?[2];
@@ -77,6 +81,8 @@ namespace MUDRA.HandTracking
 
         private void UpdateCache(HandLandmarkerResult result)
         {
+            _resultVersion++;
+
             // 全手のキャッシュをクリア
             for (var h = 0; h < _cachedLandmarks.Length; h++)
             {

@@ -2,9 +2,9 @@
 
 > **ドキュメント種別:** アーキテクチャ復習ドキュメント
 > **作成日:** 2026/09/18
-> **最終更新:** 2026/10/05（B4完了時点に更新）
-> **対象コミット:** `b4034df` + B4の未コミット変更
-> **対象コード:** `Assets/_MUDRA/Scripts`（64ファイル / 約6,560行。うちEditor生成ツール1本・約590行）
+> **最終更新:** 2026/10/11（B4.5：手印認識の改善を反映）
+> **対象コミット:** `47b031f` + B4.5の未コミット変更
+> **対象コード:** `Assets/_MUDRA/Scripts`（66ファイル / 約7,100行。うちEditor生成ツール1本・約590行）
 > **ステータス:** 現状スナップショット
 
 ---
@@ -58,7 +58,7 @@ Assets/_MUDRA/
     │   PresentationTimingData（演出の時間表） / BattlePaletteData（意味の色）
     ├── Input/                   … 手印認識（namespace MUDRA.HandTracking）
     │   IHandLandmarkProvider / MediaPipeHandLandmarkProvider
-    │   HandTrackingService(484行・中核) / HandLandmark / FingerState / HandSignEnum
+    │   HandTrackingService(約840行・中核) / HandLandmark / FingerState / HandSignEnum
     │   └── HandTracking/TempHandTrackingRunner … 旧ドライバ（本番経路ではない）
     ├── Model/                   … Pure C#。Unity非依存のゲームロジック
     │   SpellSequenceModel / BattleModel / SpellCastResult
@@ -209,7 +209,7 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 |---|---|
 | `Solution` | MediaPipe の `HandLandmarkerRunner`（カメラ入力〜推論） |
 | `Main Canvas`（Screen Space - Camera） | MediaPipe サンプル由来。右下のカメラ映像。Sorting Layer `CameraPreview`（最前面） |
-| Provider用 | `MediaPipeHandLandmarkProvider` + `TempHandTrackingRunner` + `HandTrackingActiveTest` |
+| Provider用 | `MediaPipeHandLandmarkProvider` + `TempHandTrackingRunner`（無効） + `HandTrackingActiveTest`（無効） |
 | `BattleSystem` | `BattleInitializer` / `HandSignPresenter` / `BattlePresenter` / `EnemyPresenter` |
 | `BattleField`（ワールド） | `Background`（`BackgroundView`）/ `Enemy`（`EnemyView`、子に `Body` と `EffectSpawnPoint`）/ `PlayerEffectSpawnPoint` / `BossDimOverlay` |
 | `BattleCanvas`（Overlay・HUD） | HPバー×2 / ガイド / テロップ / 数字 / コンボ / 状態アイコン / ステージ名 / 決着 / フラッシュ / ガード枠 / ボス演出 |

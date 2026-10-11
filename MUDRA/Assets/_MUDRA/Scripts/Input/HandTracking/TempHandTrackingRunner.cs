@@ -18,7 +18,7 @@ public sealed class TempHandTrackingRunner : MonoBehaviour
 
     private void Update()
     {
-        _service.Tick();
+        _service.Tick(Time.deltaTime);
     }
 
     private void OnDestroy()
