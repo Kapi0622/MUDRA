@@ -90,7 +90,7 @@ namespace MUDRA.HandTracking
         /// <summary>前回処理した推論結果の番号（IHandLandmarkProvider.ResultVersion）</summary>
         private int _lastResultVersion = -1;
 
-        /// <summary>前回の推論結果からの経過時間（秒）。速さの分母に使う</summary>
+        /// <summary>前回の推論結果からの経過時間（秒）。速さの分母と、安定判定で積算する時間に使う</summary>
         private float _timeSinceLastResult;
 
         /// <summary>前回の推論結果での計測点の位置。[手の区分, 計測点]</summary>
@@ -353,6 +353,11 @@ namespace MUDRA.HandTracking
         /// 駆動役（Presenter）から毎フレーム呼ばれるエントリーポイント。
         /// Providerから最新座標を取得し、手の検出数に応じて判定フローを分岐する。
         ///
+        /// 判定は新しい推論結果が届いたTickだけ行う（推論は描画より粗く、約35回/秒）。
+        /// 推論が止まっている間も古い結果で判定し続けると、止まる直前の1回分の結果
+        /// （組み替え途中の形など）が確定時間を満たして確定してしまうため。
+        /// 合の保持の残り時間は実時間で管理するので、推論の有無に関係なく毎Tick進める。
+        ///
         /// 2手検出時:
         ///   1. 合掌チェック（手首距離ベース）→ 成功なら Union
         ///   2. 失敗なら Stage 1（左右各手の片手判定）→ Stage 2（両手パターン照合）
@@ -361,11 +366,9 @@ namespace MUDRA.HandTracking
         /// 1手検出時:
         ///   Stage 1（片手パターン照合）のみ
         /// </summary>
-        /// <param name="deltaTime">前回のTickからの経過時間（秒）。安定判定の時間計測に使う</param>
+        /// <param name="deltaTime">前回のTickからの経過時間（秒）。合の保持と、推論結果の間隔の計測に使う</param>
         public void Tick(float deltaTime)
         {
-            Array.Clear(_seenSlots, 0, _seenSlots.Length);
-
             if (IsUnionHoldActive)
             {
                 _unionHoldRemaining = MathF.Max(_unionHoldRemaining - deltaTime, 0f);
@@ -374,17 +377,19 @@ namespace MUDRA.HandTracking
 #endif
             }
 
-            _timeSinceLastResult += deltaTime;
-            if (_provider.ResultVersion != _lastResultVersion)
-            {
-                _lastResultVersion = _provider.ResultVersion;
-                UpdateHandSpeed(_timeSinceLastResult);
-                _timeSinceLastResult = 0f;
-            }
-
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
             _debugCandidateWallElapsed += deltaTime;
 #endif
+
+            _timeSinceLastResult += deltaTime;
+            if (_provider.ResultVersion == _lastResultVersion) return;
+
+            _lastResultVersion = _provider.ResultVersion;
+            var resultInterval = _timeSinceLastResult;
+            _timeSinceLastResult = 0f;
+
+            Array.Clear(_seenSlots, 0, _seenSlots.Length);
+            UpdateHandSpeed(resultInterval);
 
             var hand0 = _provider.GetLandmarks(0);
 
@@ -420,7 +425,7 @@ namespace MUDRA.HandTracking
             }
 
             ClearUnseenFingerHistory();
-            JudgeStability(currentSign, deltaTime);
+            JudgeStability(currentSign, resultInterval);
         }
 
         // =========================================================================
@@ -766,7 +771,8 @@ namespace MUDRA.HandTracking
 
         /// <summary>
         /// 同一手印が、手が静止している間に _stableSeconds 秒続いたら確定させる。
-        /// 時間は描画フレームのdeltaTimeで積算するため、FPSによらず確定時間が一定になる。
+        /// 新しい推論結果が届くたびに、前回の結果からの経過時間を積算する。
+        /// 秒で数えるためFPSに左右されず、推論が止まっている間は時間が進まない。
         ///
         /// 【静止判定】
         /// 平滑化後の手の速さが StillSpeedThreshold 未満のときだけ時間を積算する。
@@ -783,7 +789,8 @@ namespace MUDRA.HandTracking
         /// 別の手印に変わるまで再確定しない。
         /// 同じ印を保持し続けても確定イベントは1回だけ発火する。
         /// </summary>
-        private void JudgeStability(HandSign? currentSign, float deltaTime)
+        /// <param name="elapsedSeconds">前回の推論結果からの経過時間（秒）</param>
+        private void JudgeStability(HandSign? currentSign, float elapsedSeconds)
         {
             if (currentSign is null)
             {
@@ -818,7 +825,7 @@ namespace MUDRA.HandTracking
             // 手が動いている間（印の組み替え中）は確定時間を進めない
             if (_smoothedHandSpeed < StillSpeedThreshold)
             {
-                _stableElapsed += deltaTime;
+                _stableElapsed += elapsedSeconds;
             }
 
             if (_stableElapsed >= _stableSeconds)
