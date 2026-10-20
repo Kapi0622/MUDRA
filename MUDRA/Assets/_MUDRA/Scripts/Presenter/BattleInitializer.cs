@@ -1,7 +1,13 @@
+using System;
+using System.Linq;
+using Cysharp.Threading.Tasks;
 using MUDRA.Data;
 using MUDRA.HandTracking;
 using UnityEngine;
 using R3;
+#if UNITY_EDITOR
+using UnityEngine.SceneManagement;
+#endif
 
 /// <summary>
 /// 全Modelの生成と各Presenterへの注入を行うエントリーポイント。
@@ -11,6 +17,11 @@ using R3;
 /// セクション遷移で作り直すインスタンスは無く、
 /// SectionProgressManagerがBattleModelとEnemyStateManagerの中身だけを差し替える。
 /// そのため一度張った購読は最後まで有効で、再配線は発生しない。
+///
+/// B5からはInGameを常駐シーン（App）に加算ロードする構成になり、自分からは組み立てを始めない。
+/// AppのGameFlowPresenterがシーンを読み込んだ後に Initialize（組み立て）→ 遷移演出 → BeginBattle（開始）の順に呼ぶ。
+/// ステージ・カメラ（Provider）・GameStateManagerはApp側にあるため、BattleContextで受け取る。
+/// リトライはシーンごと読み直すので、Modelは必ず新しく作り直される。
 /// </summary>
 public class BattleInitializer : MonoBehaviour
 {
@@ -18,14 +29,9 @@ public class BattleInitializer : MonoBehaviour
     [SerializeField] private HandSignPresenter _handSignPresenter;
     [SerializeField] private BattlePresenter _battlePresenter;
     [SerializeField] private EnemyPresenter _enemyPresenter;
-
-    [Header("Input")]
-    [SerializeField] private MediaPipeHandLandmarkProvider _provider;
+    [SerializeField] private PausePresenter _pausePresenter;
 
     [Header("Data")]
-    [SerializeField] private SpellData[] _allSpells;
-    [Tooltip("全ステージ。起動時は要素0から開始する。デバッグメニューのステージジャンプ候補にもなる")]
-    [SerializeField] private StageData[] _allStages;
     [SerializeField] private int _playerMaxHp = 100;
     [Tooltip("演出の時間表。Modelの待機時間とViewの尺を同じ表から決める")]
     [SerializeField] private PresentationTimingData _presentationTiming;
@@ -33,6 +39,15 @@ public class BattleInitializer : MonoBehaviour
     [Header("View")]
     [SerializeField] private HpBarView _playerHpBarView;
     [SerializeField] private HpBarView _bossHpBarView;
+
+#if UNITY_EDITOR || DEVELOPMENT_BUILD
+    [Header("デバッグ")]
+    [SerializeField, Tooltip("エディタでInGameだけを再生した時に始めるステージ。未設定ならAppの全ステージの先頭")]
+    private StageData _debugStartStage;
+
+    /// <summary>エディタでInGameだけを再生した時に始めるステージ</summary>
+    public StageData DebugStartStage => _debugStartStage;
+#endif
 
     // Model群（Dispose管理のため保持）
     private HandTrackingService _handTrackingService;
@@ -43,37 +58,89 @@ public class BattleInitializer : MonoBehaviour
     private StatusEffectManager _statusEffectManager;
     private GuardWindowManager _guardWindowManager;
     private SectionProgressManager _sectionProgressManager;
+    private BattleEndModel _battleEndModel;
+    private PauseModel _pauseModel;
+    private BattleStatsModel _battleStatsModel;
+
+    private BattleContext _context;
+    private bool _isInitialized;
+    private bool _hasBegun;
 
     private readonly CompositeDisposable _disposables = new();
 
-    private void Awake()
+    /// <summary>
+    /// Modelを組み立て、各Presenterへ注入する。まだバトルは始めない（敵は出てこない）。
+    /// AppのGameFlowPresenterから、シーンを読み込んだ直後に呼ばれる。
+    /// </summary>
+    /// <returns>ステージデータに不備があり組み立てられなかった場合はfalse</returns>
+    public bool Initialize(BattleContext context)
     {
-        if (!ValidateStageData()) return;
+        if (_isInitialized) return true;
+
+        _context = context;
+        if (!ValidateStageData()) return false;
 
         BuildStageScopeModels();
         InjectPresenters();
         SubscribeStageEnd();
 
-        // バトル開始の唯一の入口。
-        // 先頭セクションの敵の流し込みとEnemyStateManagerのループ開始は
-        // SectionProgressManagerが行うため、ここでStartLoopは呼ばない。
+        _isInitialized = true;
+        return true;
+    }
+
+    /// <summary>
+    /// バトルを開始する。遷移演出が明けてから呼ばれる。
+    /// ステージ開始の演出（ステージ名 →「結印！」）を流し終えてから、ステージを始める。
+    /// 先頭セクションの敵の流し込みとEnemyStateManagerのループ開始は
+    /// SectionProgressManagerが行うため、ここでStartLoopは呼ばない。
+    /// </summary>
+    public void BeginBattle()
+    {
+        if (!_isInitialized || _hasBegun) return;
+        _hasBegun = true;
+
+        BeginBattleAsync().Forget();
+    }
+
+    private async UniTaskVoid BeginBattleAsync()
+    {
+        try
+        {
+            await _enemyPresenter.PlayStageIntroAsync(FirstStage, destroyCancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            // 演出の途中でシーンごと破棄された（リタイア等）
+            return;
+        }
+
         _sectionProgressManager.StartStage(FirstStage);
     }
 
-    /// <summary>起動時に開始するステージ</summary>
-    private StageData FirstStage => _allStages[0];
+#if UNITY_EDITOR
+    /// <summary>
+    /// エディタでInGameだけを再生した時の入口。
+    /// Appが読み込まれていなければ加算ロードする。読み込まれたAppのAppInitializerは
+    /// InGameが既にあることに気付き、Titleを飛ばしてこのシーンでバトルを始める（今までの開発手順を崩さないため）。
+    /// </summary>
+    private void Start()
+    {
+        if (_isInitialized) return;
+        if (SceneManager.GetSceneByName(SceneNames.App).isLoaded) return;
+
+        Debug.Log("[BattleInitializer] InGame単体で再生されたため、Appを読み込みます");
+        SceneManager.LoadSceneAsync(SceneNames.App, LoadSceneMode.Additive);
+    }
+#endif
+
+    /// <summary>開始するステージ</summary>
+    private StageData FirstStage => _context.Stage;
 
     private bool ValidateStageData()
     {
-        if (_allStages == null || _allStages.Length == 0)
-        {
-            Debug.LogError("[BattleInitializer] StageDataが1つも設定されていません");
-            return false;
-        }
-
         if (FirstStage == null)
         {
-            Debug.LogError("[BattleInitializer] 開始ステージ（_allStagesの要素0）が未設定です");
+            Debug.LogError("[BattleInitializer] 開始ステージが未設定です");
             return false;
         }
 
@@ -101,8 +168,8 @@ public class BattleInitializer : MonoBehaviour
         // 以降の敵はSectionProgressManagerがSetEnemyで差し替える。
         var firstEnemy = FirstStage.sections[0].enemyData;
 
-        _handTrackingService = new HandTrackingService(_provider);
-        _spellSequenceModel = new SpellSequenceModel(_allSpells, () => Time.time);
+        _handTrackingService = new HandTrackingService(_context.Provider);
+        _spellSequenceModel = new SpellSequenceModel(_context.AllSpells.ToArray(), () => Time.time);
         _playerStateManager = new PlayerStateManager();
         _enemyStateManager = new EnemyStateManager(firstEnemy);
         _battleModel = new BattleModel(_playerMaxHp, firstEnemy);
@@ -124,6 +191,13 @@ public class BattleInitializer : MonoBehaviour
             _statusEffectManager,
             _presentationTiming
         );
+
+        _battleEndModel = new BattleEndModel(_sectionProgressManager, _presentationTiming);
+        _pauseModel = new PauseModel(_presentationTiming.resumeCountdown);
+        _context.IsAutoPauseEnabled
+            .Subscribe(isEnabled => _pauseModel.IsAutoPauseEnabled = isEnabled)
+            .AddTo(_disposables);
+        _battleStatsModel = new BattleStatsModel(_battleModel, _spellSequenceModel, _sectionProgressManager);
     }
 
     private void InjectPresenters()
@@ -132,7 +206,17 @@ public class BattleInitializer : MonoBehaviour
             _handTrackingService,
             _spellSequenceModel,
             _playerStateManager,
-            _guardWindowManager
+            _guardWindowManager,
+            _pauseModel
+        );
+
+        _pausePresenter.Initialize(
+            _pauseModel,
+            _context.GameStateManager,
+            _context.Provider,
+            !_handSignPresenter.IsKeyboardMode,
+            _context.AllSpells,
+            _context.Settings
         );
 
         _battlePresenter.Initialize(
@@ -141,6 +225,7 @@ public class BattleInitializer : MonoBehaviour
             _spellSequenceModel,
             _statusEffectManager,
             _guardWindowManager,
+            _battleStatsModel,
             _playerHpBarView,
             _bossHpBarView
         );
@@ -151,8 +236,11 @@ public class BattleInitializer : MonoBehaviour
             _battleModel,
             _presentationTiming
         );
+        _enemyPresenter.PrepareStage(FirstStage);
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        var gameStateManager = _context.GameStateManager;
+
         var debugMenu = FindFirstObjectByType<DebugMenuView>();
         if (debugMenu != null)
         {
@@ -161,13 +249,23 @@ public class BattleInitializer : MonoBehaviour
                 _statusEffectManager,
                 _enemyStateManager,
                 _sectionProgressManager,
-                _allStages);
+                _context.AllStages.ToArray(),
+                () => gameStateManager.Retry());
+        }
+
+        // Rキーのやり直しは、シーンを直接読み直さずGameStateManager経由で行う（Appまで読み直さないため）
+        var debugKeyboard = FindFirstObjectByType<DebugKeyboardInput>();
+        if (debugKeyboard != null)
+        {
+            debugKeyboard.OnRetryRequested
+                .Subscribe(_ => gameStateManager.Retry())
+                .AddTo(_disposables);
         }
     #endif
     }
 
     /// <summary>
-    /// ステージの決着（クリア・敗北）時の後片付けを配線する。
+    /// ステージの決着（クリア・敗北）時の後片付けと、Result画面への報告を配線する。
     /// セクション撃破時の後片付けはSectionProgressManager側の担当で、ここには来ない。
     /// </summary>
     private void SubscribeStageEnd()
@@ -184,6 +282,23 @@ public class BattleInitializer : MonoBehaviour
             })
             .AddTo(_disposables);
 
+        // ポーズできるのはバトルの進行中だけ。デバッグのジャンプで決着後に再開した時のため、セクション開始でも立て直す
+        _sectionProgressManager.OnSectionStarted
+            .Subscribe(_ => _pauseModel.SetBattleActive(true))
+            .AddTo(_disposables);
+
+        Observable.Merge(
+                _sectionProgressManager.OnStageCleared,
+                _sectionProgressManager.OnGameOver
+            )
+            .Subscribe(_ => _pauseModel.SetBattleActive(false))
+            .AddTo(_disposables);
+
+        // 決着の演出を見せ終えたらResult画面へ。挑戦したステージはデバッグのジャンプ後も現在のステージで記録する
+        _battleEndModel.OnFinished
+            .Subscribe(isWin => _context.GameStateManager.EndBattle(CreateRecord(isWin)))
+            .AddTo(_disposables);
+
         _sectionProgressManager.OnStageCleared
             .Subscribe(_ => Debug.Log("[Stage] ステージクリア"))
             .AddTo(_disposables);
@@ -197,9 +312,24 @@ public class BattleInitializer : MonoBehaviour
             .AddTo(_disposables);
     }
 
+    private BattleRecord CreateRecord(bool isWin)
+    {
+        var stats = _battleStatsModel.CreateSnapshot();
+        BattleRank? rank = isWin ? RankCalculator.Calculate(stats, _playerMaxHp) : null;
+        return new BattleRecord(
+            _sectionProgressManager.CurrentStage,
+            isWin,
+            stats,
+            rank,
+            _sectionProgressManager.CurrentSection.enemyData);
+    }
+
     private void OnDestroy()
     {
         _disposables.Dispose();
+        _battleEndModel?.Dispose();
+        _pauseModel?.Dispose();
+        _battleStatsModel?.Dispose();
         _sectionProgressManager?.Dispose();
         _enemyStateManager?.StopLoop();
         _handTrackingService?.Dispose();

@@ -125,6 +125,16 @@ namespace MUDRA.HandTracking
 
         public Observable<HandSign> OnHandSignRecognized => _onHandSignRecognized;
 
+        /// <summary>確定前の判定状況（候補の印と確定までの進み具合）</summary>
+        private readonly ReactiveProperty<HandSignCandidate> _candidate = new(HandSignCandidate.None);
+
+        /// <summary>
+        /// 確定前の判定状況。判定中UIに「何の印として読まれていて、確定までどこまで進んだか」を出すために公開する。
+        /// 新しい推論結果が届いたTickでしか更新されない（約35回/秒）ため、滑らかに見せたい場合は表示側で補間する。
+        /// 印の意味付け（発動・解除・ガード）はこれまでどおり受け取る側が行う。
+        /// </summary>
+        public ReadOnlyReactiveProperty<HandSignCandidate> Candidate => _candidate;
+
         // =========================================================================
         // 定数：ランドマークインデックス
         // =========================================================================
@@ -796,6 +806,8 @@ namespace MUDRA.HandTracking
             {
                 // 状態には一切触れず、比較・カウントの対象から除外するだけ
                 // 手が一瞬消えても、直前の確定状態を保持したまま継続する
+                // 表示だけは「候補なし」にする（映っていない印を出し続けないため）
+                _candidate.Value = HandSignCandidate.None;
                 return;
             }
 
@@ -814,11 +826,13 @@ namespace MUDRA.HandTracking
                 _lastSign = currentSign;
                 _stableElapsed = 0f;
                 _isConfirmed = false;
+                _candidate.Value = new HandSignCandidate(currentSign, 0f);
                 return;
             }
 
             if (_isConfirmed)
             {
+                _candidate.Value = new HandSignCandidate(currentSign, 1f);
                 return;
             }
 
@@ -835,8 +849,14 @@ namespace MUDRA.HandTracking
                 DebugLog($"確定 {currentSign}（積算{_stableElapsed:F2}秒" +
                          $"・実時間{_debugCandidateWallElapsed:F2}秒・速さ {_smoothedHandSpeed:F2}）");
 #endif
+                // 確定通知を先に出してから進み具合を1にする。
+                // 判定中UIは「1になったら隠す」ので、逆順だと確定演出の前に一瞬消える処理が走るため
                 _onHandSignRecognized.OnNext(currentSign.Value);
+                _candidate.Value = new HandSignCandidate(currentSign, 1f);
+                return;
             }
+
+            _candidate.Value = new HandSignCandidate(currentSign, MathF.Min(_stableElapsed / _stableSeconds, 1f));
         }
 
         // =========================================================================
@@ -846,6 +866,7 @@ namespace MUDRA.HandTracking
         public void Dispose()
         {
             _onHandSignRecognized.Dispose();
+            _candidate.Dispose();
         }
     }
 }

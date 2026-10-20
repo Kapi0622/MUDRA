@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ED_WillOWisp
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u9B3C\u706B"
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 85d1de94b7d4ee6419d50095599abfde, type: 3}
   maxHp: 250
   weakElement: 3
   weakMultiplier: 1.5

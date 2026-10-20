@@ -13,6 +13,7 @@ public class BattlePresenter : MonoBehaviour
     private SpellSequenceModel _spellSequenceModel;
     private StatusEffectManager _statusEffectManager;
     private GuardWindowManager _guardWindowManager;
+    private BattleStatsModel _battleStatsModel;
     
     private HpBarView _playerHpBarView;
     private HpBarView _bossHpBarView;
@@ -38,6 +39,7 @@ public class BattlePresenter : MonoBehaviour
         SpellSequenceModel spellSequenceModel,
         StatusEffectManager statusEffectManager,
         GuardWindowManager guardWindowManager,
+        BattleStatsModel battleStatsModel,
         HpBarView playerHpBarView,
         HpBarView bossHpBarView)
     {
@@ -46,6 +48,7 @@ public class BattlePresenter : MonoBehaviour
         _spellSequenceModel = spellSequenceModel;
         _statusEffectManager = statusEffectManager;
         _guardWindowManager = guardWindowManager;
+        _battleStatsModel = battleStatsModel;
         _playerHpBarView = playerHpBarView;
         _bossHpBarView = bossHpBarView;
 
@@ -133,6 +136,7 @@ public class BattlePresenter : MonoBehaviour
     {
         _statusEffectManager?.Tick(Time.deltaTime);
         _guardWindowManager?.Tick(Time.deltaTime);
+        _battleStatsModel?.Tick(Time.deltaTime);
     }
 
     private void HandleEnemyAttack(EnemyAction action)
@@ -172,4 +176,4 @@ public class BattlePresenter : MonoBehaviour
     {
         _disposables.Dispose();
     }
-}
+}

@@ -1,3 +1,5 @@
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using R3;
 using MUDRA.Data;
@@ -16,12 +18,17 @@ public class EnemyPresenter : MonoBehaviour
     [SerializeField] private BackgroundView _backgroundView;
     [SerializeField] private StageTitleView _stageTitleView;
     [SerializeField] private BattleResultView _battleResultView;
+    [SerializeField] private StageIntroView _stageIntroView;
+    [Tooltip("ステージ開始の演出で、弱点属性を属性色で出すために使う")]
+    [SerializeField] private BattlePaletteData _palette;
 
     // ボス戦専用の演出（B4）。カメラとフラッシュはBattlePresenterと共有するViewだが、参照を持つだけで状態は持ち合わない
     [Header("ボス戦の演出")]
     [SerializeField] private BossEncounterView _bossEncounterView;
     [SerializeField] private CameraShakeView _cameraShakeView;
     [SerializeField] private ScreenFlashView _screenFlashView;
+    [Tooltip("撃破時のヒットストップ。timeScaleはポーズと共有するため、TimeScaleViewにだけ書き換えさせる（B5）")]
+    [SerializeField] private TimeScaleView _timeScaleView;
 
     private SectionProgressManager _sectionProgressManager;
     private PresentationTimingData _timing;
@@ -41,7 +48,10 @@ public class EnemyPresenter : MonoBehaviour
         _timing = timing;
 
         // --- ステージ開始 → ステージ名 ---
+        // 最初のステージ名はバトル開始前の演出（PlayStageIntroAsync）で出しているので、
+        // ここで出すのはデバッグのステージジャンプで2回目以降のステージを始めた時だけ
         sectionProgressManager.OnStageStarted
+            .Skip(1)
             .Subscribe(stage => _stageTitleView.ShowStageTitle(stage.stageName))
             .AddTo(_disposables);
 
@@ -104,6 +114,37 @@ public class EnemyPresenter : MonoBehaviour
             .AddTo(_disposables);
     }
 
+    /// <summary>
+    /// ステージの見た目を開始前の状態にする（B5）。背景は先頭セクションのものにし、敵は登場まで隠す。
+    /// 遷移の覆いがかかっている間（BattleInitializer.Initialize）に呼ぶ。開始演出の裏に仮の背景・敵が映らないようにするため。
+    /// 先頭セクションの開始時にもう一度SetBackgroundが呼ばれるが、同じ背景なので明転し直さない。
+    /// </summary>
+    public void PrepareStage(StageData stage)
+    {
+        var firstSection = stage.sections[0];
+        var background = firstSection.isBoss ? stage.bossBackgroundSprite : stage.roadBackgroundSprite;
+        _backgroundView.SetBackground(background, firstSection.isBoss);
+        _enemyView.Hide();
+    }
+
+    /// <summary>
+    /// ステージ開始の演出を流し、終わるまで待つ（B5）。BattleInitializerがこの後にステージを開始する。
+    /// </summary>
+    public UniTask PlayStageIntroAsync(StageData stage, CancellationToken token)
+    {
+        var boss = stage.FindBoss();
+        var weakElement = boss != null ? boss.weakElement : default;
+        var data = new StageCardData(
+            stage.stageNumber,
+            stage.stageName,
+            boss != null ? boss.enemyName : "？",
+            boss != null ? ElementNames.Get(weakElement) : "？",
+            _palette != null ? _palette.ElementColor(weakElement) : Color.white,
+            string.Empty);
+
+        return _stageIntroView.PlayAsync(data, _timing.introTitleDuration, _timing.introCallDuration, token);
+    }
+
     private void HandleSectionStarted(StageSection section)
     {
         var stage = _sectionProgressManager.CurrentStage;
@@ -129,7 +170,7 @@ public class EnemyPresenter : MonoBehaviour
         // OnSectionClearedの時点ではCurrentSectionはまだ撃破したセクションを指している
         if (_sectionProgressManager.CurrentSection.isBoss)
         {
-            _bossEncounterView.PlayHitStop();
+            _timeScaleView.PlayHitStop(_timing.hitStopRealtime, _timing.bossDefeatSlowScale, _timing.bossDefeatSlowRealtime);
             _screenFlashView.FlashBossDefeat();
             _cameraShakeView.ShakeBossDefeat();
             _enemyView.PlayBossDefeat();

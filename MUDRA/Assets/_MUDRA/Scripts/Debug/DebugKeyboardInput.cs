@@ -2,7 +2,6 @@
 
 using R3;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// デバッグ用キーボード手印シミュレーション。
@@ -14,6 +13,10 @@ public class DebugKeyboardInput : MonoBehaviour
     // HandSignPresenter が Subscribe する Observable
     private readonly Subject<HandSign> _onHandSignInput = new();
     public Observable<HandSign> OnHandSignInput => _onHandSignInput;
+
+    // Rキーのやり直し要求。シーンの読み直しはApp側（GameStateManager経由）で行う（B5）
+    private readonly Subject<Unit> _onRetryRequested = new();
+    public Observable<Unit> OnRetryRequested => _onRetryRequested;
 
     private void Update()
     {
@@ -33,15 +36,16 @@ public class DebugKeyboardInput : MonoBehaviour
         // --- デバッグリセット ---
         if (Input.GetKeyDown(KeyCode.R))
         {
-            Debug.Log("[DebugMode] シーンリロード");
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            Debug.Log("[DebugMode] リトライ");
+            _onRetryRequested.OnNext(Unit.Default);
         }
     }
 
     private void OnDestroy()
     {
         _onHandSignInput.Dispose();
+        _onRetryRequested.Dispose();
     }
 }
 
-#endif
+#endif
