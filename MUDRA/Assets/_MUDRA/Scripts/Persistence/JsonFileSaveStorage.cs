@@ -42,8 +42,10 @@ public class JsonFileSaveStorage : ISaveStorage
         try
         {
             File.WriteAllText(tempPath, JsonUtility.ToJson(data, true));
-            if (File.Exists(_path)) File.Delete(_path);
-            File.Move(tempPath, _path);
+            if (File.Exists(_path))
+                File.Replace(tempPath, _path, null);
+            else
+                File.Move(tempPath, _path);
         }
         catch (Exception e)
         {
