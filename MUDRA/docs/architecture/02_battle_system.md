@@ -325,7 +325,8 @@ private void HandleSignConfirmed(HandSign sign)
 
 | 購読するストリーム | 呼ぶもの |
 |---|---|
-| `HandTrackingService.OnHandSignRecognized` | `HandleSignConfirmed`（上記）/ デバッグテキスト更新 |
+| `HandTrackingService.OnHandSignRecognized` | `HandleSignConfirmed`（上記）/ デバッグテキスト更新 / `HandSignStatusView.PlayConfirm()`（受付中のみ） |
+| `HandTrackingService.Candidate` | 候補あり・進み具合1未満・受付中なら `HandSignStatusView.ShowCandidate(表示名, Progress)`、それ以外は `Hide()` |
 | `SpellSequenceModel.OnSignAdded` | `SequenceGuideView.UpdateGuide(MatchCandidates, InputCount)` + `PlayConfirmEffect()` |
 | `OnSpellCast` | ガイド `Clear()` → 成功なら `SpellEffectView.PlaySpellEffect(effectPrefab, effectOnCaster)` + `SpellTelopView.ShowCutIn(spellName, element, cutInSprite)`、暴発なら `ShowMisfire()` |
 | `OnSpellCast`（成功のみ） | `PlayerStateManager.HandleSpellCast()` |
@@ -490,6 +491,7 @@ flowchart TD
 | `ScreenFlashView` | `FlashDamage(isHeavy)` / `FlashGuard` / `FlashMisfire` / `FlashBossDefeat` | 全画面の色フラッシュ。色の意味づけは View が持つ |
 | `CameraShakeView` | `ShakeDamage(isHeavy)` / `ShakeGuard` / `ShakeBossRoar(delay)` / `ShakeBossDefeat` | Main Camera の減衰する揺れ |
 | `GuardView` | `SetStance` / `PlayGuardSuccess` | 受付中の構え枠と、成功時の「防」。枠だけ出て「防」が出なければ早すぎたと分かる |
+| `HandSignStatusView` | `ShowCandidate` / `PlayConfirm` / `Hide` | 右下のカメラ映像の上に、判定中の印名と確定までのゲージ。確定でポップして約0.5秒後に消える。確定演出中の `Hide` は無視する |
 | `DamageNumberView` | `ShowSpellHit` / `ShowDotTick` / `ShowHeal` / `ShowPlayerDamage` | 浮き上がる数字。テンプレートを `ObjectPool` で使い回す。Model の型は知らず、Presenter が分解した値を受け取る |
 | `ComboView` | `SetCombo` | 2以上で「n 連」、0 に戻ったら落ちて消える |
 | `StatusIconView` | `SetEffectActive(type, isActive)` | 蝕（DoT）・封（Stun）・癒（HoT）。属性ではなく効果の種類で表す |

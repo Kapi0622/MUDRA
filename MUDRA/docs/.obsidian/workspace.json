@@ -230,7 +230,10 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "devlog/sedG70iiR",
+    "devlog/dev_log_B5.md",
     "devlog/dev_log_B4.5.md",
+    "specification_MUDRA.md",
     "devlog/dev_log_B4.5.md.tmp.2413.244d487a89c4",
     "hand_sign_tuning.md.tmp.2413.a33a9f7c6b5b",
     "hand_sign_tuning.md",
@@ -243,7 +246,6 @@
     "architecture/00_overview.md",
     "architecture/02_battle_system.md",
     "architecture/01_hand_input.md",
-    "specification_MUDRA.md",
     "proposal_MUDRA.md",
     "devlog/dev_log_A1.md",
     "devlog/dev_log_P3.md",

@@ -322,6 +322,14 @@ flowchart TD
 public Observable<HandSign> OnHandSignRecognized => _onHandSignRecognized;
 ```
 
+確定前の判定状況は `ReactiveProperty<HandSignCandidate>` で公開している（判定中UI `HandSignStatusView` 用）：
+
+```csharp
+public ReadOnlyReactiveProperty<HandSignCandidate> Candidate => _candidate;
+```
+
+`HandSignCandidate` は `Sign`（候補の印。null は候補なし）と `Progress`（0〜1。`_stableElapsed / _stableSeconds`、確定済みは1）の組。`JudgeStability` の各分岐の最後で更新する。null の結果は安定判定の状態に触れないが、表示は `None` にする。確定時は `OnHandSignRecognized` を先に発火してから `Progress = 1` にする（判定中UIが「1なら隠す」ため）。推論が届いたTickでしか更新されないので、ゲージは View 側で補間している。
+
 ---
 
 ## 8. HandSign 一覧

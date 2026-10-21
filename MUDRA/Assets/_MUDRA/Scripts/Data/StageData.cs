@@ -44,4 +44,19 @@ public class StageData : ScriptableObject
 
     [Tooltip("ボスセクションの背景。B4で使用")]
     public Sprite bossBackgroundSprite;
+
+    /// <summary>
+    /// このステージのボス。isBossのセクションを末尾から探し、無ければ末尾の敵で代用する。
+    /// StageSelectの弱点表示とステージ開始の演出で使う（B5）
+    /// </summary>
+    public EnemyData FindBoss()
+    {
+        if (sections == null || sections.Length == 0) return null;
+
+        for (int i = sections.Length - 1; i >= 0; i--)
+        {
+            if (sections[i].isBoss) return sections[i].enemyData;
+        }
+        return sections[^1].enemyData;
+    }
 }

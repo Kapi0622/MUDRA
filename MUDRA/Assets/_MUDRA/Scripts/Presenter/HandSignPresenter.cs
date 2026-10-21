@@ -15,7 +15,8 @@ public class HandSignPresenter : MonoBehaviour
     [SerializeField] [CanBeNull] private TextMeshProUGUI _debugSignText;
     [SerializeField] private SequenceGuideView _sequenceGuideView;
     [SerializeField] private SpellTelopView _spellTelopView;
-    
+    [SerializeField] private HandSignStatusView _handSignStatusView;
+
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField, Tooltip("アタッチするとカメラをバイパスしてキーボード入力でテスト可能")]
         private DebugKeyboardInput _debugKeyboardInput;
@@ -29,9 +30,25 @@ public class HandSignPresenter : MonoBehaviour
     private SpellSequenceModel _model;
     private PlayerStateManager _playerStateManager;
     private GuardWindowManager _guardWindowManager;
+    private PauseModel _pauseModel;
 
     private readonly CompositeDisposable _disposables = new();
     private bool _isInitialized;
+
+    /// <summary>
+    /// キーボードで印を入力するデバッグモードか。カメラを使わないので、手が映らない時の自動ポーズを行わない（B5）
+    /// </summary>
+    public bool IsKeyboardMode
+    {
+        get
+        {
+        #if UNITY_EDITOR || DEVELOPMENT_BUILD
+            return _debugKeyboardInput != null;
+        #else
+            return false;
+        #endif
+        }
+    }
 
     /// <summary>
     /// BattleInitializerから呼ばれる。Model群を外部から受け取る。
@@ -40,12 +57,14 @@ public class HandSignPresenter : MonoBehaviour
         HandTrackingService handTrackingService,
         SpellSequenceModel model,
         PlayerStateManager playerStateManager,
-        GuardWindowManager guardWindowManager)
+        GuardWindowManager guardWindowManager,
+        PauseModel pauseModel)
     {
         _handTrackingService = handTrackingService;
         _model = model;
         _playerStateManager = playerStateManager;
         _guardWindowManager = guardWindowManager;
+        _pauseModel = pauseModel;
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (_debugKeyboardInput != null)
@@ -62,6 +81,11 @@ public class HandSignPresenter : MonoBehaviour
                     .Subscribe(sign => _debugSignText.text = sign.ToString())
                     .AddTo(_disposables);
             }
+
+            // キーボードには確定前の段階がないので、確定演出だけ出す（カメラなしで見た目を確認するため）
+            _debugKeyboardInput.OnHandSignInput
+                .Subscribe(ShowSignConfirmed)
+                .AddTo(_disposables);
 
             Debug.Log("[DebugMode] キーボード手印シミュレーション有効");
         }
@@ -82,8 +106,17 @@ public class HandSignPresenter : MonoBehaviour
                     .Subscribe(sign => _debugSignText.text = sign.ToString())
                     .AddTo(_disposables);
             }
+
+            // --- 判定中の印 → 印名とゲージ ---
+            _handTrackingService.Candidate
+                .Subscribe(ShowSignCandidate)
+                .AddTo(_disposables);
+
+            _handTrackingService.OnHandSignRecognized
+                .Subscribe(ShowSignConfirmed)
+                .AddTo(_disposables);
         }
-        
+
         // --- 印確定 → ガイド更新 + 確定エフェクト ---
         _model.OnSignAdded
             .Subscribe(_ =>
@@ -146,6 +179,10 @@ public class HandSignPresenter : MonoBehaviour
 
     private void HandleSignConfirmed(HandSign sign)
     {
+        // 開始前・ポーズ中・決着後の印は捨てる（B5）。
+        // キーボード入力はtimeScale = 0でも届くため、ここで止めないとポーズ中に術が出てしまう
+        if (!_pauseModel.AcceptsBattleInput) return;
+
         switch (sign)
         {
             case HandSign.Release:
@@ -162,6 +199,30 @@ public class HandSignPresenter : MonoBehaviour
                 _model.AddSign(sign);
                 break;
         }
+    }
+
+    private void ShowSignCandidate(HandSignCandidate candidate)
+    {
+        // 進み具合1は確定済みの印を保持している状態。確定演出は ShowSignConfirmed が出すので、ここでは隠す
+        if (candidate.Sign is not { } sign || candidate.Progress >= 1f || !_pauseModel.AcceptsBattleInput)
+        {
+            _handSignStatusView.Hide();
+            return;
+        }
+
+        _handSignStatusView.ShowCandidate(SequenceGuideView.GetSignDisplayName(sign), candidate.Progress);
+    }
+
+    private void ShowSignConfirmed(HandSign sign)
+    {
+        // 受け付けない間の印は HandleSignConfirmed で捨てるので、確定したようにも見せない
+        if (!_pauseModel.AcceptsBattleInput)
+        {
+            _handSignStatusView.Hide();
+            return;
+        }
+
+        _handSignStatusView.PlayConfirm(SequenceGuideView.GetSignDisplayName(sign));
     }
 
     private void HandleSpellCast(SpellCastResult result)
@@ -186,4 +247,4 @@ public class HandSignPresenter : MonoBehaviour
     {
         Debug.Log($"[SpellSequence] リセット: {reason}");
     }
-}
+}

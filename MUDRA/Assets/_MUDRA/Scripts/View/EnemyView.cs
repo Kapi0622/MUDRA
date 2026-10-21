@@ -154,6 +154,19 @@ public class EnemyView : MonoBehaviour
     /// ボスは滑り込まず、黒い影の状態でその場にフェードインしてから色が付く（登場シーケンスの一部）。
     /// 暗転・咆哮はBossEncounterView等が同じ時間表（PresentationTimingData）で動く。
     /// </summary>
+    /// <summary>
+    /// 敵を見えない状態にする（B5）。最初の敵が登場するまでの間に使う。
+    /// シーン上のSpriteRendererには仮スプライトが入っているため、隠さないと開始演出の裏に映ってしまう。
+    /// </summary>
+    public void Hide()
+    {
+        EnsureInitialized();
+        CancelAllMotions();
+        ResetVisualState();
+        _alpha = 0f;
+        ApplyVisual();
+    }
+
     public void Appear(Sprite sprite, string enemyName, bool isBoss)
     {
         EnsureInitialized();

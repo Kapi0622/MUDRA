@@ -1,5 +1,3 @@
-using System;
-using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -10,8 +8,8 @@ using MUDRA.Data;
 /// ボス戦専用の、画面全体にかかる演出（B4）。
 ///   登場: 暗転 ＋「強敵出現」の帯（敵本体の出現はEnemyViewが担う）
 ///   大技: 画面の縁を赤黒く沈めるビネット ＋ 中央に大きく「大技：○○」
-///   撃破: ヒットストップ（一瞬時間を止める）
 /// 秒数はPresentationTimingDataの時間表に揃えている。
+/// 撃破時のヒットストップはB5でTimeScaleViewへ移した（timeScaleをポーズと1か所で管理するため）。
 /// </summary>
 public class BossEncounterView : MonoBehaviour
 {
@@ -43,7 +41,6 @@ public class BossEncounterView : MonoBehaviour
     private MotionHandle _bandHandle;
     private MotionHandle _vignetteHandle;
     private MotionHandle _heavyTextHandle;
-    private bool _isHitStopping;
     private bool _isInitialized;
 
     private void Awake()
@@ -132,39 +129,6 @@ public class BossEncounterView : MonoBehaviour
             .Bind(a => SetImageAlpha(_vignette, a));
     }
 
-    /// <summary>
-    /// ヒットストップ。timeScaleを0にして、実時間で一定時間後に1へ戻す。
-    /// 止めている間もこの待機は進むよう、timeScaleを無視して待つ。
-    /// timeScaleはゲーム全体に効くため、B5でポーズをtimeScaleで作る場合はここと整理が要る。
-    /// </summary>
-    public void PlayHitStop()
-    {
-        if (_isHitStopping) return;
-        HitStopAsync().Forget();
-    }
-
-    private async UniTaskVoid HitStopAsync()
-    {
-        _isHitStopping = true;
-        Time.timeScale = 0f;
-        try
-        {
-            await UniTask.Delay(
-                TimeSpan.FromSeconds(_timing.hitStopRealtime),
-                ignoreTimeScale: true,
-                cancellationToken: destroyCancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            // 破棄された場合もfinallyで必ず元に戻す
-        }
-        finally
-        {
-            Time.timeScale = 1f;
-            _isHitStopping = false;
-        }
-    }
-
     private void SetBandX(float x)
     {
         _warningBand.anchoredPosition = new Vector2(x, _warningBand.anchoredPosition.y);
@@ -200,7 +164,5 @@ public class BossEncounterView : MonoBehaviour
     {
         CancelEncounterMotions();
         CancelWarningMotions();
-        // ヒットストップ中に破棄されてもtimeScaleを止めたままにしない
-        if (_isHitStopping) Time.timeScale = 1f;
     }
 }

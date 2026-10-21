@@ -80,6 +80,35 @@ namespace MUDRA.Data
         [Tooltip("撃破演出の後半（爆散して消える）の長さ（ゲーム内時間）")]
         public float bossDefeatVanishDuration = 1.0f;
 
+        [Header("決着 → Result画面（B5）")]
+        [Tooltip("「討伐」「敗北」を出してから、Result画面へ移り始めるまでの長さ（ゲーム内時間）")]
+        [Min(0f)] public float resultHoldDuration = 2.0f;
+
+        [Header("画面遷移（B5）")]
+        [Tooltip("画面を覆う遷移演出の長さ（実時間）。ポーズ中に抜ける時も動くよう実時間で数える")]
+        [Min(0f)] public float screenCoverDuration = 0.5f;
+
+        [Tooltip("覆いが晴れる遷移演出の長さ（実時間）")]
+        [Min(0f)] public float screenRevealDuration = 0.5f;
+
+        [Header("ステージ開始の演出（B5）")]
+        [Tooltip("ステージ名・ボス名・弱点を出しておく長さ（フェードを含む）")]
+        [Min(0f)] public float introTitleDuration = 2.0f;
+
+        [Tooltip("「結印！」を出しておく長さ（出入りを含む）。これが消えてから敵が出てくる")]
+        [Min(0f)] public float introCallDuration = 0.8f;
+
+        [Header("ボス撃破のスロー（B5）")]
+        [Tooltip("ヒットストップの後に続くスローの倍率（timeScale）")]
+        [Range(0.05f, 1f)] public float bossDefeatSlowScale = 0.3f;
+
+        [Tooltip("スローの長さ（実時間）")]
+        [Min(0f)] public float bossDefeatSlowRealtime = 0.8f;
+
+        [Header("ポーズ（B5）")]
+        [Tooltip("再開のカウントダウンの長さ（実時間）。3なら「3・2・1」と数えて再開する")]
+        [Min(0f)] public float resumeCountdown = 3f;
+
         [Header("Modelの待機に足す余白")]
         [Tooltip("雑魚の登場が終わってから1手目の予告までの間")]
         [Min(0f)] public float normalEntryPadding = 0.4f;
@@ -107,6 +136,15 @@ namespace MUDRA.Data
 
         /// <summary>敵の撃破から次の敵が出現するまでの待機。この間にViewが撃破演出→前進演出を流す</summary>
         public float TransitionDuration => NormalDefeatDuration + advanceDuration + transitionPadding;
+
+        /// <summary>
+        /// ステージクリアからResult画面へ移るまでの待機。ボスを倒した時は撃破演出の後に「討伐」が出るので、その分を足す
+        /// </summary>
+        public float ClearToResultDelay(bool afterBossDefeat)
+            => (afterBossDefeat ? BossDefeatDuration : 0f) + resultHoldDuration;
+
+        /// <summary>敗北からResult画面へ移るまでの待機</summary>
+        public float GameOverToResultDelay => resultHoldDuration;
 
 #if UNITY_EDITOR
         /// <summary>

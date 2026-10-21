@@ -72,6 +72,7 @@ Assets/_MUDRA/
     ├── View/                    … 表示専用MonoBehaviour。Modelを知らない（詳細は 02 §12）
     │   HUD:  HpBarView / SequenceGuideView / SpellTelopView / DamageNumberView / ComboView
     │         StatusIconView / StageTitleView / BattleResultView / GuardView / ScreenFlashView
+    │         HandSignStatusView（判定中の印名＋確定ゲージ）
     │   世界: EnemyView / BackgroundView / SpellEffectView / CameraShakeView
     │   ボス: BossEncounterView
     │   共有: BattleUiConstants（調整対象でない共有値）
@@ -298,7 +299,7 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 1. `Input/HandSignEnum.cs` の **末尾に** 追加（後述の理由で既存値の並べ替えは禁止）
 2. `HandTrackingService` の `SingleHandPatterns` または `TwoHandPatterns` に**1行追加**するだけで判定が通る
-3. `View/SequenceGuideView.cs` の `GetSignDisplayName()` に表示用の漢字を追加（漏れると「？」になる）
+3. `View/SequenceGuideView.cs` の `GetSignDisplayName()` に表示用の漢字を追加（漏れると「？」になる。判定中の印の表示 `HandSignStatusView` もこれを使う）
 4. キーボードテストしたいなら `Debug/DebugKeyboardInput.cs` にキーを追加
 
 > **重要:** `HandSign` の整数値は `SpellData` アセットに**シリアライズ済み**（例: `sequence: 0600000001000000` = Palm, Fist）。既存の値を変更・並べ替えすると全アセットの意味が壊れる。追加は必ず末尾に。

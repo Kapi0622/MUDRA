@@ -1,7 +1,7 @@
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
 
+using System;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 /// <summary>
 /// デバッグ用Runtime Overlayメニュー。
@@ -15,6 +15,7 @@ public class DebugMenuView : MonoBehaviour
     private EnemyStateManager _enemyStateManager;
     private SectionProgressManager _sectionProgressManager;
     private StageData[] _allStages;
+    private Action _retry;
 
     private bool _isVisible;
     private bool _isInvincible;
@@ -36,13 +37,15 @@ public class DebugMenuView : MonoBehaviour
         StatusEffectManager statusEffectManager,
         EnemyStateManager enemyStateManager,
         SectionProgressManager sectionProgressManager,
-        StageData[] allStages)
+        StageData[] allStages,
+        Action retry)
     {
         _battleModel = battleModel;
         _statusEffectManager = statusEffectManager;
         _enemyStateManager = enemyStateManager;
         _sectionProgressManager = sectionProgressManager;
         _allStages = allStages;
+        _retry = retry;
     }
 
     private void Update()
@@ -199,9 +202,10 @@ public class DebugMenuView : MonoBehaviour
 
         GUILayout.Space(8);
 
-        if (GUILayout.Button("シーンリロード (R)", _buttonStyle))
+        // InGameだけを読み直す（Appは常駐のまま）。B5まではシーン全体を読み直していた
+        if (GUILayout.Button("リトライ (R)", _buttonStyle))
         {
-            SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+            _retry?.Invoke();
         }
 
         GUI.DragWindow();
@@ -308,4 +312,4 @@ public class DebugMenuView : MonoBehaviour
     }
 }
 
-#endif
+#endif

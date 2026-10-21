@@ -24,5 +24,5 @@ MonoBehaviour:
   - enemyData: {fileID: 11400000, guid: 646d69f99c5ac56489dc25b5d4cd2214, type: 2}
     isBoss: 1
   bgm: {fileID: 0}
-  roadBackgroundSprite: {fileID: 0}
-  bossBackgroundSprite: {fileID: 0}
+  roadBackgroundSprite: {fileID: 7073142850560208704, guid: 812701c9e28b3e24da69877cb7ee3334, type: 3}
+  bossBackgroundSprite: {fileID: 1506035368581774165, guid: 7460c680fc33c284789a148b04581ff4, type: 3}

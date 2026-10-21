@@ -153,7 +153,8 @@ public class SequenceGuideView : MonoBehaviour
         return slot;
     }
 
-    private static string GetSignDisplayName(HandSign sign)
+    /// <summary>印の表示名（1文字）。術一覧（B5）・敗北時のヒント・判定中の印の表示でも使う</summary>
+    public static string GetSignDisplayName(HandSign sign)
     {
         return sign switch
         {
@@ -164,6 +165,10 @@ public class SequenceGuideView : MonoBehaviour
             HandSign.Palm => "掌",
             HandSign.Union => "合",
             HandSign.DoubleScissors => "双",
+            // 特殊印。術の sequence には入らないが、判定中の印の表示（HandSignStatusView）で使う
+            HandSign.Release => "発",
+            HandSign.Cancel => "散",
+            HandSign.Guard => "盾",
             _ => "？"
         };
     }
@@ -172,4 +177,4 @@ public class SequenceGuideView : MonoBehaviour
     {
         CancelConfirmEffect();
     }
-}
+}

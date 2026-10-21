@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: ED_Kappa
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u6CB3\u7AE5"
-  sprite: {fileID: 0}
+  sprite: {fileID: 21300000, guid: 2d6c7098652bfd942a81e834f2359e60, type: 3}
   maxHp: 300
   weakElement: 2
   weakMultiplier: 1.5
