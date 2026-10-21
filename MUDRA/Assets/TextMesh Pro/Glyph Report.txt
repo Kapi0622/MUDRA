@@ -1,4 +1,4 @@
-Font: Shippori Mincho B1  Style: Bold
+Font: Shippori Mincho B1  Style: ExtraBold
 Point Size: 51   Padding: 1   SP/PD Ratio: 2.0%
 
 Characters included: 6877/7150
