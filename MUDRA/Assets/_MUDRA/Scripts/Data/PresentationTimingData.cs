@@ -109,6 +109,13 @@ namespace MUDRA.Data
         [Tooltip("再開のカウントダウンの長さ（実時間）。3なら「3・2・1」と数えて再開する")]
         [Min(0f)] public float resumeCountdown = 3f;
 
+        [Header("チュートリアル（B6）")]
+        [Tooltip("段階を達成してから次の段階の指示に切り替えるまで（「よし！」を見せる尺）")]
+        [Min(0f)] public float tutorialStepClearHold = 1.5f;
+
+        [Tooltip("ガードの段階に入ってから、木人が1手目の予告を始めるまで（指示を読む間）")]
+        [Min(0f)] public float tutorialEnemyStartDelay = 2.0f;
+
         [Header("Modelの待機に足す余白")]
         [Tooltip("雑魚の登場が終わってから1手目の予告までの間")]
         [Min(0f)] public float normalEntryPadding = 0.4f;

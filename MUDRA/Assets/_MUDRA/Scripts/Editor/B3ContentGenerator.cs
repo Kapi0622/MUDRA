@@ -86,6 +86,9 @@ public static class B3ContentGenerator
         new("ShadowClaw",     "影爪",        6,  1.5f,  Normal),
         new("BlackLightning", "黒雷",       14,  1.0f,  Heavy),
         new("NetherPrison",   "冥獄",       28,  3.0f,  Heavy),
+
+        // --- チュートリアル（B6） ---
+        new("DummyStrike",    "木人打ち",    3,  2.5f,  Normal),
     };
 
     /// <summary>
@@ -131,6 +134,12 @@ public static class B3ContentGenerator
             "WaterBullet(1.5) > BranchWhip(1.5) > Ember(1.5) > ThunderRoar(4.0)"),
         new("ShadowDragon",    "影龍",    1600, ElementType.Light,   2.0f,
             "ShadowClaw(1.5)x2 > BlackLightning(2.5) > ShadowClaw(1.0) > ShadowStitch(2.0) > NetherPrison(6.0)"),
+
+        // --- チュートリアル（B6） ---
+        // 倒しきる前に全段階を終えられるようHPを高くし、弱点は属性の段階で教える火にする。
+        // 攻撃は予告を長く・間隔を広く・ダメージを小さくして、ガードの練習を何度でもできるようにする
+        new("TrainingDummy",   "木人",    3000, ElementType.Fire,    DefaultWeak,
+            "DummyStrike(4.0)"),
     };
 
     /// <summary>
@@ -146,6 +155,10 @@ public static class B3ContentGenerator
             "WillOWisp", "BurningKodama", "Kasha", "FlameDemon"),
         new("Stage04_ShadowAbyss",    4, "影の深淵",
             "Shade", "ShadowWillOWisp", "Nue", "ShadowDragon"),
+
+        // チュートリアル（B6）。AppInitializer._tutorialStage に設定し、全ステージ（_allStages）には入れない
+        new("Tutorial",               0, "修練場",
+            "TrainingDummy"),
     };
 
     // ============================================================

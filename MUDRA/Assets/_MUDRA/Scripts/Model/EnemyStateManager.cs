@@ -28,6 +28,9 @@ public class EnemyStateManager : IDisposable
     // --- ループ制御 ---
     private CancellationTokenSource _loopCts;
 
+    // 行動の保留（B6のチュートリアル）。保留中はStartLoop・EndStunでもループを回さない
+    private bool _isHeld;
+
     public EnemyStateManager(EnemyData enemyData)
     {
         _enemyData = enemyData;
@@ -63,6 +66,7 @@ public class EnemyStateManager : IDisposable
     public void StartLoop(float firstActionDelay)
     {
         StopLoop();
+        if (_isHeld) return;
 
         if (_enemyData.actionPattern == null || _enemyData.actionPattern.Length == 0)
         {
@@ -140,6 +144,27 @@ public class EnemyStateManager : IDisposable
     }
     
     /// <summary>
+    /// 行動を保留する・保留を解く（B6）。チュートリアルで、ガードの段階に入るまで木人に攻撃させないために使う。
+    ///
+    /// StopLoopだけで止めないのは、セクション開始（SetEnemy）とStun解除（EndStun）がループを自分で再開させるため。
+    /// 保留をここで持てば、どの経路で再開しようとしても止まったままになる。
+    /// 解く時はStun中ならEndStunに任せ、それ以外ならresumeDelay待ってから1手目に入る。
+    /// </summary>
+    public void SetHeld(bool isHeld, float resumeDelay)
+    {
+        if (_isHeld == isHeld) return;
+        _isHeld = isHeld;
+
+        if (isHeld)
+        {
+            if (_currentPhase.Value != EnemyPhase.Stunned) StopLoop();
+            return;
+        }
+
+        if (_currentPhase.Value != EnemyPhase.Stunned) StartLoop(resumeDelay);
+    }
+
+    /// <summary>
     /// 外部からStunを付与する。現在の行動ループを中断しStunned状態に遷移する。
     /// _patternIndexは保持するため、解除後は中断されたアクションから再開する。
     /// </summary>
@@ -160,6 +185,7 @@ public class EnemyStateManager : IDisposable
     public void EndStun()
     {
         _currentPhase.Value = EnemyPhase.Idle;
+        if (_isHeld) return;
         _loopCts = new CancellationTokenSource();
         RunLoopAsync(_loopCts.Token).Forget();
     }

@@ -26,6 +26,8 @@ public class PauseMenuView : MonoBehaviour
     [SerializeField] private Button _stageSelectButton;
     [Tooltip("設定画面を開くボタン。未設定なら出さない")]
     [SerializeField] private Button _settingsButton;
+    [Tooltip("「手が認識されません」ガイド（B6）。手を見失ってポーズした時だけ出す。未設定なら出さない")]
+    [SerializeField] private HandGuideView _handGuide;
 
     [Header("バトル中")]
     [Tooltip("バトル中に右上へ出しておくポーズボタン（マウス操作用）")]
@@ -76,10 +78,12 @@ public class PauseMenuView : MonoBehaviour
     }
 
     /// <summary>ポーズメニューを出す。reasonはポーズした理由の説明（手動なら空）</summary>
-    public void ShowMenu(string reason)
+    /// <param name="showsHandGuide">「手が認識されません」ガイドを出すか（手を見失ってポーズした時）</param>
+    public void ShowMenu(string reason, bool showsHandGuide)
     {
         StopCountdown();
         _reasonText.text = reason;
+        if (_handGuide != null) _handGuide.SetVisible(showsHandGuide);
         SetMenuVisible(true);
     }
 

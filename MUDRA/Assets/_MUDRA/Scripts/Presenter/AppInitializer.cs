@@ -17,6 +17,8 @@ public class AppInitializer : MonoBehaviour
     [SerializeField] private GameFlowPresenter _gameFlowPresenter;
     [SerializeField] private ScreenPresenter _screenPresenter;
     [SerializeField] private SettingsPresenter _settingsPresenter;
+    [SerializeField] private HandStatusPresenter _handStatusPresenter;
+    [SerializeField] private CalibrationPresenter _calibrationPresenter;
 
     [Header("Input")]
     [SerializeField] private MediaPipeHandLandmarkProvider _provider;
@@ -24,6 +26,8 @@ public class AppInitializer : MonoBehaviour
     [Header("Data")]
     [Tooltip("全ステージ。StageSelectにこの順で並ぶ")]
     [SerializeField] private StageData[] _allStages;
+    [Tooltip("チュートリアル（練習バトル）のステージ。_allStagesには入れない。未設定ならチュートリアルを飛ばす")]
+    [SerializeField] private StageData _tutorialStage;
     [Tooltip("全ての術。バトルの詠唱と、Result画面の敗北時ヒントで使う")]
     [SerializeField] private SpellData[] _allSpells;
     [Tooltip("画面遷移の尺を含む演出の時間表")]
@@ -31,6 +35,8 @@ public class AppInitializer : MonoBehaviour
 
     private GameStateManager _gameStateManager;
     private ProgressModel _progressModel;
+    private CameraStatusModel _cameraStatusModel;
+    private HandPresenceModel _handPresenceModel;
 
     private readonly CompositeDisposable _disposables = new();
 
@@ -47,10 +53,15 @@ public class AppInitializer : MonoBehaviour
         var preloadedBattle = FindPreloadedBattle();
 
         _gameStateManager = preloadedBattle != null
-            ? new GameStateManager(_allStages, GamePhase.InGame, ResolveDebugStartStage(preloadedBattle))
-            : new GameStateManager(_allStages);
+            ? new GameStateManager(_allStages, _tutorialStage, GamePhase.InGame, ResolveDebugStartStage(preloadedBattle))
+            : new GameStateManager(_allStages, _tutorialStage);
 
         _progressModel = new ProgressModel(new JsonFileSaveStorage());
+
+        // カメラと手の状態は画面に関係なく常に判定する（B6）。Calibrationとバトルの自動ポーズで共有する
+        _cameraStatusModel = new CameraStatusModel();
+        _handPresenceModel = new HandPresenceModel();
+        _handStatusPresenter.Initialize(_provider, _cameraStatusModel, _handPresenceModel);
 
         // バトルの結果をクリア記録へ。Result画面は遷移演出で覆った後に出るので、それまでに新記録かどうかが決まっている
         _gameStateManager.OnTransition
@@ -59,9 +70,12 @@ public class AppInitializer : MonoBehaviour
             .AddTo(_disposables);
 
         _settingsPresenter.Initialize(_progressModel);
+        // ScreenPresenterのInitializeでCalibration画面も消すので、その前に組み立てておく
+        _calibrationPresenter.Initialize(
+            _gameStateManager, _provider, _cameraStatusModel, _handPresenceModel, _handStatusPresenter);
         _screenPresenter.Initialize(_gameStateManager, _progressModel, _settingsPresenter, _allSpells);
         _gameFlowPresenter.Initialize(
-            _gameStateManager, _provider, _allSpells, _progressModel, _presentationTiming, preloadedBattle);
+            _gameStateManager, _provider, _handPresenceModel, _allSpells, _progressModel, _presentationTiming, preloadedBattle);
     }
 
     /// <summary>既に読み込まれているInGameのBattleInitializer。通常の起動（Appから始まる）ではnull</summary>
@@ -91,5 +105,7 @@ public class AppInitializer : MonoBehaviour
         _disposables.Dispose();
         _gameStateManager?.Dispose();
         _progressModel?.Dispose();
+        _cameraStatusModel?.Dispose();
+        _handPresenceModel?.Dispose();
     }
 }

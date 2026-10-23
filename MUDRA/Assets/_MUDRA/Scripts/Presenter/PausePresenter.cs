@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using MUDRA.Data;
-using MUDRA.HandTracking;
 using R3;
 using UnityEngine;
 
@@ -10,7 +9,8 @@ using UnityEngine;
 ///
 /// PauseModelの状態をTimeScaleView（時間を止める）とPauseMenuView（メニュー・カウントダウン）に渡し、
 /// メニューからの要求をPauseModel・GameStateManagerのメソッドに渡す。
-/// 自動ポーズの材料（フォーカスの喪失・手が映っているか）もここからModelへ渡す。
+/// 自動ポーズの材料（フォーカスの喪失・手を見失ったか）もここからModelへ渡す。
+/// 手を見失ったかの判定はApp側のHandPresenceModelが持ち（B6）、ここは立ち上がりでポーズを要求するだけ。
 /// </summary>
 public class PausePresenter : MonoBehaviour
 {
@@ -25,24 +25,34 @@ public class PausePresenter : MonoBehaviour
     [SerializeField] private BattlePaletteData _palette;
 
     private PauseModel _pauseModel;
-    private IHandLandmarkProvider _provider;
-    private bool _watchesHands;
 
     private readonly CompositeDisposable _disposables = new();
 
     /// <summary>BattleInitializerから呼ばれる</summary>
+    /// <param name="handPresence">手の映り具合（App側で共有）</param>
     /// <param name="watchesHands">手が映らない時に自動でポーズするか。キーボードモードではfalse</param>
     public void Initialize(
         PauseModel pauseModel,
         GameStateManager gameStateManager,
-        IHandLandmarkProvider provider,
+        HandPresenceModel handPresence,
         bool watchesHands,
         IReadOnlyList<SpellData> spells,
         SettingsPresenter settings)
     {
         _pauseModel = pauseModel;
-        _provider = provider;
-        _watchesHands = watchesHands;
+
+        if (watchesHands && handPresence != null)
+        {
+            // --- 手を見失った → 自動ポーズ。バトルの開始・再開のたびに数え直させる ---
+            handPresence.IsHandLost
+                .Where(isLost => isLost)
+                .Subscribe(_ => _pauseModel.RequestPause(PauseReason.HandLost))
+                .AddTo(_disposables);
+
+            _pauseModel.OnHandWatchRestarted
+                .Subscribe(_ => handPresence.RestartLostTimer())
+                .AddTo(_disposables);
+        }
 
         _spellListView.SetSpells(BuildSpellRows(spells));
         _pauseMenuView.SetSettingsAvailable(settings != null);
@@ -65,7 +75,7 @@ public class PausePresenter : MonoBehaviour
             {
                 _timeScaleView.SetPaused(isPaused);
                 if (isPaused)
-                    _pauseMenuView.ShowMenu(ReasonText(_pauseModel.Reason));
+                    ShowMenu();
                 else
                     _pauseMenuView.HideMenu();
             })
@@ -79,7 +89,7 @@ public class PausePresenter : MonoBehaviour
                 if (isResuming)
                     _pauseMenuView.PlayCountdown(_pauseModel.ResumeCountdownSeconds);
                 else if (_pauseModel.IsPaused.CurrentValue)
-                    _pauseMenuView.ShowMenu(ReasonText(_pauseModel.Reason));
+                    ShowMenu();
             })
             .AddTo(_disposables);
 
@@ -107,17 +117,15 @@ public class PausePresenter : MonoBehaviour
             .AddTo(_disposables);
     }
 
-    private void Update()
-    {
-        if (_pauseModel == null || !_watchesHands) return;
-
-        // ポーズ中は時間が止まるため、実時間で数える
-        _pauseModel.TickHandPresence(Time.unscaledDeltaTime, _provider.DetectedHandCount > 0);
-    }
-
     private void OnApplicationFocus(bool hasFocus)
     {
         if (!hasFocus) _pauseModel?.RequestPause(PauseReason.FocusLost);
+    }
+
+    private void ShowMenu()
+    {
+        var reason = _pauseModel.Reason;
+        _pauseMenuView.ShowMenu(ReasonText(reason), reason == PauseReason.HandLost);
     }
 
     private static string ReasonText(PauseReason reason)
