@@ -1,7 +1,7 @@
 # ⚔️ バトルシステム
 
 > **ドキュメント種別:** アーキテクチャ復習ドキュメント
-> **対象:** `Scripts/Data/` `Scripts/Model/` `Scripts/Presenter/` `Scripts/View/`
+> **対象:** `Scripts/Data/` `Scripts/Model/` `Scripts/Presenter/` `Scripts/View/`（バトル側。App 側の画面とフローは [00 §4](00_overview.md#4-起動シーケンス) と仕様書 §4-1）
 > **関連:** [00_overview.md](00_overview.md) / [01_hand_input.md](01_hand_input.md)
 > **仕様書:** §6 シーケンス管理 / §7 バトルシステム / §8 MVP構成
 
@@ -295,6 +295,7 @@ stateDiagram-v2
 | `SetEnemy(enemyData, firstActionDelay)` | `StopLoop` → 敵データ差し替え → `StartLoop`。待機時間は `SectionProgressManager` が決める（雑魚1.0秒・ボス3.0秒）。セクション遷移で使う。インスタンスを作り直さないので購読と `StatusEffectFactory` のデリゲートが生きたまま残る |
 | `ApplyStun()` | ループを止めて `Stunned` へ。**`_patternIndex` は保持する** |
 | `EndStun()` | Idle に戻して**中断された位置からループ再開** |
+| `SetHeld(isHeld, resumeDelay)` | 行動の保留（B6・Tutorial 専用）。保留中は `StartLoop` / `EndStun` でもループを回さない。解く時は Stun 中なら `EndStun` に任せ、それ以外は `resumeDelay` 後に1手目 |
 
 `OperationCanceledException` はキャンセル＝正常終了として握り潰す。
 
@@ -372,7 +373,7 @@ B4で増えた View（フラッシュ・揺れ・ガード・数字・コンボ�
 
 ### BattleInitializer
 
-起動順は [00_overview.md §4](00_overview.md#4-起動シーケンス) を参照。
+起動順は [00_overview.md §4](00_overview.md#4-起動シーケンス) を参照。App から `BattleContext` を受け取り、`IsTutorial` の時だけ `TutorialModel` / `TutorialPresenter` を組み立てる（[§13](#13-ポーズとチュートリアルb5b6)）。
 
 ---
 
@@ -515,3 +516,32 @@ flowchart TD
 | 術エフェクト | `Particle/Spell/PS_*.prefab`（スクリプト生成・属性色） | `SpellData.effectPrefab` |
 | カットインの絵 | 無し（帯と術名のみ） | `SpellData.cutInSprite` |
 | 敵の攻撃エフェクト | 無し（フラッシュと揺れのみ） | `EnemyAttackData.effectPrefab` |
+
+---
+
+## 13. ポーズとチュートリアル（B5・B6）
+
+### ポーズ
+
+| クラス | 役割 |
+|---|---|
+| `PauseModel` / `PauseReason` | ポーズ中か・再開のカウントダウン中か・理由（手動 / 手を見失った / フォーカス喪失）。`AcceptsBattleInput`（開始後かつポーズしていない）を公開する |
+| `TimeScaleView` | `Time.timeScale` を書く**唯一の場所**。ポーズ > ヒットストップ > スローの順に成分を合成する |
+| `PausePresenter` | ポーズの開閉と自動ポーズの配線。メニューの「もう一度」「ステージ選択へ」を `GameStateManager` に渡す |
+| `PauseMenuView` / `SpellListView` | メニュー・術一覧・手印早見表・カウントダウン「3・2・1・結印！」。手を見失った時だけ `HandGuideView` を重ねる（B6） |
+
+- **ポーズは `timeScale = 0` だけで成り立つ。** 敵のループ・セクション遷移・StatusEffect・シーケンスの時間はすべてゲーム内時間で進むので、Model にポーズ専用の処理は無い。止まらないキー入力は `HandSignPresenter` の入口で `AcceptsBattleInput` を見て捨てる
+- **手を見失った自動ポーズ（B6 で判定を移動）。** 「手が5秒映らない」の判定は App 側の `HandPresenceModel` が持ち、Calibration のガイドと共有する。`PausePresenter` は `IsHandLost` の立ち上がりで `RequestPause(HandLost)` を呼ぶだけ。
+  `PauseModel.OnHandWatchRestarted`（バトル開始・再開直後）で `HandPresenceModel.RestartLostTimer()` を呼び、再開直後にすぐ再ポーズしないようにしている。キーボードモードでは手を見ない
+
+### チュートリアル（B6）
+
+| クラス | 役割 |
+|---|---|
+| `TutorialStep` | 詠唱 → 発動 → 解除 → 防御 → 属性 → Completed |
+| `TutorialModel` | 既存の Model のイベントを購読して段階を進める（`OnSignAdded` / `OnSpellCast` 成功 / `OnSequenceReset` / `OnPlayerDamaged.WasGuarded` / `OnSpellHit.IsWeakness`）。達成後は `tutorialStepClearHold` 待って次へ。`IsEnemyActive` は防御の段階まで false |
+| `TutorialPresenter` | 指示文を SpellData から組み立てて `TutorialGuideView` に渡す。スキップ（ボタン・`Tab`）→ `SkipTutorial`。ポーズ中はスキップを受け付けない |
+
+- バトルの仕組みには手を入れず、外から「教えたい操作が起きたか」を見ているだけ。本番と同じ操作がそのまま練習になる
+- 敵を止めるのは `EnemyStateManager.SetHeld`（§6）。`StopLoop` だけでは、セクション開始と Stun の解除が自分でループを再開させてしまう
+- 決着は Result に出さない。木人を倒せば `CompleteTutorial`、負ければ `Retry`。全段階を終えた時も `CompleteTutorial`

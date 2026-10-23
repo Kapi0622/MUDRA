@@ -590,36 +590,33 @@ public struct DamageResult
 
 ### 4-1. 状態遷移：GameStateManager
 
-ゲーム全体のフロー制御を担う。
+ゲーム全体のフロー制御を担う。遷移を決めるのは `GameStateManager`（Pure C#）で、シーンの読み込みと画面の切り替えは `GameFlowPresenter` が行う（B5）。
 
 ```
-                    ┌─────────────┐
-                    │   Title     │
-                    └──────┬──────┘
-                           │ スタート
-                    ┌──────▼──────┐
-                    │ Calibration │
-                    └──────┬──────┘
-                           │ 完了
-                    ┌──────▼──────┐
-              ┌─────│  Tutorial   │（初回のみ）
-              │     └──────┬──────┘
-              │ スキップ     │ 完了
-              │     ┌──────▼──────┐
-              └────→│ StageSelect │◄──────┐
-                    └──────┬──────┘       │
-                           │ 選択         │
-                    ┌──────▼──────┐       │
-                    │   InGame    │       │ 続行
-                    └──────┬──────┘       │
-                           │ 決着         │
-                    ┌──────▼──────┐       │
-                    │   Result    │───────┘
-                    └─────────────┘
-                           │ タイトルへ
-                           ▼
-                        Title
+Title ─→ Calibration ─→ Tutorial ─→ StageSelect ─→ InGame ─→ Result
+  ▲           │            ↺            ▲             ↺          │
+  └─ 戻る ────┘                          └─────────────────────────┘
+                                   （どこからでも Title へ戻れる）
 ```
+
+| 遷移 | きっかけ | メソッド |
+|---|---|---|
+| Title → Calibration | はじめる | `StartGame` |
+| Calibration → Tutorial | 次へ（カメラが動いていて、手が一度でも映った） | `CompleteCalibration` |
+| Calibration → Title | 戻る | `ToTitle` |
+| Tutorial → StageSelect | 全段階を達成・木人を撃破 ／ スキップ | `CompleteTutorial` ／ `SkipTutorial`・`ToStageSelect` |
+| Tutorial → Tutorial | 敗北 ／ ポーズの「もう一度」 | `Retry` |
+| StageSelect → InGame | ステージを選ぶ | `SelectStage` |
+| InGame → Result | 決着（演出を見せ終えてから） | `EndBattle` |
+| InGame → InGame | ポーズ・Result の「もう一度」 | `Retry` |
+| InGame / Result → StageSelect | ポーズの「ステージ選択へ」／ Result の「ステージ選択へ」 | `ToStageSelect` |
+| Title 以外 → Title | タイトルへ | `ToTitle` |
+
+`AppInitializer._tutorialStage` が未設定の時だけ、Calibration から StageSelect へ直接進む（データの設定漏れで進めなくなるのを避ける）。
+
+- **Calibration（B6）:** 毎回通る。カメラ映像を大きく出し、手が一度でも映れば「次へ」を押せる。認識テスト（印を組むと一覧が光る）は任意。カメラが見つからない・映像が届かない時はエラーと再試行を出す
+- **Tutorial（B6）:** StageSelect の前に毎回通る（スキップ可：ボタン・`Tab`・ポーズの「ステージ選択へ」）。InGame シーンで木人との練習バトルを行い、詠唱 → 発動 → 解除 → 防御 → 属性 の順に指示を出す。Result 画面・戦績には出さない
+- **ポーズ（B5）:** InGame・Tutorial の中で、もう一度（同じフェーズをやり直す）・ステージ選択へ を選べる。手が5秒映らない時は自動でポーズし、「手が認識されません」ガイドを出す（判定は Calibration のガイドと共通）
 
 ### 4-2. 状態遷移：PlayerStateManager
 
@@ -1514,6 +1511,8 @@ B4完了後、「確定が鈍く、誤判定がやや多い」という体感か
 - Calibration画面（カメラプレビュー、認識テスト表示、カメラ未検出時エラー）
 - Tutorial画面（操作説明：詠唱→発動→Cancel→Guard→属性の概念）
 - 認識不良時リカバリ導線（「手が認識されません」ガイドUI）
+
+> **進捗実績:** B6（10/22〜10/24）完了。Tutorial は練習バトル（InGame で木人と戦う）として実装し、StageSelect の前に毎回通す（スキップ可）。当初は初回のみとしたが、スキップがあれば毎回でも手間は小さく、完了フラグの扱いも要らなくなるため変更した。内訳に加え、カメラが映像を返さない時のエラーと再試行、Tutorial のスキップ（ボタン・`Tab`）を実装した。「手が映らない」の判定は Calibration のガイドとバトルの自動ポーズで共有している。詳細は dev_log_B6。
 
 #### B7：サウンドの内訳
 

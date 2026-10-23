@@ -4,14 +4,14 @@
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
 Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B4.5（手印認識の改善）まで完了。次は B5（ゲームフロー実装）。**
+現在地: **β版 B6（チュートリアル・キャリブレーション）まで完了。次は B7（サウンド）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の66ファイル・約7,100行が全て。** 小さい。
-（うち `Editor/B3ContentGenerator.cs` 約590行は敵・ステージSOの生成ツールで、ランタイムからは参照しない）
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の117ファイル・約11,800行が全て。** 小さい。
+（うち `Editor/` の2本・約660行は敵・ステージSOの生成ツールと再生開始シーンの切替で、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
   （`MUDRA/Assets/MediaPipeUnity/`, `MUDRA/Packages/`, `MUDRA/Assets/TextMesh Pro/`）
@@ -27,8 +27,8 @@ Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。�
   約40kトークンで済み、探索を挟むほうが高くつく。必要なファイルを直接読むこと
 - 自前コードの検索は `MUDRA/Assets/_MUDRA/Scripts` にスコープする。** 無指定の `grep -r` や `**/*.cs` は
   9割がサードパーティに当たる。`.asset`、`.meta`、文書は対象を指定して検索する
-- **`.unity` / `.asset` を Read しない。** `InGame.unity` は80KBのYAMLで、読むと約25kトークンを
-  消費して得られるのはコンポーネント20個の配線だけ。代わりに:
+- **`.unity` / `.asset` を Read しない。** `App.unity` / `InGame.unity` はそれぞれ約310KBのYAMLで、読んでも
+  得られるのはコンポーネントの配線だけ。代わりに:
   - 値を見たいだけなら `grep -n '^  fieldName' <file>`
   - シーンの配線を知りたいなら `.cs.meta` の guid を集めて `m_Script:` を逆引きする
 - **仕様書・devlog を全文 Read しない。** `grep -n '^#'` で見出しを出してから `sed -n '<範囲>p'`
@@ -49,7 +49,8 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 | **View** | Modelを知らない。命令的メソッドを公開するだけ |
 
 通知は常に **Model →(R3)→ Presenter →(メソッド呼び出し)→ View** の一方向。逆流させない。
-生成と注入は `Presenter/BattleInitializer.cs` に集約（DIコンテナ・シングルトンは不使用）。
+生成と注入は App 側が `Presenter/AppInitializer.cs`、バトル側が `Presenter/BattleInitializer.cs` に集約（DIコンテナ・シングルトンは不使用）。
+シーンは常駐の `App.unity`（カメラ・画面・遷移）と、バトル（InGame・Tutorial）のたびに加算ロードする `InGame.unity` の2つ。
 
 **詳細は `MUDRA/docs/architecture/00_overview.md` を読む。**
 
@@ -104,5 +105,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
   batchmode での確認は未検証。試すならエディタを閉じた状態でユーザーの了承を得てから）
 - **動作確認はカメラ不要のキーボードモードで行える。**
   `HandSignPresenter` の `_debugKeyboardInput` に `DebugKeyboardInput` を割り当てると有効になる。
-  `1`〜`5`=詠唱印 / `U`=合 / `Space`=発動 / `Backspace`=解除 / `G`=ガード / `R`=リロード、`F1`=デバッグメニュー
+  `1`〜`5`=詠唱印 / `U`=合 / `Space`=発動 / `Backspace`=解除 / `G`=ガード / `R`=リトライ、`F1`=デバッグメニュー
+- 再生は App から（InGame を開いて再生しても `MUDRA/Play From App Scene` が ON なら App から始まる）。
+  カメラ無しで通すには Calibration を `F2` で抜け、Tutorial を `Tab` でスキップする
 - コミットメッセージは既存形式に合わせる: `feat:B<番号> <日本語の要約>`（例: `feat:B4 ...`）。**指示があるまでコミットしない**
