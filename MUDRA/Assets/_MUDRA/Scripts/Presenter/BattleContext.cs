@@ -32,6 +32,15 @@ public sealed class BattleContext
     /// <summary>ポーズメニューから設定画面を開くため。設定画面はApp側にある。無ければnull</summary>
     public SettingsPresenter Settings { get; }
 
+    /// <summary>
+    /// チュートリアル（練習バトル）として始めるか（B6）。trueならStageはチュートリアルのステージで、
+    /// 決着してもResult画面へは行かない
+    /// </summary>
+    public bool IsTutorial { get; }
+
+    /// <summary>手の映り具合（B6）。App側で常に判定していて、手を見失った時の自動ポーズに使う</summary>
+    public HandPresenceModel HandPresence { get; }
+
     public BattleContext(
         StageData stage,
         IReadOnlyList<StageData> allStages,
@@ -39,7 +48,9 @@ public sealed class BattleContext
         IHandLandmarkProvider provider,
         GameStateManager gameStateManager,
         ReadOnlyReactiveProperty<bool> isAutoPauseEnabled,
-        SettingsPresenter settings)
+        SettingsPresenter settings,
+        bool isTutorial,
+        HandPresenceModel handPresence)
     {
         Stage = stage;
         AllStages = allStages;
@@ -48,5 +59,7 @@ public sealed class BattleContext
         GameStateManager = gameStateManager;
         IsAutoPauseEnabled = isAutoPauseEnabled;
         Settings = settings;
+        IsTutorial = isTutorial;
+        HandPresence = handPresence;
     }
 }

@@ -30,6 +30,7 @@ public class GameFlowPresenter : MonoBehaviour
 
     private GameStateManager _gameStateManager;
     private IHandLandmarkProvider _provider;
+    private HandPresenceModel _handPresence;
     private IReadOnlyList<SpellData> _allSpells;
     private ProgressModel _progressModel;
     private PresentationTimingData _timing;
@@ -49,6 +50,7 @@ public class GameFlowPresenter : MonoBehaviour
     public void Initialize(
         GameStateManager gameStateManager,
         IHandLandmarkProvider provider,
+        HandPresenceModel handPresence,
         IReadOnlyList<SpellData> allSpells,
         ProgressModel progressModel,
         PresentationTimingData timing,
@@ -57,6 +59,7 @@ public class GameFlowPresenter : MonoBehaviour
         _progressModel = progressModel;
         _gameStateManager = gameStateManager;
         _provider = provider;
+        _handPresence = handPresence;
         _allSpells = allSpells;
         _timing = timing;
 
@@ -142,11 +145,12 @@ public class GameFlowPresenter : MonoBehaviour
 
         _screenPresenter.HideAll();
 
-        if (transition.From == GamePhase.InGame)
+        // チュートリアルもInGameシーンを使う（B6）
+        if (GameStateManager.UsesBattleScene(transition.From))
             await UnloadBattleAsync(token);
 
         bool canBegin = false;
-        if (transition.To == GamePhase.InGame)
+        if (GameStateManager.UsesBattleScene(transition.To))
             canBegin = await LoadBattleAsync(token);
         else
             _screenPresenter.ShowScreen(transition.To);
@@ -192,14 +196,17 @@ public class GameFlowPresenter : MonoBehaviour
 
     private BattleContext CreateBattleContext()
     {
+        bool isTutorial = _gameStateManager.CurrentPhase.CurrentValue == GamePhase.Tutorial;
         return new BattleContext(
-            _gameStateManager.SelectedStage,
+            isTutorial ? _gameStateManager.TutorialStage : _gameStateManager.SelectedStage,
             _gameStateManager.AllStages,
             _allSpells,
             _provider,
             _gameStateManager,
             _progressModel.IsAutoPauseEnabled,
-            _settingsPresenter);
+            _settingsPresenter,
+            isTutorial,
+            _handPresence);
     }
 
     private static BattleInitializer FindBattleInitializer(Scene scene)

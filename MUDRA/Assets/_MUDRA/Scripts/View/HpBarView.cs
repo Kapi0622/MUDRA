@@ -112,4 +112,15 @@ public class HpBarView : MonoBehaviour
             handle.Cancel();
         }
     }
+
+    /// <summary>
+    /// シーンのアンロード（チュートリアル完了・リトライ等）で、アニメーション途中のまま破棄された時に止める。
+    /// 止めないとLitMotionが破棄済みのImageに書き込み続け、MissingReferenceExceptionになる。
+    /// 遅延追従のバーは待機を含めて1秒以上動くので、決着の直後に遷移すると特に起きやすい
+    /// </summary>
+    private void OnDestroy()
+    {
+        TryCancelMotion(ref _currentBarHandle);
+        TryCancelMotion(ref _delayedBarHandle);
+    }
 }

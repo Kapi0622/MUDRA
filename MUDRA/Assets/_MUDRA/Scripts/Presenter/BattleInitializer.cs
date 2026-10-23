@@ -30,6 +30,8 @@ public class BattleInitializer : MonoBehaviour
     [SerializeField] private BattlePresenter _battlePresenter;
     [SerializeField] private EnemyPresenter _enemyPresenter;
     [SerializeField] private PausePresenter _pausePresenter;
+    [Tooltip("チュートリアルの指示パネル（B6）。チュートリアルの時だけ使う")]
+    [SerializeField] private TutorialPresenter _tutorialPresenter;
 
     [Header("Data")]
     [SerializeField] private int _playerMaxHp = 100;
@@ -61,6 +63,7 @@ public class BattleInitializer : MonoBehaviour
     private BattleEndModel _battleEndModel;
     private PauseModel _pauseModel;
     private BattleStatsModel _battleStatsModel;
+    private TutorialModel _tutorialModel;    // チュートリアルの時だけ（B6）
 
     private BattleContext _context;
     private bool _isInitialized;
@@ -198,6 +201,21 @@ public class BattleInitializer : MonoBehaviour
             .Subscribe(isEnabled => _pauseModel.IsAutoPauseEnabled = isEnabled)
             .AddTo(_disposables);
         _battleStatsModel = new BattleStatsModel(_battleModel, _spellSequenceModel, _sectionProgressManager);
+
+        if (_context.IsTutorial) BuildTutorialModel();
+    }
+
+    /// <summary>
+    /// チュートリアルの進行を組み立てる（B6）。
+    /// 敵の行動はTutorialModelが決める（ガードの段階に入るまでは保留）。
+    /// 購読した時点で保留されるので、StartStageでセクションが始まっても敵は動き出さない
+    /// </summary>
+    private void BuildTutorialModel()
+    {
+        _tutorialModel = new TutorialModel(_spellSequenceModel, _battleModel, _presentationTiming.tutorialStepClearHold);
+        _tutorialModel.IsEnemyActive
+            .Subscribe(isActive => _enemyStateManager.SetHeld(!isActive, _presentationTiming.tutorialEnemyStartDelay))
+            .AddTo(_disposables);
     }
 
     private void InjectPresenters()
@@ -213,7 +231,7 @@ public class BattleInitializer : MonoBehaviour
         _pausePresenter.Initialize(
             _pauseModel,
             _context.GameStateManager,
-            _context.Provider,
+            _context.HandPresence,
             !_handSignPresenter.IsKeyboardMode,
             _context.AllSpells,
             _context.Settings
@@ -237,6 +255,16 @@ public class BattleInitializer : MonoBehaviour
             _presentationTiming
         );
         _enemyPresenter.PrepareStage(FirstStage);
+
+        if (_tutorialModel != null)
+        {
+            _tutorialPresenter.Initialize(
+                _tutorialModel,
+                _context.GameStateManager,
+                _pauseModel,
+                _context.AllSpells,
+                FirstStage.sections[0].enemyData);
+        }
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         var gameStateManager = _context.GameStateManager;
@@ -295,8 +323,22 @@ public class BattleInitializer : MonoBehaviour
             .AddTo(_disposables);
 
         // 決着の演出を見せ終えたらResult画面へ。挑戦したステージはデバッグのジャンプ後も現在のステージで記録する
+        // チュートリアルはResult画面・戦績に出さない（B6）。木人を倒したら完了扱い、負けたらやり直す
         _battleEndModel.OnFinished
-            .Subscribe(isWin => _context.GameStateManager.EndBattle(CreateRecord(isWin)))
+            .Subscribe(isWin =>
+            {
+                var gameStateManager = _context.GameStateManager;
+                if (!_context.IsTutorial)
+                    gameStateManager.EndBattle(CreateRecord(isWin));
+                else if (isWin)
+                    gameStateManager.CompleteTutorial();
+                else
+                    gameStateManager.Retry();
+            })
+            .AddTo(_disposables);
+
+        _tutorialModel?.OnCompleted
+            .Subscribe(_ => _context.GameStateManager.CompleteTutorial())
             .AddTo(_disposables);
 
         _sectionProgressManager.OnStageCleared
@@ -330,6 +372,7 @@ public class BattleInitializer : MonoBehaviour
         _battleEndModel?.Dispose();
         _pauseModel?.Dispose();
         _battleStatsModel?.Dispose();
+        _tutorialModel?.Dispose();
         _sectionProgressManager?.Dispose();
         _enemyStateManager?.StopLoop();
         _handTrackingService?.Dispose();

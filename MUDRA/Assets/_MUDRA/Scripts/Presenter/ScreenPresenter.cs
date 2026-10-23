@@ -5,7 +5,7 @@ using R3;
 using UnityEngine;
 
 /// <summary>
-/// App側の画面（Title / StageSelect / Result）を配線する（B5）。
+/// App側の画面（Title / StageSelect / Result）を配線する（B5）。Calibration（B6）の中身はCalibrationPresenterが配線し、ここは出し入れだけ行う。
 /// 画面からの要求をGameStateManagerのメソッドに渡し、画面に出す内容をModelとDataから組み立てて渡す。
 /// どの画面をいつ出すか（遷移演出の途中で切り替える）はGameFlowPresenterが決め、ShowScreenを呼ぶ。
 /// </summary>
@@ -14,6 +14,7 @@ public class ScreenPresenter : MonoBehaviour
     [SerializeField] private TitleView _titleView;
     [SerializeField] private StageSelectView _stageSelectView;
     [SerializeField] private ResultView _resultView;
+    [SerializeField] private CalibrationPresenter _calibrationPresenter;
 
     [Tooltip("弱点属性の文字色に使う")]
     [SerializeField] private BattlePaletteData _palette;
@@ -89,7 +90,7 @@ public class ScreenPresenter : MonoBehaviour
             .AddTo(_disposables);
     }
 
-    /// <summary>フェーズに対応する画面だけを出す。InGameではどの画面も出さない</summary>
+    /// <summary>フェーズに対応する画面だけを出す。InGame・Tutorialではどの画面も出さない</summary>
     public void ShowScreen(GamePhase phase)
     {
         HideAll();
@@ -98,6 +99,9 @@ public class ScreenPresenter : MonoBehaviour
         {
             case GamePhase.Title:
                 _titleView.Show();
+                break;
+            case GamePhase.Calibration:
+                _calibrationPresenter.Show();
                 break;
             case GamePhase.StageSelect:
                 // クリア記録が変わっているかもしれないので、出すたびに作り直す
@@ -116,6 +120,7 @@ public class ScreenPresenter : MonoBehaviour
         _titleView.Lock();
         _stageSelectView.Lock();
         _resultView.Lock();
+        _calibrationPresenter.Lock();
     }
 
     public void HideAll()
@@ -123,6 +128,7 @@ public class ScreenPresenter : MonoBehaviour
         _titleView.Hide();
         _stageSelectView.Hide();
         _resultView.Hide();
+        _calibrationPresenter.Hide();
     }
 
     private int IndexOfSelectedStage()
