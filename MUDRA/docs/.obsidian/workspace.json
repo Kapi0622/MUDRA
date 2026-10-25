@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specification_MUDRA.md",
+                "file": "sound_asset_list.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "specification_MUDRA"
+              "title": "sound_asset_list"
             }
           }
         ],
@@ -230,10 +230,13 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "sound_asset_list.md.tmp.24361.c112b69b62e2",
+    "specification_MUDRA.md",
+    "sound_asset_list.md",
+    "sound_asset_list.md.tmp.24361.787645969011",
     "devlog/dev_log_B6.md",
     "devlog/dev_log_B5.md",
     "devlog/dev_log_B4.5.md",
-    "specification_MUDRA.md",
     "devlog/sedG70iiR",
     "devlog/dev_log_B4.5.md.tmp.2413.244d487a89c4",
     "hand_sign_tuning.md.tmp.2413.a33a9f7c6b5b",
@@ -257,7 +260,6 @@
     "devlog/dev_log_B1.md",
     "devlog/未確認 4961.crdownload",
     "未確認 88279.crdownload",
-    "未確認 28989.crdownload",
     "devlog/dev_log_A2.md",
     "devlog/dev_log_A4.md",
     "devlog/dev_log_A3.md"
