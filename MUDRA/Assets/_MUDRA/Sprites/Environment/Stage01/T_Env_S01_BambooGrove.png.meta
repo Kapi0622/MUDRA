@@ -1,0 +1,390 @@
+fileFormatVersion: 2
+guid: d863597b9f37d6643895fd1fa7950f4f
+TextureImporter:
+  internalIDToNameTable:
+  - first:
+      213: -5837884049303925286
+    second: T_Env_S01_BambooGrove_0
+  - first:
+      213: 301633139829462007
+    second: T_Env_S01_BambooGrove_1
+  - first:
+      213: -7535447815410000471
+    second: T_Env_S01_BambooGrove_2
+  - first:
+      213: -8853400309572843212
+    second: T_Env_S01_BambooGrove_3
+  - first:
+      213: -2964958469458028954
+    second: T_Env_S01_BambooGrove_4
+  - first:
+      213: -2303355354638098808
+    second: T_Env_S01_BambooGrove_5
+  - first:
+      213: -7257997949200447140
+    second: T_Env_S01_BambooGrove_6
+  - first:
+      213: 8067270233157743024
+    second: T_Env_S01_BambooGrove_7
+  - first:
+      213: -604734452395919320
+    second: T_Env_S01_BambooGrove_8
+  - first:
+      213: -4903294546356589200
+    second: T_Env_S01_BambooGrove_9
+  externalObjects: {}
+  serializedVersion: 13
+  mipmaps:
+    mipMapMode: 0
+    enableMipMap: 1
+    sRGBTexture: 1
+    linearTexture: 0
+    fadeOut: 0
+    borderMipMap: 0
+    mipMapsPreserveCoverage: 0
+    alphaTestReferenceValue: 0.5
+    mipMapFadeDistanceStart: 1
+    mipMapFadeDistanceEnd: 3
+  bumpmap:
+    convertToNormalMap: 0
+    externalNormalMap: 0
+    heightScale: 0.25
+    normalMapFilter: 0
+    flipGreenChannel: 0
+  isReadable: 0
+  streamingMipmaps: 0
+  streamingMipmapsPriority: 0
+  vTOnly: 0
+  ignoreMipmapLimit: 0
+  grayScaleToAlpha: 0
+  generateCubemap: 6
+  cubemapConvolution: 0
+  seamlessCubemap: 0
+  textureFormat: 1
+  maxTextureSize: 2048
+  textureSettings:
+    serializedVersion: 2
+    filterMode: 2
+    aniso: 8
+    mipBias: 0
+    wrapU: 1
+    wrapV: 1
+    wrapW: 1
+  nPOTScale: 0
+  lightmap: 0
+  compressionQuality: 50
+  spriteMode: 2
+  spriteExtrude: 1
+  spriteMeshType: 1
+  alignment: 0
+  spritePivot: {x: 0.5, y: 0.5}
+  spritePixelsToUnits: 100
+  spriteBorder: {x: 0, y: 0, z: 0, w: 0}
+  spriteGenerateFallbackPhysicsShape: 1
+  alphaUsage: 1
+  alphaIsTransparency: 1
+  spriteTessellationDetail: -1
+  textureType: 0
+  textureShape: 1
+  singleChannelComponent: 0
+  flipbookRows: 1
+  flipbookColumns: 1
+  maxTextureSizeSet: 0
+  compressionQualitySet: 0
+  textureFormatSet: 0
+  ignorePngGamma: 0
+  applyGammaDecoding: 0
+  swizzle: 50462976
+  cookieLightType: 0
+  platformSettings:
+  - serializedVersion: 4
+    buildTarget: DefaultTexturePlatform
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: Standalone
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  - serializedVersion: 4
+    buildTarget: WebGL
+    maxTextureSize: 2048
+    resizeAlgorithm: 0
+    textureFormat: -1
+    textureCompression: 1
+    compressionQuality: 50
+    crunchedCompression: 0
+    allowsAlphaSplitting: 0
+    overridden: 0
+    ignorePlatformSupport: 0
+    androidETC2FallbackOverride: 0
+    forceMaximumCompressionQuality_BC6H_BC7: 0
+  spriteSheet:
+    serializedVersion: 2
+    sprites:
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_0
+      rect:
+        serializedVersion: 2
+        x: 2
+        y: 4
+        width: 120
+        height: 769
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: add0259336babfea0800000000000000
+      internalID: -5837884049303925286
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_1
+      rect:
+        serializedVersion: 2
+        x: 98
+        y: 0
+        width: 232
+        height: 773
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 7f355081ebd9f2400800000000000000
+      internalID: 301633139829462007
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_2
+      rect:
+        serializedVersion: 2
+        x: 323
+        y: 4
+        width: 97
+        height: 769
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 9ad5efae226bc6790800000000000000
+      internalID: -7535447815410000471
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_3
+      rect:
+        serializedVersion: 2
+        x: 377
+        y: 0
+        width: 300
+        height: 773
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 439c3956357622580800000000000000
+      internalID: -8853400309572843212
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_4
+      rect:
+        serializedVersion: 2
+        x: 632
+        y: 0
+        width: 326
+        height: 773
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 6661b262bf95ad6d0800000000000000
+      internalID: -2964958469458028954
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_5
+      rect:
+        serializedVersion: 2
+        x: 960
+        y: 4
+        width: 122
+        height: 769
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 88e5d473286d800e0800000000000000
+      internalID: -2303355354638098808
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_6
+      rect:
+        serializedVersion: 2
+        x: 1058
+        y: 0
+        width: 232
+        height: 773
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: c59c469d159664b90800000000000000
+      internalID: -7257997949200447140
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_7
+      rect:
+        serializedVersion: 2
+        x: 1279
+        y: 4
+        width: 101
+        height: 769
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 0b1337ae883b4ff60800000000000000
+      internalID: 8067270233157743024
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_8
+      rect:
+        serializedVersion: 2
+        x: 1333
+        y: 0
+        width: 298
+        height: 773
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 8283085383d8b97f0800000000000000
+      internalID: -604734452395919320
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: T_Env_S01_BambooGrove_9
+      rect:
+        serializedVersion: 2
+        x: 1588
+        y: 0
+        width: 330
+        height: 773
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 07d2e4fb69ff3fbb0800000000000000
+      internalID: -4903294546356589200
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    outline: []
+    customData: 
+    physicsShape: []
+    bones: []
+    spriteID: 
+    internalID: 0
+    vertices: []
+    indices: 
+    edges: []
+    weights: []
+    secondaryTextures: []
+    spriteCustomMetadata:
+      entries: []
+    nameFileIdTable:
+      T_Env_S01_BambooGrove_0: -5837884049303925286
+      T_Env_S01_BambooGrove_1: 301633139829462007
+      T_Env_S01_BambooGrove_2: -7535447815410000471
+      T_Env_S01_BambooGrove_3: -8853400309572843212
+      T_Env_S01_BambooGrove_4: -2964958469458028954
+      T_Env_S01_BambooGrove_5: -2303355354638098808
+      T_Env_S01_BambooGrove_6: -7257997949200447140
+      T_Env_S01_BambooGrove_7: 8067270233157743024
+      T_Env_S01_BambooGrove_8: -604734452395919320
+      T_Env_S01_BambooGrove_9: -4903294546356589200
+  mipmapLimitGroupName: 
+  pSDRemoveMatte: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

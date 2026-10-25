@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "sound_asset_list.md",
-                "mode": "source",
+                "file": "stage01_environment_asset_prompts.md",
+                "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "sound_asset_list"
+              "title": "stage01_environment_asset_prompts"
             }
           }
         ],
@@ -230,9 +230,15 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "sound_asset_list.md",
+    "stage01_environment_asset_prompts.md",
+    "未確認 306866.crdownload",
+    "未確認 986520.crdownload",
+    "未確認 922765.crdownload",
+    "stage01_environment_asset_prompts.md.tmp.287408.9d441a5e83e0",
+    "stage01_environment_asset_prompts.md.tmp.287408.ef8e42f5ee3a",
     "sound_asset_list.md.tmp.24361.c112b69b62e2",
     "specification_MUDRA.md",
-    "sound_asset_list.md",
     "sound_asset_list.md.tmp.24361.787645969011",
     "devlog/dev_log_B6.md",
     "devlog/dev_log_B5.md",
@@ -241,11 +247,8 @@
     "devlog/dev_log_B4.5.md.tmp.2413.244d487a89c4",
     "hand_sign_tuning.md.tmp.2413.a33a9f7c6b5b",
     "hand_sign_tuning.md",
-    "hand_sign_tuning.md.tmp.2413.587cabe266e3",
     "devlog/dev_log_B4.md",
-    "devlog/dev_log_B4.md.tmp.1369.1c3f8207ee5f",
     "devlog/dev_log_B3.md",
-    "devlog/dev_log_B3.md.tmp.5318.9787c239651a",
     "B3_enemy_stage_content.md",
     "architecture/00_overview.md",
     "architecture/02_battle_system.md",
@@ -256,10 +259,7 @@
     "devlog/dev_log_P2.md",
     "devlog/dev_log_B2.md",
     "devlog/dev_log_A5.md",
-    "devlog/未確認 75729.crdownload",
     "devlog/dev_log_B1.md",
-    "devlog/未確認 4961.crdownload",
-    "未確認 88279.crdownload",
     "devlog/dev_log_A2.md",
     "devlog/dev_log_A4.md",
     "devlog/dev_log_A3.md"

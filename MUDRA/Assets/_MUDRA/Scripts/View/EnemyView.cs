@@ -15,6 +15,10 @@ using MUDRA.Data;
 ///   位置 = 登場スライド + 踏み込み + 揺れ
 ///   拡縮 = 基準 × ボス倍率 × 踏み込みの膨らみ × 撃破の縮小
 ///
+/// 3D化（ステップ3）で敵は床に立つようになった。拡縮は絵の下端を基準にし（ボスの拡大や撃破の縮小で足元が動かない）、
+/// 踏み込みはカメラ方向（-Z）にした。足元の影は本体の位置・大きさ・透明度に合わせる。
+/// 影は板ではなくメッシュ（Quad）なので、色はSpriteRenderer.colorではなくMaterialPropertyBlockで変える。
+///
 /// 階層は「ルート(このコンポーネント) / Body(SpriteRenderer)」の2段。
 /// 動かすのはBodyだけにし、ルートの位置は動かさない。
 /// 術エフェクトの出現位置（EffectSpawnPoint）はルートの子に置くので、演出の揺れに引きずられない。
@@ -38,7 +42,7 @@ public class EnemyView : MonoBehaviour
 
     // --- 攻撃 ---
     private const float AttackPunchScale = 1.25f;
-    private const float AttackLungeDistance = 0.5f;     // 画面手前（下方向）への踏み込み
+    private const float AttackLungeDistance = 0.5f;     // カメラ方向（-Z）への踏み込み
     private const float AttackDuration = 0.25f;
 
     // --- 被弾 ---
@@ -49,6 +53,10 @@ public class EnemyView : MonoBehaviour
     private const float HitShakeFrequency = 30f;
     private const float DotFlashDuration = 0.2f;
     private const float DotFlashStrength = 0.6f;
+
+    // --- 足元の影 ---
+    private const float ShadowAlpha = 0.55f;
+    private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
     // --- 仮素材の色 ---
     private const float PlaceholderSaturation = 0.45f;
@@ -86,6 +94,8 @@ public class EnemyView : MonoBehaviour
     [SerializeField] private Sprite _fallbackSprite;
     [Tooltip("ボス撃破時に敵の位置に出す爆散パーティクル")]
     [SerializeField] private GameObject _bossDefeatEffectPrefab;
+    [Tooltip("足元の影（床に寝かせたQuad）。未設定なら影を出さない")]
+    [SerializeField] private Renderer _shadow;
 
     [Header("攻撃予告UI（BattleCanvas上）")]
     [SerializeField] private CanvasGroup _chargeGroup;
@@ -107,10 +117,16 @@ public class EnemyView : MonoBehaviour
     private float _alpha = 1f;
     private float _silhouette;                  // 0〜1。ボスの登場で黒い影から色が付いていく
     private float _appearOffsetX;
-    private float _lungeOffsetY;
+    private float _lungeOffsetZ;
     private float _shakeOffsetX;
     private float _punchScale = 1f;
     private float _vanishScale = 1f;
+    private float _bodyHalfHeight;              // 基準の拡縮での、絵の中心から下端までの高さ
+
+    // --- 足元の影 ---
+    private Vector3 _shadowBasePosition;
+    private Vector3 _shadowBaseScale;
+    private MaterialPropertyBlock _shadowBlock;
 
     // --- 実行中のモーション ---
     private MotionHandle _appearHandle;
@@ -142,6 +158,12 @@ public class EnemyView : MonoBehaviour
 
         _baseScale = _body.localScale;
         _chargeGroup.alpha = 0f;
+        if (_shadow != null)
+        {
+            _shadowBasePosition = _shadow.transform.localPosition;
+            _shadowBaseScale = _shadow.transform.localScale;
+            _shadowBlock = new MaterialPropertyBlock();
+        }
         _stunLabel.SetActive(false);
     }
 
@@ -174,6 +196,9 @@ public class EnemyView : MonoBehaviour
         ResetVisualState();
 
         _spriteRenderer.sprite = sprite != null ? sprite : _fallbackSprite;
+        _bodyHalfHeight = _spriteRenderer.sprite != null
+            ? _spriteRenderer.sprite.bounds.extents.y * _baseScale.y
+            : 0f;
         _baseColor = sprite != null ? Color.white : PlaceholderColor(enemyName);
         _bossScale = isBoss ? BossScaleMultiplier : 1f;
 
@@ -249,7 +274,7 @@ public class EnemyView : MonoBehaviour
             {
                 // 0→1→0 の山形。前半で踏み込み、後半で戻る
                 float k = Mathf.Sin(t * Mathf.PI);
-                _lungeOffsetY = -AttackLungeDistance * k;
+                _lungeOffsetZ = -AttackLungeDistance * k;
                 _punchScale = Mathf.Lerp(1f, AttackPunchScale, k);
                 ApplyVisual();
             });
@@ -423,6 +448,7 @@ public class EnemyView : MonoBehaviour
 
     /// <summary>
     /// 各演出の成分を合成してSpriteRendererとBodyに反映する。
+    /// 拡縮しても絵の下端（足元）が動かないよう、拡大した分だけBodyを持ち上げる。
     /// </summary>
     private void ApplyVisual()
     {
@@ -434,8 +460,27 @@ public class EnemyView : MonoBehaviour
         color.a = _alpha;
         _spriteRenderer.color = color;
 
-        _body.localPosition = new Vector3(_appearOffsetX + _shakeOffsetX, _lungeOffsetY, 0f);
-        _body.localScale = _baseScale * (_bossScale * _punchScale * _vanishScale);
+        float scale = _bossScale * _punchScale * _vanishScale;
+        float offsetX = _appearOffsetX + _shakeOffsetX;
+        _body.localPosition = new Vector3(offsetX, _bodyHalfHeight * (scale - 1f), _lungeOffsetZ);
+        _body.localScale = _baseScale * scale;
+
+        ApplyShadow(offsetX, scale, color.a);
+    }
+
+    /// <summary>
+    /// 足元の影を本体に合わせる。横位置（登場・揺れ）と踏み込みに付いていき、大きさと濃さは本体に比例させる。
+    /// </summary>
+    private void ApplyShadow(float offsetX, float scale, float alpha)
+    {
+        if (_shadow == null) return;
+
+        _shadow.transform.localPosition = _shadowBasePosition + new Vector3(offsetX, 0f, _lungeOffsetZ);
+        _shadow.transform.localScale = new Vector3(
+            _shadowBaseScale.x * scale, _shadowBaseScale.y * scale, _shadowBaseScale.z);
+
+        _shadowBlock.SetColor(BaseColorId, new Color(0f, 0f, 0f, ShadowAlpha * alpha));
+        _shadow.SetPropertyBlock(_shadowBlock);
     }
 
     private void ResetVisualState()
@@ -448,7 +493,7 @@ public class EnemyView : MonoBehaviour
         _flash = 0f;
         _alpha = 1f;
         _appearOffsetX = 0f;
-        _lungeOffsetY = 0f;
+        _lungeOffsetZ = 0f;
         _shakeOffsetX = 0f;
         _punchScale = 1f;
         _vanishScale = 1f;
