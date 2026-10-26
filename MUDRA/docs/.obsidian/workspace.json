@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "stage01_environment_asset_prompts.md",
+                "file": "sound_asset_list.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "stage01_environment_asset_prompts"
+              "title": "sound_asset_list"
             }
           }
         ],
@@ -123,7 +123,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "2fd3bbb2af97ba4a",
@@ -230,15 +231,21 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "stage04_environment_asset_prompts.md",
+    "stage03_environment_asset_prompts.md",
+    "stage02_environment_asset_prompts.md",
     "sound_asset_list.md",
+    "specification_MUDRA.md",
+    "B3_enemy_stage_content.md",
+    "hand_sign_tuning.md",
     "stage01_environment_asset_prompts.md",
+    "proposal_MUDRA.md",
     "未確認 306866.crdownload",
     "未確認 986520.crdownload",
     "未確認 922765.crdownload",
     "stage01_environment_asset_prompts.md.tmp.287408.9d441a5e83e0",
     "stage01_environment_asset_prompts.md.tmp.287408.ef8e42f5ee3a",
     "sound_asset_list.md.tmp.24361.c112b69b62e2",
-    "specification_MUDRA.md",
     "sound_asset_list.md.tmp.24361.787645969011",
     "devlog/dev_log_B6.md",
     "devlog/dev_log_B5.md",
@@ -246,14 +253,11 @@
     "devlog/sedG70iiR",
     "devlog/dev_log_B4.5.md.tmp.2413.244d487a89c4",
     "hand_sign_tuning.md.tmp.2413.a33a9f7c6b5b",
-    "hand_sign_tuning.md",
     "devlog/dev_log_B4.md",
     "devlog/dev_log_B3.md",
-    "B3_enemy_stage_content.md",
     "architecture/00_overview.md",
     "architecture/02_battle_system.md",
     "architecture/01_hand_input.md",
-    "proposal_MUDRA.md",
     "devlog/dev_log_A1.md",
     "devlog/dev_log_P3.md",
     "devlog/dev_log_P2.md",

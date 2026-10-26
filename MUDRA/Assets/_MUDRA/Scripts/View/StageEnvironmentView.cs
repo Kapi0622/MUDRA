@@ -18,6 +18,12 @@ using MUDRA.Data;
 ///
 /// 移動の長さはPresentationTimingData.advanceDuration（Modelの遷移待機に含まれる）。
 /// 背景画像が未設定のステージでは既定の背景を使い、ボス戦は暗い赤に沈めて道中と区別する（B4から引き継ぎ）。
+///
+/// 環境PrefabはセクションごとのSectionAtmosphere（霧）を持てる。着いたセクションの霧をRenderSettingsに書き、
+/// 前進中は前後の値を補間する。バトル中はInGameがアクティブシーンなので、書き換わるのはInGameの設定だけで、
+/// アンロードすればAppの設定に戻る（後始末は要らない）。
+/// InGameシーン自体の霧は「線形・オン」で保存してある。ビルドの霧シェーダーの自動削り込みで霧の機能が消えないようにするためで、
+/// 実際に霧を出すかどうかはBuildで必ず上書きする。
 /// </summary>
 public class StageEnvironmentView : MonoBehaviour
 {
@@ -26,6 +32,13 @@ public class StageEnvironmentView : MonoBehaviour
     private const float PlateDepth = 10f;           // マーカー（敵の立ち位置）から背景の板までの奥行き
     private const string PlateSortingLayer = "Background";
     private const string GeneratedRootName = "Environment (Generated)";
+    private const float FloorOffsetY = -1.5f;       // マーカーから床までの高さ（EnemyViewの足元の影と揃える）
+    private const float FloorWidth = 30f;
+    private const float FloorMargin = 12f;          // 先頭マーカーより手前に敷く長さ（カメラの足元まで覆う）
+
+    // --- 霧 ---
+    // 霧なしのセクションと補間するときは「カメラの遠くの描画範囲の外まで霧を押しやった状態」として扱う
+    private const float NoFogDistance = 2000f;
 
     private static readonly Color BossFallbackTint = new Color(0.65f, 0.4f, 0.4f);
 
@@ -41,8 +54,13 @@ public class StageEnvironmentView : MonoBehaviour
     [SerializeField] private Material _plateMaterial;
     [Tooltip("StageDataの背景が未設定のときに使う既定背景")]
     [SerializeField] private Sprite _fallbackSprite;
+    [Tooltip("自動生成の廊下に敷く床のマテリアル（URP/Unlit）。足元の影が宙に浮かないようにするため")]
+    [SerializeField] private Material _fallbackFloorMaterial;
 
     private readonly List<Pose> _anchors = new();
+    private readonly List<StageEnvironment.SectionAtmosphere> _atmospheres = new();
+    private readonly List<SpriteRenderer> _backdrops = new();
+    private StageEnvironment.SectionAtmosphere _currentAtmosphere;
     private GameObject _environment;
     private StageData _builtStage;
     private int _currentIndex = -1;
@@ -59,12 +77,17 @@ public class StageEnvironmentView : MonoBehaviour
         TryCancel(ref _advanceHandle);
         if (_environment != null) Destroy(_environment);
         _anchors.Clear();
+        _atmospheres.Clear();
+        _backdrops.Clear();
         _currentIndex = -1;
         _builtStage = stage;
 
         _environment = stage.environmentPrefab != null
             ? InstantiatePrefab(stage)
             : GenerateCorridor(stage);
+
+        // 霧はセクションに着いた時に決まる。それまでは前のステージの霧を残さない
+        ApplyAtmosphere(default);
     }
 
     /// <summary>
@@ -79,6 +102,7 @@ public class StageEnvironmentView : MonoBehaviour
         var pose = GetAnchor(index);
         _rig.SetPositionAndRotation(pose.position, pose.rotation);
         _currentIndex = index;
+        ApplyAtmosphere(GetAtmosphere(index));
     }
 
     /// <summary>
@@ -91,14 +115,20 @@ public class StageEnvironmentView : MonoBehaviour
 
         var from = new Pose(_rig.position, _rig.rotation);
         var to = GetAnchor(toIndex);
+        var fromAtmosphere = _currentAtmosphere;
+        var toAtmosphere = GetAtmosphere(toIndex);
         _currentIndex = toIndex;
 
         _advanceHandle = LMotion.Create(0f, 1f, _timing.advanceDuration)
             .WithDelay(delay)
             .WithEase(Ease.InOutSine)
-            .Bind(t => _rig.SetPositionAndRotation(
-                Vector3.LerpUnclamped(from.position, to.position, t),
-                Quaternion.SlerpUnclamped(from.rotation, to.rotation, t)));
+            .Bind(t =>
+            {
+                _rig.SetPositionAndRotation(
+                    Vector3.LerpUnclamped(from.position, to.position, t),
+                    Quaternion.SlerpUnclamped(from.rotation, to.rotation, t));
+                ApplyAtmosphere(LerpAtmosphere(fromAtmosphere, toAtmosphere, t));
+            });
     }
 
     /// <summary>
@@ -108,6 +138,55 @@ public class StageEnvironmentView : MonoBehaviour
     {
         if (_anchors.Count == 0) return Pose.identity;
         return _anchors[Mathf.Clamp(index, 0, _anchors.Count - 1)];
+    }
+
+    private StageEnvironment.SectionAtmosphere GetAtmosphere(int index)
+    {
+        if (_atmospheres.Count == 0) return default;
+        return _atmospheres[Mathf.Clamp(index, 0, _atmospheres.Count - 1)];
+    }
+
+    /// <summary>霧をRenderSettingsに書き、遠景の幕に色を掛ける。霧なしなら霧を切る。</summary>
+    private void ApplyAtmosphere(StageEnvironment.SectionAtmosphere atmosphere)
+    {
+        _currentAtmosphere = atmosphere;
+
+        var tint = atmosphere.EffectiveBackdropTint;
+        foreach (var backdrop in _backdrops)
+            if (backdrop != null) backdrop.color = tint;
+
+        RenderSettings.fog = atmosphere.useFog;
+        if (!atmosphere.useFog) return;
+
+        RenderSettings.fogMode = FogMode.Linear;
+        RenderSettings.fogColor = atmosphere.fogColor;
+        RenderSettings.fogStartDistance = atmosphere.fogStart;
+        RenderSettings.fogEndDistance = atmosphere.fogEnd;
+    }
+
+    /// <summary>
+    /// 2つの霧の間を補間する。片方が霧なしなら、霧を遠くへ押しやった状態から（へ）動かす。
+    /// 色は霧のある側の色を使うので、霧なしから入っても途中で灰色が混ざらない。
+    /// </summary>
+    private static StageEnvironment.SectionAtmosphere LerpAtmosphere(
+        StageEnvironment.SectionAtmosphere from, StageEnvironment.SectionAtmosphere to, float t)
+    {
+        var tint = Color.LerpUnclamped(from.EffectiveBackdropTint, to.EffectiveBackdropTint, t);
+        if (!from.useFog && !to.useFog) return new StageEnvironment.SectionAtmosphere { backdropTint = tint };
+
+        if (!from.useFog) from = new StageEnvironment.SectionAtmosphere
+            { useFog = true, fogColor = to.fogColor, fogStart = NoFogDistance, fogEnd = NoFogDistance + 1f };
+        if (!to.useFog) to = new StageEnvironment.SectionAtmosphere
+            { useFog = true, fogColor = from.fogColor, fogStart = NoFogDistance, fogEnd = NoFogDistance + 1f };
+
+        return new StageEnvironment.SectionAtmosphere
+        {
+            useFog = true,
+            fogColor = Color.LerpUnclamped(from.fogColor, to.fogColor, t),
+            fogStart = Mathf.LerpUnclamped(from.fogStart, to.fogStart, t),
+            fogEnd = Mathf.LerpUnclamped(from.fogEnd, to.fogEnd, t),
+            backdropTint = tint,
+        };
     }
 
     private GameObject InstantiatePrefab(StageData stage)
@@ -123,7 +202,9 @@ public class StageEnvironmentView : MonoBehaviour
         {
             var anchor = environment.GetAnchor(i);
             _anchors.Add(new Pose(anchor.position, anchor.rotation));
+            _atmospheres.Add(environment.GetAtmosphere(i));
         }
+        _backdrops.AddRange(environment.Backdrops);
 
         int sectionCount = stage.sections != null ? stage.sections.Length : 0;
         if (environment.AnchorCount < sectionCount)
@@ -158,7 +239,28 @@ public class StageEnvironmentView : MonoBehaviour
             CreatePlate(root.transform, i, sprite, isBoss, plateDistance);
         }
 
+        CreateFallbackFloor(root.transform, sectionCount);
         return root;
+    }
+
+    /// <summary>
+    /// 自動生成の廊下に床を敷く。背景の絵だけだと足元に何も無く、敵の足元の影が宙に浮いて見えるため。
+    /// 不透明なので、床より奥にある板の下側は床に隠れる（絵の地面が床に置き換わる）。
+    /// </summary>
+    private void CreateFallbackFloor(Transform parent, int sectionCount)
+    {
+        if (_fallbackFloorMaterial == null) return;
+
+        float near = -FloorMargin;
+        float far = Mathf.Max(0, sectionCount - 1) * SectionSpacing + PlateDepth;
+        var floor = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(floor.GetComponent<Collider>());
+        floor.name = "Floor";
+        floor.transform.SetParent(parent, false);
+        floor.transform.localPosition = new Vector3(0f, FloorOffsetY, (near + far) * 0.5f);
+        floor.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+        floor.transform.localScale = new Vector3(FloorWidth, far - near, 1f);
+        floor.GetComponent<MeshRenderer>().sharedMaterial = _fallbackFloorMaterial;
     }
 
     private void CreatePlate(Transform parent, int index, Sprite sprite, bool isBoss, float plateDistance)

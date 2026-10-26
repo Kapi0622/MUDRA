@@ -284,13 +284,14 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 | アセット | 術名 | シーケンス | 属性 | 威力 | 計算方式 | 副次効果 |
 |---|---|---|---|---|---|---|
-| WindBlade | 風刃 | 合 | Wind | 30 | SingleHit | — |
-| WaterCrow | 水爪 | 刃 → 握 | Water | 30 | SingleHit | — |
-| IceWind | 氷風 | 開 → 指 → 握 | Wind | 50 | SingleHit | — |
-| Lightning | 雷連撃 | 指 → 刃 | Thunder | 50 | MultiHit ×5 | Stun 3秒 |
-| Fireball | 火炎弾 | 掌 → 握 | Fire | 50 | DoT | DamageOverTime 3秒 |
-| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 40 | SingleHit | — |
-| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 10） |
+| WindBlade | 風刃 | 合 | Wind | 180 | SingleHit | — |
+| WaterCrow | 水爪 | 刃 → 握 | Water | 100 | SingleHit | — |
+| IceWind | 氷風 | 開 → 指 → 握 | Wind | 150 | SingleHit | — |
+| Lightning | 雷連撃 | 指 → 刃 | Thunder | 150 | MultiHit ×5 | Stun 3秒 |
+| Fireball | 火炎弾 | 掌 → 握 | Fire | 120 | DoT | DamageOverTime 3秒 |
+| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 100 | SingleHit | — |
+| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 30） |
+| Halo | 光輪 | 握 → 開 | Light | 100 | SingleHit | HealOverTime 1秒（healPower 3） |
 
 ### 敵・攻撃・ステージアセット
 

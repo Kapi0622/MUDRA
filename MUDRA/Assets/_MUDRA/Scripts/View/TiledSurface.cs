@@ -9,6 +9,9 @@ using UnityEngine;
 ///
 /// マテリアルを長さごとに分けずに済むよう、繰り返しはMaterialPropertyBlockで板ごとに持たせる。
 /// テクスチャは取り込み設定で Wrap Mode U を Repeat にしておくこと（Clampだと端の色が伸びる）。
+///
+/// マテリアルのTiling/Offsetの縦方向（y）は「絵の上下の透明な余白の切り落とし」として引き継ぐ（Stage02〜04で追加）。
+/// 余白を残したまま貼ると、壁の下端が床から浮くため。横方向は繰り返すので切り落とせない（左右の余白はそのまま残る）。
 /// </summary>
 [ExecuteAlways]
 [RequireComponent(typeof(Renderer))]
@@ -38,12 +41,15 @@ public class TiledSurface : MonoBehaviour
         var scale = transform.lossyScale;
         if (texture == null || Mathf.Approximately(scale.y, 0f)) return;
 
-        float aspect = (float)texture.width / texture.height;
+        // 縦の切り落とし（マテリアルのTiling y / Offset y）を保ち、切り落とした後の縦横比で回数を決める
+        float cropScaleV = material.GetTextureScale(BaseMapId).y;
+        float cropOffsetV = material.GetTextureOffset(BaseMapId).y;
+        float aspect = texture.width / (texture.height * cropScaleV);
         float repeat = Mathf.Abs(scale.x) / (Mathf.Abs(scale.y) * aspect);
 
         _block ??= new MaterialPropertyBlock();
         renderer.GetPropertyBlock(_block);
-        _block.SetVector(BaseMapStId, new Vector4(repeat, 1f, _offsetU, 0f));
+        _block.SetVector(BaseMapStId, new Vector4(repeat, cropScaleV, _offsetU, cropOffsetV));
         renderer.SetPropertyBlock(_block);
     }
 }
