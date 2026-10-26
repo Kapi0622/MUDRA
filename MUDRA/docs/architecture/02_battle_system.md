@@ -362,8 +362,8 @@ B4で増えた View（フラッシュ・揺れ・ガード・数字・コンボ�
 | 購読するストリーム | 呼ぶもの |
 |---|---|
 | `SectionProgressManager.OnStageStarted` | `StageTitleView.ShowStageTitle` |
-| `OnSectionStarted` | `BattleResultView.Hide` → `BackgroundView.SetBackground`（`isBoss` で道中/ボス）→ `EnemyView.Appear`。ボスなら登場シーケンス（`BossEncounterView.PlayEncounter` / `CameraShakeView.ShakeBossRoar` / `StageTitleView.ShowBossTitle`） |
-| `OnSectionCleared` | ボスならヒットストップ・白フラッシュ・大揺れ・`PlayBossDefeat`、雑魚なら `PlayDefeat`。次があれば `BackgroundView.PlayAdvance` |
+| `OnSectionStarted` | `BattleResultView.Hide` → `StageEnvironmentView.Build`（ステージが変わった時だけ作り直す）→ `MoveToSection`（デバッグジャンプの時だけリグを置き直す）→ `EnemyView.Appear`。ボスなら登場シーケンス（`BossEncounterView.PlayEncounter` / `CameraShakeView.ShakeBossRoar` / `StageTitleView.ShowBossTitle`） |
+| `OnSectionCleared` | ボスならヒットストップ・白フラッシュ・大揺れ・`PlayBossDefeat`、雑魚なら `PlayDefeat`。次があれば `StageEnvironmentView.PlayAdvance(clearedIndex + 1, 撃破演出の長さ)`（リグごと次のマーカーへ。霧と幕の色も補間） |
 | `OnStageCleared` / `OnGameOver` | `BattleResultView`（ボス撃破時は撃破演出の後に「討伐」） |
 | `EnemyStateManager.CurrentPhase` | Stun表示 / 攻撃 / 予告を消す。Charging 以外ならボスの大技予告も消す |
 | `EnemyStateManager.CurrentAction`（Charging 中のみ） | `EnemyView.PlayCharging`。ボスの大技なら `BossEncounterView.ShowHeavyWarning` |
@@ -478,7 +478,7 @@ flowchart TD
 
 | 置き場所 | 中身 |
 |---|---|
-| ワールド（Sorting Layer `Background` < `Enemy` < `Effect`） | 背景・敵・暗転（ボス登場）・術エフェクト。カメラの揺れはここだけに効く |
+| ワールド（3D。環境は不透明＋切り抜きの板で深度、敵・幕・エフェクトは半透明で Sorting Layer `Background` < `Enemy` < `Effect`） | 環境・敵・暗転（ボス登場）・術エフェクト。カメラの移動・揺れはここだけに効く（B6.5） |
 | `Main Canvas`（`CameraPreview` レイヤー） | 右下のカメラ映像 |
 | `BattleCanvas`（Overlay） | HUD 全部。奥から フラッシュ・ガード枠・大技ビネット → HPバー等 → 数字・テロップ → ボスの帯・決着表示 |
 
@@ -486,11 +486,11 @@ flowchart TD
 
 | View | 公開メソッド | 中身 |
 |---|---|---|
-| `EnemyView` | `Appear` / `PlayCharging` / `HideChargeGauge` / `PlayAttack` / `PlayHit` / `PlayDotTick` / `SetStunned` / `PlayDefeat` / `PlayBossDefeat` | 敵1体。ルート（動かない・`EffectSpawnPoint` を持つ）と `Body`（動く・SpriteRenderer）の2段 |
-| `BackgroundView` | `SetBackground` / `PlayAdvance` | 背景の切替（違う背景の時だけ明転）、前進演出（ズーム＋暗転→明転）。拡大率はカメラから cover fit で計算 |
+| `EnemyView` | `Appear` / `PlayCharging` / `HideChargeGauge` / `PlayAttack` / `PlayHit` / `PlayDotTick` / `SetStunned` / `PlayDefeat` / `PlayBossDefeat` | 敵1体。ルート（動かない・`EffectSpawnPoint` を持つ）と `Body`（動く・SpriteRenderer）の2段。B6.5 で床に立つようになり、拡縮は絵の下端基準・踏み込みは -Z・足元の影（`FootShadow`、`MaterialPropertyBlock` で濃さを変える） |
+| `StageEnvironmentView` | `Build` / `MoveToSection` / `PlayAdvance` | B6.5 で `BackgroundView` を改名・作り直し。環境 Prefab（無ければ背景画像から自動生成の廊下）を作り、`BattleRig` をマーカーへ移動。セクションごとの霧と遠景の幕の色を適用・補間 |
 | `StageTitleView` | `ShowStageTitle` / `ShowBossTitle(name, delay)` | 画面下にステージ名・ボス名 |
 | `ScreenFlashView` | `FlashDamage(isHeavy)` / `FlashGuard` / `FlashMisfire` / `FlashBossDefeat` | 全画面の色フラッシュ。色の意味づけは View が持つ |
-| `CameraShakeView` | `ShakeDamage(isHeavy)` / `ShakeGuard` / `ShakeBossRoar(delay)` / `ShakeBossDefeat` | Main Camera の減衰する揺れ |
+| `CameraShakeView` | `ShakeDamage(isHeavy)` / `ShakeGuard` / `ShakeBossRoar(delay)` / `ShakeBossDefeat` | 減衰する揺れ。B6.5 で Cinemachine Impulse に置き換え（2D の式をカスタム波形で渡す。前の揺れは Clear して上書き） |
 | `GuardView` | `SetStance` / `PlayGuardSuccess` | 受付中の構え枠と、成功時の「防」。枠だけ出て「防」が出なければ早すぎたと分かる |
 | `HandSignStatusView` | `ShowCandidate` / `PlayConfirm` / `Hide` | 右下のカメラ映像の上に、判定中の印名と確定までのゲージ。確定でポップして約0.5秒後に消える。確定演出中の `Hide` は無視する |
 | `DamageNumberView` | `ShowSpellHit` / `ShowDotTick` / `ShowHeal` / `ShowPlayerDamage` | 浮き上がる数字。テンプレートを `ObjectPool` で使い回す。Model の型は知らず、Presenter が分解した値を受け取る |
@@ -501,7 +501,7 @@ flowchart TD
 
 ### 作り方の決まり
 
-- **成分ごとに持って1か所で合成する。** 演出は同時に重なるため、`EnemyView` / `BackgroundView` は演出ごとの成分（明滅・フラッシュ・影・透明度・揺れ・拡縮）を別々に持ち、`ApplyVisual()` で合成して書き込む。演出同士が上書きし合わない
+- **成分ごとに持って1か所で合成する。** 演出は同時に重なるため、`EnemyView` は演出ごとの成分（明滅・フラッシュ・影・透明度・揺れ・拡縮）を別々に持ち、`ApplyVisual()` で合成して書き込む。演出同士が上書きし合わない
 - **初期化を Awake 任せにしない。** 最初の敵の登場やコンボ0は `BattleInitializer.Awake` から流れてくるので、View の Awake より先に呼ばれることがある。`EnsureInitialized()` で「最初に使われた時か Awake の早いほう」で1回だけ初期化する
 - **複数のクラスにまたがる尺は時間表（`PresentationTimingData`、アセット `PT_Battle`）に置く。** ボスの登場・撃破の秒数、雑魚の登場・撃破、前進演出の長さを集め、各 View が「開始までの遅延」を受け取る。Presenter は同じ瞬間に全部を呼ぶだけ（タイマーを持たない）。ボス登場の順番が崩れる値を入れると `OnValidate` が警告する
 - **複数の View で使う意味の色はパレット（`BattlePaletteData`、アセット `PL_Battle`）に置く。** DoT・回復・ガード・弱点・属性の色。1つの View でしか使わない色や、各 View に閉じた振幅・倍率はその View の const に残す
