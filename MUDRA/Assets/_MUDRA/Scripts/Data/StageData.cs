@@ -45,6 +45,10 @@ public class StageData : ScriptableObject
     [Tooltip("ボスセクションの背景。B4で使用")]
     public Sprite bossBackgroundSprite;
 
+    [Tooltip("3D環境のPrefab（ルートにStageEnvironmentを付け、セクション数ぶんのマーカーを置く）。\n" +
+             "未設定なら道中/ボスの背景画像から書き割りの廊下を自動で組む（3D化ステップ2b）")]
+    public GameObject environmentPrefab;
+
     /// <summary>
     /// このステージのボス。isBossのセクションを末尾から探し、無ければ末尾の敵で代用する。
     /// StageSelectの弱点表示とステージ開始の演出で使う（B5）

@@ -3095,6 +3095,51 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 612617145}
   m_CullTransparentMesh: 1
+--- !u!1 &624991876
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 624991878}
+  - component: {fileID: 624991877}
+  m_Layer: 0
+  m_Name: PerformanceRecorder
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &624991877
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 624991876}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e0b0880964417ed4f9f1b046b8024d6f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Debugging.PerformanceRecorder
+  _provider: {fileID: 1408001610}
+--- !u!4 &624991878
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 624991876}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 1688.0544, y: 498.68506, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &658375093
 GameObject:
   m_ObjectHideFlags: 0
@@ -8759,6 +8804,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 49d074f01160bc2428cc93b67f91d64f, type: 2}
   - {fileID: 11400000, guid: f4dbf3297a2b8c24089ca6f6ca1ed8d6, type: 2}
   - {fileID: 11400000, guid: 91c5976cdeb84cd49b8d290fa2b6e542, type: 2}
+  - {fileID: 11400000, guid: c1eb9baee06a19e4d886e7ccd8ba95e8, type: 2}
   - {fileID: 11400000, guid: d8b52d98cddcfa44db1e02cd2ffa06b8, type: 2}
   - {fileID: 11400000, guid: 61fbf01a5eada1d44bbcadbdcd724f2b, type: 2}
   _presentationTiming: {fileID: 11400000, guid: e38c2877c8b9e914994d4e57bdce1127, type: 2}
@@ -10514,3 +10560,4 @@ SceneRoots:
   - {fileID: 7310548}
   - {fileID: 1827467451}
   - {fileID: 367864539}
+  - {fileID: 624991878}

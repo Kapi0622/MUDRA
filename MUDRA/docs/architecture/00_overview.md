@@ -32,7 +32,8 @@
 
 | 技術 | 用途 |
 |---|---|
-| Unity 6 + URP（2D） | 実行環境。ビジュアル方針は2Dで確定（B1） |
+| Unity 6 + URP | 実行環境。Renderer をカメラ単位で使い分ける：App は 2D Renderer、InGame は Universal Renderer（B6.5 で InGame を 2.5D 化。[dev_log_B6.5](../devlog/dev_log_B6.5.md)） |
+| **Cinemachine 3.1.7** | InGame のカメラ（仮想カメラ `CM_BattleCamera`）と揺れ（Impulse）。B6.5 |
 | MediaPipeUnityPlugin | Webカメラからの手ランドマーク検出（21点 × 最大2手） |
 | **R3**（NuGetForUnity経由） | Model → Presenter の通知。`ReactiveProperty` / `Subject` / `Observable` |
 | **UniTask** | 非同期タイマー全般。敵行動ループ、硬直タイマー、スレッド切替 |
@@ -88,7 +89,8 @@ Assets/_MUDRA/
     │          HandSignStatusView（判定中の印名＋確定ゲージ） / TutorialGuideView（B6）
     │   ポーズ: PauseMenuView / SpellListView / TimeScaleView（timeScale を書く唯一の場所）
     │   共通:  HandGuideView（「手が認識されません」。プレハブ `Prefabs/HandGuide`。B6）
-    │   世界:  EnemyView / BackgroundView / SpellEffectView / CameraShakeView
+    │   世界:  EnemyView / StageEnvironmentView（環境の生成とリグの移動） / SpellEffectView / CameraShakeView
+    │   環境:  StageEnvironment（環境 Prefab のマーカー・霧） / TiledSurface（壁の繰り返し） / ScrollingTexture（絵を流す）
     │   ボス:  BossEncounterView
     │   共有:  BattleUiConstants（調整対象でない共有値） / ElementNames
     ├── Debug/                   … #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -270,13 +272,16 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | GameObject | 載っているもの |
 |---|---|
 | `BattleSystem` | `BattleInitializer` / `HandSignPresenter` / `BattlePresenter` / `EnemyPresenter` / `PausePresenter` / `TutorialPresenter` / `TimeScaleView` |
-| `BattleField`（ワールド） | `Background`（`BackgroundView`）/ `Enemy`（`EnemyView`、子に `Body` と `EffectSpawnPoint`）/ `PlayerEffectSpawnPoint` / `BossDimOverlay` |
+| `BattleField`（ワールド） | `StageEnvironmentView`。実行時に環境 Prefab（`StageData.environmentPrefab`）を子に生成する |
+| `BattleField/BattleRig` | マーカーへ移動する戦闘一式：`CM_BattleCamera`（`CinemachineCamera` FOV 60・z=-8.66 / Impulse Listener / 揺らぎ）/ `Enemy`（`EnemyView`、子に `Body`・`EffectSpawnPoint`・`FootShadow`）/ `PlayerEffectSpawnPoint` / `BossDimOverlay`（z=-7.5） |
 | `BattleCanvas`（Overlay・HUD） | HPバー×2 / ガイド / テロップ / 数字 / コンボ / 状態アイコン / ステージ名 / 開始演出 / 決着 / フラッシュ / ガード枠 / ボス演出 / 判定中の印 / `TutorialGuide`（Tutorial の時だけ表示） |
 | `PauseCanvas`（order 20） | ポーズボタン・メニュー・術一覧・手印早見表・`HandGuide`・カウントダウン（`PauseMenuView`） |
-| `Main Camera` | Orthographic（size 5）。`CameraShakeView` |
+| `Main Camera` | Perspective、Renderer = `UniversalRenderer`。`CinemachineBrain`（位置・レンズは仮想カメラから写される）/ `CinemachineImpulseSource` / `CameraShakeView` |
 | `BattleDebug` | `DebugMenuView` / `DebugKeyboardInput` |
 
-**描画順（B4）:** Sorting Layer `Background` < `Enemy` < `Effect`、その上に Overlay の `BattleCanvas`。背景・敵・術エフェクトはワールドの SpriteRenderer / Particle System で描き、HUD だけ Overlay に置く（Overlay に背景や敵を置くとパーティクルが裏に隠れるため）。
+**描画のルール（B6.5）:** 環境の板・床は URP/Unlit の不透明＋切り抜きで、前後は深度で決まる。敵・遠景の幕・術エフェクトは半透明（Sprite / Particle）で、Sorting Layer `Background` < `Enemy` < `Effect` が距離より優先される。HUD は Overlay の `BattleCanvas` で、カメラの移動・揺れの影響を受けない。霧はセクションごとに `StageEnvironmentView` が `RenderSettings` に書く（InGame シーン自体の霧は、ビルドで霧の機能が削られないよう「線形・オン・開始500」で保存）。詳細は [dev_log_B6.5 §4〜5](../devlog/dev_log_B6.5.md)。
+
+**環境アセットの置き場所:** 環境 Prefab・マテリアル・パーティクルは `Assets/_MUDRA/Environment/`、素材画像は `Assets/_MUDRA/Sprites/Environment/Stage0N/`。生成プロンプトは `docs/stage0N_environment_asset_prompts.md`。Tutorial は Stage01 の環境を使う。
 
 `BattleInitializer` の設定値: `_playerMaxHp` = 100。ステージと術は App から `BattleContext` で受け取る。
 
@@ -284,13 +289,14 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 | アセット | 術名 | シーケンス | 属性 | 威力 | 計算方式 | 副次効果 |
 |---|---|---|---|---|---|---|
-| WindBlade | 風刃 | 合 | Wind | 30 | SingleHit | — |
-| WaterCrow | 水爪 | 刃 → 握 | Water | 30 | SingleHit | — |
-| IceWind | 氷風 | 開 → 指 → 握 | Wind | 50 | SingleHit | — |
-| Lightning | 雷連撃 | 指 → 刃 | Thunder | 50 | MultiHit ×5 | Stun 3秒 |
-| Fireball | 火炎弾 | 掌 → 握 | Fire | 50 | DoT | DamageOverTime 3秒 |
-| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 40 | SingleHit | — |
-| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 10） |
+| WindBlade | 風刃 | 合 | Wind | 180 | SingleHit | — |
+| WaterCrow | 水爪 | 刃 → 握 | Water | 100 | SingleHit | — |
+| IceWind | 氷風 | 開 → 指 → 握 | Wind | 150 | SingleHit | — |
+| Lightning | 雷連撃 | 指 → 刃 | Thunder | 150 | MultiHit ×5 | Stun 3秒 |
+| Fireball | 火炎弾 | 掌 → 握 | Fire | 120 | DoT | DamageOverTime 3秒 |
+| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 100 | SingleHit | — |
+| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 30） |
+| Halo | 光輪 | 握 → 開 | Light | 100 | SingleHit | HealOverTime 1秒（healPower 3） |
 
 ### 敵・攻撃・ステージアセット
 

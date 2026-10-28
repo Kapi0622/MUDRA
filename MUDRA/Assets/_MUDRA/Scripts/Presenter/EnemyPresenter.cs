@@ -8,14 +8,15 @@ using MUDRA.Data;
 /// 敵・背景・ステージ名・決着表示の演出を配線する（B4。仕様書 §8-3 Enemy MVP）。
 /// 「ステージ進行に沿った表示」をまとめて受け持つ。
 /// SectionProgressManager / EnemyStateManager / BattleModel を購読し、
-/// EnemyView / BackgroundView / StageTitleView の命令的メソッドを呼ぶだけで、判定は持たない。
+/// EnemyView / StageEnvironmentView / StageTitleView の命令的メソッドを呼ぶだけで、判定は持たない。
 ///
 /// ダメージ適用などModelを操作する配線はBattlePresenterに残し、こちらは表示専用にしている。
 /// </summary>
 public class EnemyPresenter : MonoBehaviour
 {
     [SerializeField] private EnemyView _enemyView;
-    [SerializeField] private BackgroundView _backgroundView;
+    [Tooltip("3D環境と、セクション間の前進演出（3D化ステップ2b。旧BackgroundView）")]
+    [SerializeField] private StageEnvironmentView _environmentView;
     [SerializeField] private StageTitleView _stageTitleView;
     [SerializeField] private BattleResultView _battleResultView;
     [SerializeField] private StageIntroView _stageIntroView;
@@ -71,7 +72,7 @@ public class EnemyPresenter : MonoBehaviour
             .Subscribe(_ => _battleResultView.Hide())
             .AddTo(_disposables);
 
-        // --- セクション開始 → 背景切替 + 敵の登場（ボスなら名前も出す） ---
+        // --- セクション開始 → 環境の位置合わせ + 敵の登場（ボスなら名前も出す） ---
         sectionProgressManager.OnSectionStarted
             .Subscribe(HandleSectionStarted)
             .AddTo(_disposables);
@@ -115,15 +116,14 @@ public class EnemyPresenter : MonoBehaviour
     }
 
     /// <summary>
-    /// ステージの見た目を開始前の状態にする（B5）。背景は先頭セクションのものにし、敵は登場まで隠す。
+    /// ステージの見た目を開始前の状態にする（B5）。環境を用意してカメラを先頭セクションに置き、敵は登場まで隠す。
     /// 遷移の覆いがかかっている間（BattleInitializer.Initialize）に呼ぶ。開始演出の裏に仮の背景・敵が映らないようにするため。
-    /// 先頭セクションの開始時にもう一度SetBackgroundが呼ばれるが、同じ背景なので明転し直さない。
+    /// 先頭セクションの開始時にもう一度Build/MoveToSectionが呼ばれるが、同じステージ・同じ位置なので何もしない。
     /// </summary>
     public void PrepareStage(StageData stage)
     {
-        var firstSection = stage.sections[0];
-        var background = firstSection.isBoss ? stage.bossBackgroundSprite : stage.roadBackgroundSprite;
-        _backgroundView.SetBackground(background, firstSection.isBoss);
+        _environmentView.Build(stage);
+        _environmentView.MoveToSection(0);
         _enemyView.Hide();
     }
 
@@ -147,9 +147,9 @@ public class EnemyPresenter : MonoBehaviour
 
     private void HandleSectionStarted(StageSection section)
     {
-        var stage = _sectionProgressManager.CurrentStage;
-        var background = section.isBoss ? stage.bossBackgroundSprite : stage.roadBackgroundSprite;
-        _backgroundView.SetBackground(background, section.isBoss);
+        // 通常の進行では前進演出で既に着いている。デバッグのステージ/セクションジャンプの時だけ作り直し・置き直しになる
+        _environmentView.Build(_sectionProgressManager.CurrentStage);
+        _environmentView.MoveToSection(_sectionProgressManager.CurrentSectionIndex.CurrentValue);
 
         var enemy = section.enemyData;
         _enemyView.Appear(enemy.sprite, enemy.enemyName, section.isBoss);
@@ -183,7 +183,7 @@ public class EnemyPresenter : MonoBehaviour
         // 最終セクション（ボス）の撃破はステージクリアで、先へは進まない
         bool hasNextSection = clearedIndex < _sectionProgressManager.SectionCount - 1;
         if (hasNextSection)
-            _backgroundView.PlayAdvance(_timing.NormalDefeatDuration);
+            _environmentView.PlayAdvance(clearedIndex + 1, _timing.NormalDefeatDuration);
     }
 
     private void HandleEnemyPhase(EnemyPhase phase)

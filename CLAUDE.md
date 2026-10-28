@@ -3,14 +3,14 @@
 ## プロジェクト
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
-Unity 6000.4.4f1 / URP 2D / Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B6（チュートリアル・キャリブレーション）まで完了。次は B7（サウンド）。**
+Unity 6000.4.4f1 / URP（App は 2D Renderer、InGame は Universal Renderer）/ Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
+現在地: **β版 B6.5（InGame の 2.5D 化）まで完了。次は B7（サウンド）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の117ファイル・約11,800行が全て。** 小さい。
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の121ファイル・約12,500行が全て。** 小さい。
 （うち `Editor/` の2本・約660行は敵・ステージSOの生成ツールと再生開始シーンの切替で、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
@@ -51,6 +51,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 通知は常に **Model →(R3)→ Presenter →(メソッド呼び出し)→ View** の一方向。逆流させない。
 生成と注入は App 側が `Presenter/AppInitializer.cs`、バトル側が `Presenter/BattleInitializer.cs` に集約（DIコンテナ・シングルトンは不使用）。
 シーンは常駐の `App.unity`（カメラ・画面・遷移）と、バトル（InGame・Tutorial）のたびに加算ロードする `InGame.unity` の2つ。
+InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステージの見た目は環境 Prefab（`StageData.environmentPrefab`）で、カメラ・敵は `BattleRig` ごとマーカー間を移動する（B6.5）。
 
 **詳細は `MUDRA/docs/architecture/00_overview.md` を読む。**
 
@@ -61,9 +62,11 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 | ファイル | 位置づけ |
 |---|---|
 | `MUDRA/docs/architecture/` 3本 | **現コードの断面図。調査はまずここから** |
-| `MUDRA/docs/specification_MUDRA.md` | 設計の正典（v1.3）。**未実装のものも含む。**§指定で部分読み |
+| `MUDRA/docs/specification_MUDRA.md` | 設計の正典（v1.8）。**未実装のものも含む。**§指定で部分読み |
 | `MUDRA/docs/hand_sign_tuning.md` | 手印認識の閾値の調整手順。判定の違和感を直すときに読む |
 | `MUDRA/docs/devlog/dev_log_*.md` | 当時のスナップショット。設計理由を追う時だけ該当1本 |
+| `MUDRA/docs/devlog/dev_log_B6.5.md` | **InGame の 3D の仕組み・描画のルール・環境 Prefab の作り方。環境やカメラを触る前に読む** |
+| `MUDRA/docs/stage0N_environment_asset_prompts.md` | ステージ環境の素材の生成プロンプト（4本） |
 | `README.md` / `docs/proposal_MUDRA.md` | 企画・世界観。実装作業では通常不要 |
 
 ---
@@ -77,6 +80,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 - **非同期は UniTask のみ。** `UniTaskVoid` + `.Forget()`、キャンセルは `CancellationTokenSource`。
   コルーチンと `async void` は使わない
 - **演出は LitMotion。** `MotionHandle` は struct なので `IsActive()` を確認してから `Cancel()`
+- **環境 Prefab の床はマーカーの y − 1.5。** 敵の足元の影がこの高さ固定。立てる物は URP/Unlit の不透明＋Alpha Clipping の板にする（半透明は前後が入れ替わりやすいので、炎・煙など縁の柔らかい物に限る）
 - **デバッグ機能は `#if UNITY_EDITOR || DEVELOPMENT_BUILD` で囲う**（ファイル単位でもメンバ単位でも可）
 - private field は `_camelCase`。マジックナンバーはクラス冒頭の `private const` に名前付きで置く
 - 型・publicメンバには**日本語のXMLドキュメントコメント**を付ける。設計理由も書く（既存コードに倣う）

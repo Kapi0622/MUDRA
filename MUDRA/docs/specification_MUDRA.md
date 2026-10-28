@@ -1,6 +1,6 @@
 # 📘 仕様書：「MUDRA」
 
-> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/11（B4.5：手印認識の改善を反映） **ステータス:** v1.7 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
+> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/26（B6.5：InGame の 2.5D 化を反映） **ステータス:** v1.8 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
 
 ---
 
@@ -176,10 +176,10 @@ Scripts/
 |`SpellTelopView`|術名カットイン（属性色の帯）・暴発表示|MonoBehaviour|
 |`SpellEffectView`|術エフェクト・敵の攻撃エフェクトのPrefab再生（敵側/プレイヤー側の2か所）|MonoBehaviour|
 |`EnemyView`|敵の表示・登場・攻撃予告・攻撃・被弾・Stun・撃破。ボスの登場（影から出現）と撃破（爆散）|MonoBehaviour|
-|`BackgroundView`|道中/ボスの背景切替、セクション間の前進演出|MonoBehaviour|
+|`StageEnvironmentView`|ステージの3D環境（環境Prefab、無ければ背景画像から自動生成）の用意と、セクション間の前進演出（戦闘一式のリグごと次のマーカーへ移動。霧・遠景の色も切り替え）。B6.5で`BackgroundView`から置き換え|MonoBehaviour|
 |`StageTitleView`|ステージ名・ボス名の表示|MonoBehaviour|
 |`ScreenFlashView`|画面全体の色フラッシュ（被弾・ガード成功・暴発・ボス撃破）|MonoBehaviour|
-|`CameraShakeView`|カメラの揺れ。ワールドだけが揺れ、HUDは揺れない|MonoBehaviour|
+|`CameraShakeView`|カメラの揺れ（Cinemachine Impulse）。ワールドだけが揺れ、HUDは揺れない|MonoBehaviour|
 |`GuardView`|ガード受付中の構え枠と、ガード成功の「防」|MonoBehaviour|
 |`DamageNumberView`|ダメージ数字・回復量（MultiHitの時間差表示、弱点・速度ボーナスのラベル）|MonoBehaviour|
 |`ComboView`|コンボ数「n 連」とコンボ切れの演出|MonoBehaviour|
@@ -1229,13 +1229,14 @@ spellSequenceModel.OnSpellCast.Subscribe(result => {
 |---|---|---|
 |Model|`SectionProgressManager`|ステージ/セクションの開始・撃破・決着の通知|
 |Model|`EnemyStateManager`|敵の行動フェーズと現在の行動（攻撃名・chargeTime・大技か）|
-|View|`EnemyView` / `BackgroundView` / `StageTitleView` / `BattleResultView` / `BossEncounterView`|表示|
+|View|`EnemyView` / `StageEnvironmentView` / `StageTitleView` / `BattleResultView` / `BossEncounterView`|表示|
 |Presenter|`EnemyPresenter`|上記の配線|
 
 ```csharp
-// セクション開始 → 背景切替 + 敵の登場。ボスは登場シーケンス
+// セクション開始 → 環境の用意・位置合わせ + 敵の登場。ボスは登場シーケンス
 sectionProgressManager.OnSectionStarted.Subscribe(section => {
-    backgroundView.SetBackground(section.isBoss ? stage.bossBackgroundSprite : stage.roadBackgroundSprite, section.isBoss);
+    environmentView.Build(sectionProgressManager.CurrentStage);   // 同じステージなら何もしない
+    environmentView.MoveToSection(sectionProgressManager.CurrentSectionIndex.CurrentValue);   // 前進で着いていれば何もしない
     enemyView.Appear(enemy.sprite, enemy.enemyName, section.isBoss);
     if (section.isBoss) {
         bossEncounterView.PlayEncounter();
