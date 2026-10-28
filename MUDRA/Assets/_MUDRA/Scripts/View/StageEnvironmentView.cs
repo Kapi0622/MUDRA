@@ -96,7 +96,7 @@ public class StageEnvironmentView : MonoBehaviour
     /// </summary>
     public void MoveToSection(int index)
     {
-        if (index == _currentIndex) return;
+        if (index == _currentIndex && !_advanceHandle.IsActive()) return;
 
         TryCancel(ref _advanceHandle);
         var pose = GetAnchor(index);
