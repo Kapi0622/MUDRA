@@ -178,7 +178,8 @@ public class PausePresenter : MonoBehaviour
         {
             if (spell == null) continue;
 
-            string sequence = string.Join(" → ", spell.sequence.Select(SequenceGuideView.GetSignDisplayName));
+            // 2列の半分の幅に収めるため、矢印の前後に空白を入れない（B8）
+            string sequence = string.Join("→", spell.sequence.Select(SequenceGuideView.GetSignDisplayName));
             rows.Add(new SpellListRow(
                 spell.spellName,
                 ElementNames.Get(spell.element),

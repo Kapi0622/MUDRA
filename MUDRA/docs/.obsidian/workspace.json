@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "sound_asset_list.md",
+                "file": "app_screen_asset_prompts.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "sound_asset_list"
+              "title": "app_screen_asset_prompts"
             }
           }
         ],
@@ -230,12 +230,15 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "images",
+    "sound_asset_list.md",
+    "app_screen_asset_prompts.md",
+    "app_screen_asset_prompts.md.tmp.1658.cbe19d2cf074",
     "devlog/dev_log_B7.md",
     "devlog/dev_log_B7.md.tmp.1201.b46aa236fbad",
     "architecture/03_sound.md",
     "architecture/03_sound.md.tmp.1201.0fe5eb04c262",
     "specification_MUDRA.md",
-    "sound_asset_list.md",
     "devlog/dev_log_B6.5.md",
     "stage04_environment_asset_prompts.md",
     "stage03_environment_asset_prompts.md",
@@ -254,7 +257,6 @@
     "devlog/dev_log_B6.md",
     "devlog/dev_log_B5.md",
     "devlog/dev_log_B4.5.md",
-    "devlog/sedG70iiR",
     "devlog/dev_log_B4.md",
     "devlog/dev_log_B3.md",
     "architecture/00_overview.md",
@@ -263,8 +265,6 @@
     "devlog/dev_log_A1.md",
     "devlog/dev_log_P3.md",
     "devlog/dev_log_P2.md",
-    "devlog/dev_log_B2.md",
-    "devlog/dev_log_A5.md",
-    "devlog/dev_log_B1.md"
+    "devlog/dev_log_B2.md"
   ]
 }

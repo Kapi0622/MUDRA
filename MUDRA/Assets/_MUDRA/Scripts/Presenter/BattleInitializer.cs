@@ -225,7 +225,8 @@ public class BattleInitializer : MonoBehaviour
             _spellSequenceModel,
             _playerStateManager,
             _guardWindowManager,
-            _pauseModel
+            _pauseModel,
+            _battleModel.LastAttackElement
         );
 
         _pausePresenter.Initialize(

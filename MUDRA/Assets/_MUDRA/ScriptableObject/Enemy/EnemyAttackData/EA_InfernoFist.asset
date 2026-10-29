@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_InfernoFist
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u696D\u706B\u62F3"
-  damage: 5
+  damage: 4
   chargeTime: 1
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: d7582ac82c372b7438628ee75516f9a1, type: 2}

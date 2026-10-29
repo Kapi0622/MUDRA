@@ -19,6 +19,10 @@ public class SequenceGuideView : MonoBehaviour
     private const float PunchScaleAmount = 1.3f;
     private const float PunchDuration = 0.15f;
 
+    // --- 連続減衰の表示（B8）。DamageNumberView の「連続↓」と同じ灰色 ---
+    private const string RepeatedSuffix = "（連続↓）";
+    private static readonly Color RepeatedNameColor = new Color(0.62f, 0.64f, 0.68f);
+
     // --- 色定義(調整済みならSerializeFieldのまま残してOK) ---
     [SerializeField] private Color ConfirmedColor = new Color(0.3f, 1f, 0.5f);
     [SerializeField] private Color PendingColor = new Color(0.85f, 0.85f, 0.85f);
@@ -42,7 +46,11 @@ public class SequenceGuideView : MonoBehaviour
     /// <summary>
     /// マッチ候補と入力済み印数に基づいてガイド表示を更新する。
     /// </summary>
-    public void UpdateGuide(IReadOnlyList<SpellData> candidates, int confirmedCount)
+    /// <param name="repeatedElement">
+    /// 連続減衰がかかる属性（直前に撃った攻撃術の属性・B8）。null なら減衰なし。
+    /// この属性の攻撃術は名前を暗くして「（連続↓）」を付ける。詠唱中のどの術を選ぶか決める場面で見えるようにするため
+    /// </param>
+    public void UpdateGuide(IReadOnlyList<SpellData> candidates, int confirmedCount, ElementType? repeatedElement)
     {
         Clear();
 
@@ -50,7 +58,10 @@ public class SequenceGuideView : MonoBehaviour
 
         for (int i = 0; i < displayCount; i++)
         {
-            var row = CreateCandidateRow(candidates[i], confirmedCount);
+            var spell = candidates[i];
+            // 回復術（威力0）は減衰しないので印を付けない（BattleModel の判定と揃える）
+            bool isRepeated = spell.basePower > 0f && spell.element == repeatedElement;
+            var row = CreateCandidateRow(spell, confirmedCount, isRepeated);
             _activeRows.Add(row);
         }
 
@@ -114,13 +125,15 @@ public class SequenceGuideView : MonoBehaviour
         _confirmEffectHandles.Clear();
     }
 
-    private GameObject CreateCandidateRow(SpellData spell, int confirmedCount)
+    private GameObject CreateCandidateRow(SpellData spell, int confirmedCount, bool isRepeated)
     {
         var row = Instantiate(_candidateRowPrefab, _guideRoot);
         row.name = $"Row_{spell.spellName}";
 
         var spellNameText = row.GetComponentInChildren<TextMeshProUGUI>();
-        spellNameText.text = spell.spellName;
+        // 行はプレハブを毎回複製するので、色を変えても次の行に残らない
+        spellNameText.text = isRepeated ? spell.spellName + RepeatedSuffix : spell.spellName;
+        if (isRepeated) spellNameText.color = RepeatedNameColor;
 
         var slotContainer = row.transform.GetChild(1);
 

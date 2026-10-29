@@ -14,13 +14,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u706B\u8ECA"
   sprite: {fileID: 21300000, guid: da6372df8ed6d22468895b451c691da0, type: 3}
-  maxHp: 450
+  maxHp: 600
   weakElement: 1
   weakMultiplier: 1.5
   actionPattern:
   - attackData: {fileID: 11400000, guid: 520f54bd32d652345a699d0e8407fe34, type: 2}
     isHeavy: 0
-    intervalAfter: 2
+    intervalAfter: 3
   - attackData: {fileID: 11400000, guid: c6c8c66f20e5b6b40ac270b1f9b9234d, type: 2}
     isHeavy: 1
-    intervalAfter: 4
+    intervalAfter: 5

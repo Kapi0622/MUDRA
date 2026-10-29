@@ -28,3 +28,4 @@ MonoBehaviour:
   roadBackgroundSprite: {fileID: 5138433683246006060, guid: 61d75b1248efa6145bf03f8f5b7c2e59, type: 3}
   bossBackgroundSprite: {fileID: -6061146747047014980, guid: 51ee5428337f68f4893c0dd4b18f8dd9, type: 3}
   environmentPrefab: {fileID: 6553322380439397105, guid: 307e23a051a726b40b82f75389f2ee5d, type: 3}
+  selectThumbnail: {fileID: 3704833436334383254, guid: 02e3317f1aff3444bab51fe247ef339b, type: 3}

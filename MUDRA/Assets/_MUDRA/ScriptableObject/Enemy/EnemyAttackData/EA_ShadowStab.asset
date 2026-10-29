@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_ShadowStab
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u5F71\u523A\u3057"
-  damage: 5
+  damage: 4
   chargeTime: 1.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 88757506be91a854cba8529a2dd8794a, type: 2}

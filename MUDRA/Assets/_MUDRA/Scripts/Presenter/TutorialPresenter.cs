@@ -14,6 +14,7 @@ using UnityEngine;
 public class TutorialPresenter : MonoBehaviour
 {
     private const string ClearedText = "よし！";
+    private const string RepeatNote = "ただし同じ属性の術を続けると威力が下がる（数字が灰色になる）。別の属性の術を挟もう";
     private const string CompletedTitle = "修練完了！";
     private const string CompletedDetail = "これで準備は整った。ステージ選択へ進む";
     private const string MisfireNote = "並びが違うと暴発して、自分が傷を負う。術の並びはポーズ（Esc）の術一覧でも見られる";
@@ -116,9 +117,10 @@ public class TutorialPresenter : MonoBehaviour
             {
                 var weakSpells = attackSpells.Where(spell => spell.element == enemy.weakElement).Select(SpellWithSequence).ToArray();
                 string element = ElementNames.Get(enemy.weakElement);
+                // 連続減衰（B8）もここで伝える。弱点を知った直後が、弱点の術を連打したくなる瞬間のため
                 return weakSpells.Length > 0
-                    ? $"弱点の属性で攻めると大きく効く。{element}の術：{string.Join("　", weakSpells)}"
-                    : "弱点の属性で攻めると大きく効く";
+                    ? $"弱点の属性で攻めると大きく効く。{element}の術：{string.Join("　", weakSpells)}\n{RepeatNote}"
+                    : $"弱点の属性で攻めると大きく効く\n{RepeatNote}";
             }
 
             default:

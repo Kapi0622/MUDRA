@@ -23,7 +23,8 @@ public class SpellSequenceModel : IDisposable
     // 速度ボーナスの基準時間(印1つあたりの許容秒数)
     // 詠唱時間が「印数 × この値」以内なら速度ボーナス適用
     private const float SpeedBonusTimePerSign = 1.0f;
-    private const float SpeedBonusMultiplier = 1.5f;
+    // B8で1.5から下げた（上級者だけ戦闘が極端に短くなるのを抑えるため）
+    private const float SpeedBonusMultiplier = 1.3f;
     private const float NormalSpeedMultiplier = 1.0f;
 
     private readonly IReadOnlyList<SpellData> _allSpells;
@@ -141,4 +142,4 @@ public class SpellSequenceModel : IDisposable
         _onChantStarted.Dispose();
         _onSignAdded.Dispose();
     }
-}
+}
