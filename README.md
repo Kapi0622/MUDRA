@@ -17,6 +17,8 @@ Webカメラに映した手の形が、そのまま術の詠唱になるボス�
 
 ▶ **[デモ動画（YouTube）](https://youtu.be/OXeevxjCwSA)**
 
+▶ **[ダウンロードサイト（itch.io）](https://kapi-0622.itch.io/mudra)**
+
 </div>
 
 ---
