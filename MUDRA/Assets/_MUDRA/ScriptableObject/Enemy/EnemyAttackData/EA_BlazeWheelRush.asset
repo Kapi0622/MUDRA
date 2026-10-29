@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_BlazeWheelRush
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u708E\u8F2A\u7A81\u9032"
-  damage: 14
-  chargeTime: 1.2
+  damage: 10
+  chargeTime: 1.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: d7582ac82c372b7438628ee75516f9a1, type: 2}

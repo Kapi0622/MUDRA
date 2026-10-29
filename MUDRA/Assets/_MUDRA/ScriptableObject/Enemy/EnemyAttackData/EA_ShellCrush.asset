@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_ShellCrush
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u7532\u7F85\u6F70\u3057"
-  damage: 14
+  damage: 12
   chargeTime: 2.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 2ea27472b9704ac4380d61167f051f6a, type: 2}

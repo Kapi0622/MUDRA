@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_ThunderRoar
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u96F7\u9CF4"
-  damage: 14
+  damage: 10
   chargeTime: 1.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: e3ce3391368768f46aeb4031e5cb25ed, type: 2}

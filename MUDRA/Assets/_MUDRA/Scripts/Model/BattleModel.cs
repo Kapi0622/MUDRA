@@ -13,6 +13,12 @@ public class BattleModel : IDisposable
     private const float MisfireDamageRate = 0.05f;
     // HoTのtick間隔。HotEffect.TickIntervalと一致させること
     private const float HealTickInterval = 1.0f;
+    // コンボ倍率 = 1 + ComboBonusPerCount × min(コンボ数, ComboBonusCap)。10コンボで×1.3が上限（B8）。
+    // カウント自体は上限を超えても増え続ける（表示とランク評価のため）
+    private const float ComboBonusPerCount = 0.03f;
+    private const int ComboBonusCap = 10;
+    // 直前に撃った攻撃術と同じ属性の術に掛ける倍率（連続減衰・B8）
+    private const float RepeatElementMultiplier = 0.6f;
 
     // --- HP ---
     private readonly ReactiveProperty<int> _playerHp;
@@ -27,6 +33,17 @@ public class BattleModel : IDisposable
     // --- コンボ ---
     private readonly ReactiveProperty<int> _comboCount = new(0);
     public ReadOnlyReactiveProperty<int> ComboCount => _comboCount;
+
+    // --- 連続減衰（B8） ---
+    // 直前に撃った「ダメージのある術」の属性。null = まだ撃っていない（敵が替わった直後を含む）
+    private readonly ReactiveProperty<ElementType?> _lastAttackElement = new(null);
+    /// <summary>
+    /// 直前に撃った攻撃術の属性。次に同じ属性の術を撃つと威力が下がる。
+    /// 詠唱中の術ガイドで「どの候補が減衰するか」を示すために公開している。
+    /// 1つの術・1つの弱点属性の連打が最適解にならないようにするための仕組みで、
+    /// 「同じ術」ではなく「同じ属性」で見るのは、同じ属性の術どうしの交互撃ちも抑えるため。
+    /// </summary>
+    public ReadOnlyReactiveProperty<ElementType?> LastAttackElement => _lastAttackElement;
 
     // --- バトル状態 ---
     private readonly ReactiveProperty<bool> _isBattleActive = new(false);
@@ -105,6 +122,7 @@ public class BattleModel : IDisposable
     /// 交戦相手を差し替える。セクション遷移時にSectionProgressManagerから呼ぶ。
     /// 敵側の状態（HP・最大HP）のみをリセットし、
     /// プレイヤーHPとコンボは意図的に据え置く（セクション間の引き継ぎ要素）。
+    /// 連続減衰の記憶は消す（新しい敵には何を撃っても減衰しない）。
     /// 決着済みで落ちている_isBattleActiveもここでtrueに戻す。
     /// </summary>
     public void SetEnemy(EnemyData enemyData)
@@ -113,6 +131,7 @@ public class BattleModel : IDisposable
         BossMaxHp = enemyData.maxHp;
         _bossHp.Value = enemyData.maxHp;
         _isBattleActive.Value = true;
+        _lastAttackElement.Value = null;
 
         _onEnemyChanged.OnNext(enemyData);
     }
@@ -151,13 +170,24 @@ public class BattleModel : IDisposable
             return;
         }
 
-        var calculator = ResolveCalculator(result.Spell.damageType);
-        var damageResult = calculator.Calculate(
-            result.Spell, _enemyData, result.SpeedBonus, _comboCount.Value
-        );
+        var spell = result.Spell;
+        // 回復術（威力0）は連続減衰の対象外で、記憶も更新しない。
+        // 更新すると「攻撃→回復→同じ攻撃」で減衰を消せてしまうため
+        bool isAttack = spell.basePower > 0f;
+        bool isRepeated = isAttack && _lastAttackElement.Value == spell.element;
+
+        var bonus = new DamageBonus(
+            result.SpeedBonus,
+            CalculateComboMultiplier(_comboCount.Value),
+            isRepeated ? RepeatElementMultiplier : 1.0f);
+
+        var calculator = ResolveCalculator(spell.damageType);
+        var damageResult = calculator.Calculate(spell, _enemyData, bonus);
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damageResult.TotalDamage);
         _comboCount.Value++;
+        if (isAttack)
+            _lastAttackElement.Value = spell.element;
         _onSpellHit.OnNext(damageResult);
 
         // --- 副次効果の付与 ---
@@ -239,6 +269,12 @@ public class BattleModel : IDisposable
     /// HoTのtick1回あたりの回復量を算出する。
     /// healPowerを持続時間で割って均等に分配する（端数は切り捨て）。
     /// </summary>
+    /// <summary>コンボ数から倍率を出す。ComboBonusCap を超えた分は倍率に乗せない</summary>
+    private static float CalculateComboMultiplier(int comboCount)
+    {
+        return 1.0f + ComboBonusPerCount * Math.Min(comboCount, ComboBonusCap);
+    }
+
     private static int CalculatePerTickHeal(SpellData spell)
     {
         int tickCount = spell.statusEffectDuration > 0f
@@ -318,5 +354,6 @@ public class BattleModel : IDisposable
         _onDotTick.Dispose();
         _onPlayerDamaged.Dispose();
         _onHealed.Dispose();
+        _lastAttackElement.Dispose();
     }
-}
+}

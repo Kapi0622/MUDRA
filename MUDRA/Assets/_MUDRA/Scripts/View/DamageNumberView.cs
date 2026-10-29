@@ -36,9 +36,12 @@ public class DamageNumberView : MonoBehaviour
     private static readonly Color HitColor = Color.white;
     private static readonly Color PlayerDamageColor = new Color(1f, 0.3f, 0.3f);
     private static readonly Color LabelColor = new Color(1f, 0.95f, 0.7f);
+    // 連続減衰した一撃の数字とラベル。このViewでしか使わない色なのでパレットには置かない
+    private static readonly Color RepeatedColor = new Color(0.62f, 0.64f, 0.68f);
 
     private const string WeakLabel = "弱点！";
     private const string SpeedLabel = "迅速！";
+    private const string RepeatedLabel = "連続↓";
 
     [Tooltip("弱点・DoT・回復・ガードの数字の色。敵のフラッシュ・画面フラッシュと同じ色を使う")]
     [SerializeField] private BattlePaletteData _palette;
@@ -66,13 +69,15 @@ public class DamageNumberView : MonoBehaviour
 
     /// <summary>
     /// 術のヒット。hitCountが2以上なら1ヒットずつ時間差で出す（MultiHitの連撃に見せる）。
-    /// 弱点・速度ボーナスは最初の数字の上にラベルを添える。
+    /// 弱点・速度ボーナス・連続減衰は最初の数字の上にラベルを添える。
+    /// 連続減衰（B8）の一撃は数字を灰色にする。弱点でも灰色を優先するのは、
+    /// 「弱点なのに伸びない」理由がその場で分かるようにするため（色が弱点のままだと減衰に気づけない）。
     /// </summary>
-    public void ShowSpellHit(int perHitDamage, int hitCount, bool isWeakness, bool hasSpeedBonus)
+    public void ShowSpellHit(int perHitDamage, int hitCount, bool isWeakness, bool hasSpeedBonus, bool isRepeated)
     {
         var origin = EnemyPosition();
         float size = isWeakness ? WeakSize : NormalSize;
-        var color = isWeakness ? _palette.weakness : HitColor;
+        var color = isRepeated ? RepeatedColor : isWeakness ? _palette.weakness : HitColor;
 
         int count = Mathf.Max(1, hitCount);
         for (int i = 0; i < count; i++)
@@ -80,13 +85,19 @@ public class DamageNumberView : MonoBehaviour
             Spawn(perHitDamage.ToString(), origin + RandomOffset(), size, color, i * MultiHitInterval);
         }
 
-        var labelPosition = origin + new Vector2(0f, LabelOffsetY);
-        if (isWeakness && hasSpeedBonus)
-            Spawn(WeakLabel + " " + SpeedLabel, labelPosition, LabelSize, LabelColor, 0f);
-        else if (isWeakness)
-            Spawn(WeakLabel, labelPosition, LabelSize, LabelColor, 0f);
-        else if (hasSpeedBonus)
-            Spawn(SpeedLabel, labelPosition, LabelSize, LabelColor, 0f);
+        string label = BuildHitLabel(isWeakness, hasSpeedBonus, isRepeated);
+        if (label.Length > 0)
+            Spawn(label, origin + new Vector2(0f, LabelOffsetY), LabelSize, LabelColor, 0f);
+    }
+
+    /// <summary>「弱点！ 迅速！ 連続↓」のように該当するものを並べる。連続だけは数字と同じ灰色にする</summary>
+    private static string BuildHitLabel(bool isWeakness, bool hasSpeedBonus, bool isRepeated)
+    {
+        var parts = new System.Collections.Generic.List<string>(3);
+        if (isWeakness) parts.Add(WeakLabel);
+        if (hasSpeedBonus) parts.Add(SpeedLabel);
+        if (isRepeated) parts.Add($"<color=#{ColorUtility.ToHtmlStringRGB(RepeatedColor)}>{RepeatedLabel}</color>");
+        return string.Join(" ", parts);
     }
 
     /// <summary>DoTのtickダメージ。毎秒出るので小さく控えめにする。</summary>

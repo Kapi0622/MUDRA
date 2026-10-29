@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_Tsunami
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u5927\u6D25\u6CE2"
-  damage: 16
+  damage: 14
   chargeTime: 2.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 2345609918f050a4f85c70a8d9787903, type: 2}

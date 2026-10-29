@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_NetherPrison
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u51A5\u7344"
-  damage: 28
+  damage: 20
   chargeTime: 3
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: ae7fca7d91f6cab458b6989615924643, type: 2}

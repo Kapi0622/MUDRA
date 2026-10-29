@@ -9,6 +9,9 @@ using LitMotion;
 /// 2層バー(即時反映 + 遅延追従)のアニメーションが実行される。
 /// 将来的にボス専用の表示(名前/弱点アイコン等)が必要になった場合は
 /// このクラスを継承するか、別Viewに分離する想定。
+///
+/// UI改修 ステップ5: HPが減った時にバー全体を短く揺らす（回復では揺らさない）。
+/// 名前の欄（任意）を設定したバーは SetName で敵の名前を出す（ボス側のバーの上中央）。
 /// </summary>
 public class HpBarView : MonoBehaviour
 {
@@ -20,6 +23,11 @@ public class HpBarView : MonoBehaviour
     // DelayedBarが目標値に到達するまでの時間
     private const float DelayedBarDuration = 0.6f;
 
+    // --- 被弾の揺れ ---
+    private const float DamageShakeDuration = 0.2f;
+    private const float DamageShakeStrength = 8f;
+    private const int DamageShakeFrequency = 18;
+
     [Header("バー本体")]
     [SerializeField] private Image _currentBar;
     [SerializeField] private Image _delayedBar;
@@ -27,9 +35,17 @@ public class HpBarView : MonoBehaviour
     [Header("数値表示(任意)")]
     [SerializeField] private TextMeshProUGUI _hpText;
 
+    [Header("名前(任意。UI改修 ステップ5)")]
+    [SerializeField] private TextMeshProUGUI _nameText;
+
     // 実行中のモーションを保持し、連続ダメージ時に前のモーションをキャンセルする
     private MotionHandle _currentBarHandle;
     private MotionHandle _delayedBarHandle;
+    private MotionHandle _shakeHandle;
+
+    // 揺れの基準位置。揺れの最中に次の被弾が来ても、ずれた位置を基準にしないよう揺れ始めに1度だけ取る
+    private Vector2 _shakeBasePosition;
+    private int _lastHp = -1;
 
     /// <summary>
     /// HPバーの表示を更新する。
@@ -37,6 +53,9 @@ public class HpBarView : MonoBehaviour
     /// </summary>
     public void SetHp(int currentHp, int maxHp)
     {
+        if (_lastHp >= 0 && currentHp < _lastHp) PlayDamageShake();
+        _lastHp = currentHp;
+
         float targetFill = maxHp > 0 ? (float)currentHp / maxHp : 0f;
 
         // テキスト表示(設定されている場合のみ)
@@ -54,6 +73,7 @@ public class HpBarView : MonoBehaviour
     /// </summary>
     public void InitializeHp(int currentHp, int maxHp)
     {
+        _lastHp = currentHp;
         float fill = maxHp > 0 ? (float)currentHp / maxHp : 1f;
         _currentBar.fillAmount = fill;
         _delayedBar.fillAmount = fill;
@@ -62,6 +82,25 @@ public class HpBarView : MonoBehaviour
         {
             _hpText.text = $"{currentHp}/{maxHp}";
         }
+    }
+
+    /// <summary>名前を出す。名前の欄を設定していないバーでは何もしない</summary>
+    public void SetName(string displayName)
+    {
+        if (_nameText != null) _nameText.text = displayName;
+    }
+
+    private void PlayDamageShake()
+    {
+        var rect = (RectTransform)transform;
+        if (_shakeHandle.IsActive()) _shakeHandle.Cancel();
+        else _shakeBasePosition = rect.anchoredPosition;
+
+        var basePosition = _shakeBasePosition;
+        _shakeHandle = LMotion.Shake.Create(Vector2.zero, new Vector2(DamageShakeStrength, DamageShakeStrength), DamageShakeDuration)
+            .WithFrequency(DamageShakeFrequency)
+            .WithOnComplete(() => rect.anchoredPosition = basePosition)
+            .Bind(offset => rect.anchoredPosition = basePosition + offset);
     }
 
     /// <summary>
@@ -122,5 +161,6 @@ public class HpBarView : MonoBehaviour
     {
         TryCancelMotion(ref _currentBarHandle);
         TryCancelMotion(ref _delayedBarHandle);
+        TryCancelMotion(ref _shakeHandle);
     }
 }

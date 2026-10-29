@@ -67,6 +67,7 @@ public class BattlePresenter : MonoBehaviour
             .Subscribe(enemyData =>
             {
                 _bossHpBarView.InitializeHp(_battleModel.BossHp.CurrentValue, _battleModel.BossMaxHp);
+                _bossHpBarView.SetName(enemyData.enemyName);
                 Debug.Log($"[Battle] 敵出現: {enemyData.enemyName} (HP:{_battleModel.BossMaxHp})");
             })
             .AddTo(_disposables);
@@ -91,7 +92,7 @@ public class BattlePresenter : MonoBehaviour
         _battleModel.OnSpellHit
             .Where(result => result.TotalDamage > 0)
             .Subscribe(result => _damageNumberView.ShowSpellHit(
-                result.PerHitDamage, result.HitCount, result.IsWeakness, result.HasSpeedBonus))
+                result.PerHitDamage, result.HitCount, result.IsWeakness, result.HasSpeedBonus, result.IsRepeated))
             .AddTo(_disposables);
 
         // 命中の音は術の音（castSE）に含めているので、重ねるのは弱点の時のアクセントだけ（B7）

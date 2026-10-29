@@ -53,6 +53,10 @@ public class StageData : ScriptableObject
              "未設定なら道中/ボスの背景画像から書き割りの廊下を自動で組む（3D化ステップ2b）")]
     public GameObject environmentPrefab;
 
+    [Tooltip("ステージ選択のカードと背景に出す絵（UI改修 ステップ3）。環境の遠景（T_Env_S0N_Backdrop）を想定。\n" +
+             "未設定ならカードは無地、背景は共通の絵のまま")]
+    public Sprite selectThumbnail;
+
     /// <summary>
     /// このステージのボス。isBossのセクションを末尾から探し、無ければ末尾の敵で代用する。
     /// StageSelectの弱点表示とステージ開始の演出で使う（B5）

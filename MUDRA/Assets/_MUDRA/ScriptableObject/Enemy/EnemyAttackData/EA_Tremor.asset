@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_Tremor
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u5730\u9CF4\u308A"
-  damage: 10
+  damage: 12
   chargeTime: 2
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 76c2fc05ddcd0a643b96984112e91a9d, type: 2}

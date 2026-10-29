@@ -17,13 +17,13 @@ MonoBehaviour:
   icon: {fileID: 0}
   description: 
   sequence: 0100000000000000
-  basePower: 80
+  basePower: 100
   damageType: 0
   hitCount: 1
   rangeType: 0
-  statusEffect: 4
-  statusEffectDuration: 1
-  healPower: 3
+  statusEffect: 0
+  statusEffectDuration: 0
+  healPower: 0
   effectPrefab: {fileID: 0}
   effectOnCaster: 0
   castSE: {fileID: 8300000, guid: 2c7ebdb6fd8b4864e88ba47dfb6d3033, type: 3}

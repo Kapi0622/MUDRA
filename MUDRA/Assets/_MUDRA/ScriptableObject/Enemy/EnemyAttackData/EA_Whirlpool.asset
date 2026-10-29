@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_Whirlpool
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u6E26\u6F6E"
-  damage: 10
+  damage: 8
   chargeTime: 2
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 2345609918f050a4f85c70a8d9787903, type: 2}

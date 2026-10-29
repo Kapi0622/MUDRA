@@ -10,6 +10,7 @@ public struct DamageResult
     public int HitCount;
     public bool IsWeakness; // 弱点属性かどうか
     public bool HasSpeedBonus; // 速度ボーナスが適用されたか
+    public bool IsRepeated; // 直前と同じ属性で連続減衰がかかったか（B8）
     public StatusEffectType AppliedEffect;
     public float EffectDuration;
     public int PerTickDamage;       // tick1回あたりのダメージ（DoT専用。他Strategyは0）
@@ -19,4 +20,4 @@ public struct DamageResult
     // 回復は敵の弱点属性やコンボに影響されないため、Strategyでは算出せず
     // BattleModel.ApplySpellDamageがSpellDataから直接埋める。
     public int PerTickHeal;
-}
+}

@@ -1,4 +1,5 @@
 using System;
+using LitMotion;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -17,8 +18,11 @@ public readonly struct StageCardData
     /// <summary>クリア済みの記録。未クリアなら空文字</summary>
     public readonly string RecordText;
 
+    /// <summary>カードに敷く絵（UI改修 ステップ3）。nullなら無地。ステージ開始の演出（StageIntroView）では使わないので省略できる</summary>
+    public readonly Sprite Thumbnail;
+
     public StageCardData(int stageNumber, string stageName, string bossName,
-        string weakElementName, Color weakElementColor, string recordText)
+        string weakElementName, Color weakElementColor, string recordText, Sprite thumbnail = null)
     {
         StageNumber = stageNumber;
         StageName = stageName;
@@ -26,11 +30,16 @@ public readonly struct StageCardData
         WeakElementName = weakElementName;
         WeakElementColor = weakElementColor;
         RecordText = recordText;
+        Thumbnail = thumbnail;
     }
 }
 
 /// <summary>
 /// StageSelectのカード1枚（B5）。StageSelectViewがテンプレートから複製して並べる。
+///
+/// カードの内側にはステージの絵を敷き、上に黒の半透明を重ねて文字を読めるようにする（UI改修 ステップ3）。
+/// 絵は縦長のカードに合わせて中央で切り抜く（AspectRatioFitterのEnvelopeParentで覆い、親のRectMask2Dで切る）。
+/// 選択中のカードは黒を薄くして絵を明るく見せ、拡大と枠の色をまとめて短く補間する。
 /// </summary>
 public class StageCardView : MonoBehaviour
 {
@@ -39,6 +48,9 @@ public class StageCardView : MonoBehaviour
     private static readonly Color SelectedFrameColor = new Color(1f, 0.85f, 0.3f, 1f);
     private const float NormalScale = 1f;
     private const float SelectedScale = 1.06f;
+    private const float NormalShadeAlpha = 0.75f;
+    private const float SelectedShadeAlpha = 0.4f;
+    private const float SelectDuration = 0.15f;
 
     // 「其の一」のように幕の番号を漢数字で出す
     private static readonly string[] KanjiNumbers = { "零", "一", "二", "三", "四", "五", "六", "七", "八", "九" };
@@ -50,6 +62,17 @@ public class StageCardView : MonoBehaviour
     [SerializeField] private TextMeshProUGUI _bossText;
     [SerializeField] private TextMeshProUGUI _weaknessText;
     [SerializeField] private TextMeshProUGUI _recordText;
+
+    [Header("絵（UI改修 ステップ3）")]
+    [Tooltip("ステージの絵。親にRectMask2D、自身にAspectRatioFitter（EnvelopeParent）を付けておく")]
+    [SerializeField] private Image _thumbnail;
+    [SerializeField] private AspectRatioFitter _thumbnailFitter;
+    [Tooltip("絵の上に重ねる黒の半透明")]
+    [SerializeField] private Image _shade;
+
+    private MotionHandle _selectHandle;
+    /// <summary>選択の度合い（0=通常、1=選択中）。補間の途中から逆向きに戻せるよう今の値を持つ</summary>
+    private float _selection;
 
     /// <summary>クリックされた時の通知先。StageSelectViewが設定する</summary>
     public void SetClickHandler(Action onClick)
@@ -66,13 +89,39 @@ public class StageCardView : MonoBehaviour
         _weaknessText.text = $"弱点　{data.WeakElementName}";
         _weaknessText.color = data.WeakElementColor;
         _recordText.text = data.RecordText;
+
+        bool hasThumbnail = data.Thumbnail != null;
+        _thumbnail.gameObject.SetActive(hasThumbnail);
+        if (hasThumbnail)
+        {
+            _thumbnail.sprite = data.Thumbnail;
+            var size = data.Thumbnail.rect.size;
+            _thumbnailFitter.aspectRatio = size.x / size.y;
+        }
     }
 
     public void SetSelected(bool isSelected)
     {
-        _frame.color = isSelected ? SelectedFrameColor : NormalFrameColor;
-        float scale = isSelected ? SelectedScale : NormalScale;
+        if (_selectHandle.IsActive()) _selectHandle.Cancel();
+        _selectHandle = LMotion.Create(_selection, isSelected ? 1f : 0f, SelectDuration)
+            .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+            .WithEase(Ease.OutCubic)
+            .Bind(ApplySelection);
+    }
+
+    private void ApplySelection(float t)
+    {
+        _selection = t;
+        _frame.color = Color.Lerp(NormalFrameColor, SelectedFrameColor, t);
+        float scale = Mathf.Lerp(NormalScale, SelectedScale, t);
         transform.localScale = new Vector3(scale, scale, 1f);
+        var shade = _shade.color;
+        _shade.color = new Color(shade.r, shade.g, shade.b, Mathf.Lerp(NormalShadeAlpha, SelectedShadeAlpha, t));
+    }
+
+    private void OnDestroy()
+    {
+        if (_selectHandle.IsActive()) _selectHandle.Cancel();
     }
 
     private static string ToKanji(int number)

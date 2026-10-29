@@ -16,6 +16,9 @@ public class ScreenPresenter : MonoBehaviour
     [SerializeField] private ResultView _resultView;
     [SerializeField] private CalibrationPresenter _calibrationPresenter;
 
+    [Tooltip("App側の画面の背景（AppCameraの子）。画面ごとに絵と色味を切り替える")]
+    [SerializeField] private AppBackdropView _backdropView;
+
     [Tooltip("弱点属性の文字色に使う")]
     [SerializeField] private BattlePaletteData _palette;
 
@@ -93,6 +96,11 @@ public class ScreenPresenter : MonoBehaviour
             .Subscribe(_ => _se.Play(_sound.uiCursor))
             .AddTo(_disposables);
 
+        // 選択中のステージの絵を背景に出す（画面を開いた時の初期位置でも流れる）
+        _stageSelectView.OnSelectionChanged
+            .Subscribe(index => _backdropView.ShowStage(_gameStateManager.AllStages[index].selectThumbnail))
+            .AddTo(_disposables);
+
         _stageSelectView.OnBackRequested
             .Subscribe(_ =>
             {
@@ -143,18 +151,24 @@ public class ScreenPresenter : MonoBehaviour
         switch (phase)
         {
             case GamePhase.Title:
+                _backdropView.ShowTitle();
                 _titleView.Show();
+                _titleView.PlayIntro();
                 break;
             case GamePhase.Calibration:
+                _backdropView.ShowMenu();
                 _calibrationPresenter.Show();
                 break;
             case GamePhase.StageSelect:
+                _backdropView.ShowMenu();
                 // クリア記録が変わっているかもしれないので、出すたびに作り直す
                 _stageSelectView.SetStages(BuildStageCards());
                 _stageSelectView.Show(IndexOfSelectedStage());
                 break;
             case GamePhase.Result:
-                _resultView.Show(BuildResultData());
+                var resultData = BuildResultData();
+                _backdropView.ShowResult(resultData.IsWin);
+                _resultView.Show(resultData);
                 break;
         }
     }
@@ -199,7 +213,8 @@ public class ScreenPresenter : MonoBehaviour
                 boss != null ? boss.enemyName : "？",
                 boss != null ? ElementNames.Get(weakElement) : "？",
                 _palette != null ? _palette.ElementColor(weakElement) : Color.white,
-                BuildRecordText(stage)));
+                BuildRecordText(stage),
+                stage.selectThumbnail));
         }
         return cards;
     }

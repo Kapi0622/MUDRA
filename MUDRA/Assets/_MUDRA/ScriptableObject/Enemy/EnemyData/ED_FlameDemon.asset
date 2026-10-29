@@ -14,22 +14,22 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u708E\u9B54"
   sprite: {fileID: 21300000, guid: 5572320a03b07924c856fa605c424334, type: 3}
-  maxHp: 1200
+  maxHp: 1800
   weakElement: 3
   weakMultiplier: 1.5
   actionPattern:
   - attackData: {fileID: 11400000, guid: 567d3935dd5f9154d97632c4acb39e11, type: 2}
     isHeavy: 0
-    intervalAfter: 1.5
-  - attackData: {fileID: 11400000, guid: 567d3935dd5f9154d97632c4acb39e11, type: 2}
-    isHeavy: 0
-    intervalAfter: 1.5
-  - attackData: {fileID: 11400000, guid: 523f4a04c62b24b45ba048764485c9d4, type: 2}
-    isHeavy: 1
     intervalAfter: 2
   - attackData: {fileID: 11400000, guid: 567d3935dd5f9154d97632c4acb39e11, type: 2}
     isHeavy: 0
-    intervalAfter: 1.5
+    intervalAfter: 2
+  - attackData: {fileID: 11400000, guid: 523f4a04c62b24b45ba048764485c9d4, type: 2}
+    isHeavy: 1
+    intervalAfter: 3
+  - attackData: {fileID: 11400000, guid: 567d3935dd5f9154d97632c4acb39e11, type: 2}
+    isHeavy: 0
+    intervalAfter: 2
   - attackData: {fileID: 11400000, guid: ccdaa93dc5ce8e84b98a55ffe2cc9528, type: 2}
     isHeavy: 1
-    intervalAfter: 7
+    intervalAfter: 8
