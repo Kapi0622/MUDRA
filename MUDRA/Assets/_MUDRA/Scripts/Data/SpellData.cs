@@ -64,7 +64,7 @@ namespace MUDRA.Data
         public bool effectOnCaster;
 
         [Tooltip("発動時のSE（SE_Cast_*）。AudioClip でも Audio Random Container でもよい（B7）。\n" +
-                 "全術共通の発動音（SoundData.castCommon）に重ねて鳴る")] 
+                 "発動と命中は同じ瞬間に起きるので、「放つ〜当たる」までを1つの音にする（共通の命中音は鳴らさない）")] 
         public AudioResource castSE;
 
         [Tooltip("カットイン演出のSprite（術名テロップ）")] 

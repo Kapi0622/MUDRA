@@ -16,4 +16,4 @@ MonoBehaviour:
   damage: 4
   chargeTime: 1.5
   effectPrefab: {fileID: 0}
-  attackSE: {fileID: 0}
+  attackSE: {fileID: 6418180475301049370, guid: 2ea27472b9704ac4380d61167f051f6a, type: 2}

@@ -3,6 +3,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using LitMotion;
 using UnityEngine;
+using UnityEngine.Audio;
 
 /// <summary>
 /// BGMを鳴らすView（B7）。App に1つだけ置く（InGame の読み込み・破棄をまたいで鳴り続けるように）。
@@ -20,10 +21,13 @@ public class BgmPlayer : MonoBehaviour
 {
     private const float FadeOutSeconds = 0.8f;
     private const float FadeInSeconds = 0.5f;
-    /// <summary>ジングルの前の曲の止め方。勝敗の表示に遅れないよう短くする</summary>
+    /// <summary>ジングルをすぐ鳴らす時（敗北）の前の曲の止め方。勝敗の表示に遅れないよう短くする</summary>
     private const float JingleFadeOutSeconds = 0.2f;
     private const float FullVolume = 1f;
     private const float SilentVolume = 0f;
+
+    [Tooltip("出力先（MX_Main の BGM グループ）。設定画面のBGMの音量はこのグループにかかる")]
+    [SerializeField] private AudioMixerGroup _outputGroup;
 
     private AudioSource _source;
 
@@ -49,6 +53,7 @@ public class BgmPlayer : MonoBehaviour
         _source.playOnAwake = false;
         _source.loop = true;
         _source.volume = SilentVolume;
+        _source.outputAudioMixerGroup = _outputGroup;
     }
 
     /// <summary>
@@ -110,9 +115,11 @@ public class BgmPlayer : MonoBehaviour
     {
         try
         {
-            // 前の曲を止めるのと、表示を待つのを並べて行う（敗北は delay 0 なので、止め終わったらすぐ鳴らす）
+            // 前の曲を止めるのと、表示を待つのを並べて行う。
+            // 待つ時間があれば（ボス撃破）普段どおりゆっくり消し、無ければ（敗北）すぐ消して鳴らす
+            float fadeSeconds = delay >= FadeOutSeconds ? FadeOutSeconds : JingleFadeOutSeconds;
             await UniTask.WhenAll(
-                FadeAsync(SilentVolume, JingleFadeOutSeconds, token),
+                FadeAsync(SilentVolume, fadeSeconds, token),
                 UniTask.Delay(TimeSpan.FromSeconds(delay), cancellationToken: token));
 
             _source.Stop();

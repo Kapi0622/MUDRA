@@ -79,6 +79,10 @@ public class ResultView : ScreenView
     private readonly Subject<Unit> _onTitleRequested = new();
     public Observable<Unit> OnTitleRequested => _onTitleRequested;
 
+    private readonly Subject<Unit> _onRankStamped = new();
+    /// <summary>ランクのハンコが押された（縮みきった瞬間）。遅れと尺はこのViewが決めるので、音はこの合図で鳴らしてもらう（B7）</summary>
+    public Observable<Unit> OnRankStamped => _onRankStamped;
+
     private void Awake()
     {
         _retryButton.onClick.AddListener(() => _onRetryRequested.OnNext(Unit.Default));
@@ -116,6 +120,7 @@ public class ResultView : ScreenView
             .WithDelay(RankStampDelay)
             .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
             .WithEase(Ease.OutCubic)
+            .WithOnComplete(() => _onRankStamped.OnNext(Unit.Default))
             .Bind(t =>
             {
                 float scale = Mathf.Lerp(RankStampScaleFrom, 1f, t);
@@ -140,5 +145,6 @@ public class ResultView : ScreenView
         _onRetryRequested.Dispose();
         _onStageSelectRequested.Dispose();
         _onTitleRequested.Dispose();
+        _onRankStamped.Dispose();
     }
 }

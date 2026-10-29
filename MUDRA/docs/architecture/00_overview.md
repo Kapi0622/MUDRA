@@ -2,9 +2,9 @@
 
 > **ドキュメント種別:** アーキテクチャ復習ドキュメント
 > **作成日:** 2026/09/18
-> **最終更新:** 2026/10/24（B5：ゲームフロー、B6：キャリブレーション・チュートリアルを反映）
-> **対象コミット:** `fde31b6`
-> **対象コード:** `Assets/_MUDRA/Scripts`（117ファイル / 約11,800行。うちEditor拡張2本・約660行）
+> **最終更新:** 2026/10/30（B7：サウンドを反映。B5：ゲームフロー、B6：キャリブレーション・チュートリアル、B6.5：InGame の 2.5D 化）
+> **対象コミット:** `a64fc1f` 以降（B7）
+> **対象コード:** `Assets/_MUDRA/Scripts`（125ファイル / 約13,440行。うちEditor拡張2本・約660行）
 > **ステータス:** 現状スナップショット
 
 ---
@@ -15,7 +15,7 @@
 
 | ドキュメント | 役割 | 時制 |
 |---|---|---|
-| `specification_MUDRA.md`（v1.3） | **設計の正典。** 仕様駆動開発の基準であり、これから作るものも含む | 未来を含む |
+| `specification_MUDRA.md`（v1.9） | **設計の正典。** 仕様駆動開発の基準であり、これから作るものも含む | 未来を含む |
 | `devlog/dev_log_*.md` | 各マイルストーン完了時点の実装記録と設計判断の理由 | 当時の過去 |
 | **本書（`architecture/`）** | **いま動いているコードの断面図。** どこに何があるかを思い出すための地図 | 現在 |
 
@@ -23,6 +23,7 @@
 
 - [01_hand_input.md](01_hand_input.md) — 手印認識パイプライン（Input層）の詳解
 - [02_battle_system.md](02_battle_system.md) — Model / Presenter / View / Data の詳解
+- [03_sound.md](03_sound.md) — BGM・効果音・音量設定（B7）。「この音はどこで鳴る？」の一覧もここ
 
 ---
 
@@ -38,6 +39,7 @@
 | **R3**（NuGetForUnity経由） | Model → Presenter の通知。`ReactiveProperty` / `Subject` / `Observable` |
 | **UniTask** | 非同期タイマー全般。敵行動ループ、硬直タイマー、スレッド切替 |
 | **LitMotion** | View側のトゥイーン演出（HPバー、テロップ、確定エフェクト） |
+| Unity Audio | AudioMixer（`MX_Main`。BGM / SE の音量）と Audio Random Container（効果音の音程・音量のばらつき）。B7（[03_sound](03_sound.md)） |
 | TextMeshPro | UIテキスト。日本語フォントは ShipporiMinchoB1（本文・ボタン）、筆ごしらえ・衡山毛筆（見出し）、NotoSansJP（B4 までの HUD） |
 
 DIコンテナは**使っていない**。手書きの Composition Root が2つある：App 側の `AppInitializer` と、バトル側の `BattleInitializer`（[§4](#4-起動シーケンス)）。
@@ -52,12 +54,13 @@ DIコンテナは**使っていない**。手書きの Composition Root が2つ�
 Assets/_MUDRA/
 ├── Scenes/App.unity             … 起動シーン。終了まで常駐（カメラ・画面・遷移）
 ├── Scenes/InGame.unity          … バトル。InGame・Tutorial のたびに加算ロードし、終わったらアンロード
-├── ScriptableObject/            … 術・敵・攻撃・ステージの定義アセット、演出の時間表・色（Presentation/）
+├── ScriptableObject/            … 術・敵・攻撃・ステージの定義アセット、演出の時間表・色（Presentation/）、固定の音（Sound/SND_Sound）
+├── Audio/                      … BGM（BGM_Normalize/ ogg）・効果音（SE/ mp3）・ARC/・MX_Main（AudioMixer）。B7
 ├── Prefabs/ Particle/ Sprites/ Fonts/
 └── Scripts/
     ├── Data/                    … ScriptableObject定義とenum
     │   SpellData / EnemyData / EnemyAttackData / EnemyAction / StageData(+StageSection) / SpellEnums
-    │   PresentationTimingData（演出の時間表） / BattlePaletteData（意味の色）
+    │   PresentationTimingData（演出の時間表） / BattlePaletteData（意味の色） / SoundData（固定の音。B7）
     ├── Input/                   … 手印認識（namespace MUDRA.HandTracking）
     │   IHandLandmarkProvider / MediaPipeHandLandmarkProvider
     │   HandTrackingService(約840行・中核) / HandLandmark / HandSignCandidate / FingerState / HandSignEnum
@@ -92,6 +95,7 @@ Assets/_MUDRA/
     │   世界:  EnemyView / StageEnvironmentView（環境の生成とリグの移動） / SpellEffectView / CameraShakeView
     │   環境:  StageEnvironment（環境 Prefab のマーカー・霧） / TiledSurface（壁の繰り返し） / ScrollingTexture（絵を流す）
     │   ボス:  BossEncounterView
+    │   音:    SePlayer（効果音。App と InGame に1つずつ） / BgmPlayer（App に常駐） / AudioVolumeView（Mixer の音量）。B7
     │   共有:  BattleUiConstants（調整対象でない共有値） / ElementNames
     ├── Debug/                   … #if UNITY_EDITOR || DEVELOPMENT_BUILD
     │   DebugKeyboardInput / DebugMenuView / ThumbAngleDebugger / HandTrackingActiveTest
@@ -156,12 +160,14 @@ App 側の Model（`GameStateManager` / `ProgressModel` / `CameraStatusModel` / 
      → [バトルでなければ ScreenPresenter.ShowScreen] → 晴らす → BeginBattle（開始演出 → StartStage）
 ```
 
+覆い始めに遷移の音、バトル以外の画面へ行く時はその画面の BGM（Result はリザルト曲、他はタイトル曲）を `GameFlowPresenter` が鳴らす。バトルの曲はバトル側（`EnemyPresenter`）が決める（[03 §3](03_sound.md)）。
+
 「バトル」は InGame と Tutorial の2つ（`GameStateManager.UsesBattleScene`）。リトライは同じフェーズへの遷移で、アンロードしてから読み直すので、バトルの Model はすべて作り直される。
 フローの全体は仕様書 §4-1。
 
 ### 4-3. バトル（`BattleInitializer.Initialize`）
 
-App から `BattleContext`（ステージ・全ステージ・全術・Provider・GameStateManager・自動ポーズ設定・設定画面・`IsTutorial`・`HandPresence`）を受け取って組み立てる。
+App から `BattleContext`（ステージ・全ステージ・全術・Provider・GameStateManager・自動ポーズ設定・設定画面・`IsTutorial`・`HandPresence`・`Bgm`）を受け取って組み立てる。
 生成するModelは**すべてステージ全体で生存**し、セクション遷移で作り直すものは無い（購読の張り直しが発生しない）。
 
 1. **`ValidateStageData()`** — 開始ステージやその先頭セクションの敵が未設定なら中断
@@ -261,7 +267,8 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | `ScreenCanvas`（order 10） | `TitleScreen` / `StageSelectScreen` / `ResultScreen` / `CalibrationScreen`（認識テスト・エラーパネル・`HandGuide`） |
 | `SettingsCanvas`（order 30） | 設定画面 |
 | `TransitionCanvas`（order 100） | 墨のワイプ（`TransitionView`） |
-| `AppCamera` / `EventSystem` | AudioListener と EventSystem は App にだけ置く（InGame に置くと二重になる） |
+| `Audio` | **唯一の AudioListener** / `SePlayer`（画面・UI の音）/ `BgmPlayer` / `AudioVolumeView`（B7。[03 §2](03_sound.md)） |
+| `AppCamera` / `EventSystem` | EventSystem は App にだけ置く（InGame に置くと二重になる）。AudioListener はカメラではなく `Audio` に置く（B7） |
 
 **キャンバスの並び順:** カメラ映像 0 < BattleCanvas 1 < 画面 10 < ポーズ 20 < 設定 30 < 遷移 100。Calibration の間だけカメラ映像を 15 に上げて画面より手前に出す（B6）。Build Settings は `[App, InGame]`。
 
@@ -278,6 +285,7 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 | `PauseCanvas`（order 20） | ポーズボタン・メニュー・術一覧・手印早見表・`HandGuide`・カウントダウン（`PauseMenuView`） |
 | `Main Camera` | Perspective、Renderer = `UniversalRenderer`。`CinemachineBrain`（位置・レンズは仮想カメラから写される）/ `CinemachineImpulseSource` / `CameraShakeView` |
 | `BattleDebug` | `DebugMenuView` / `DebugKeyboardInput` |
+| `BattleAudio` | `SePlayer`（戦闘の音。ポーズで一時停止する）。B7 |
 
 **描画のルール（B6.5）:** 環境の板・床は URP/Unlit の不透明＋切り抜きで、前後は深度で決まる。敵・遠景の幕・術エフェクトは半透明（Sprite / Particle）で、Sorting Layer `Background` < `Enemy` < `Effect` が距離より優先される。HUD は Overlay の `BattleCanvas` で、カメラの移動・揺れの影響を受けない。霧はセクションごとに `StageEnvironmentView` が `RenderSettings` に書く（InGame シーン自体の霧は、ビルドで霧の機能が削られないよう「線形・オン・開始500」で保存）。詳細は [dev_log_B6.5 §4〜5](../devlog/dev_log_B6.5.md)。
 
@@ -317,12 +325,11 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 ## 8. 仕様書とのギャップ（簡易）
 
-仕様書 v1.5 に設計はあるがコードに存在しないもの。次に作るものの目次として使う。
+仕様書 v1.9 に設計はあるがコードに存在しないもの。次に作るものの目次として使う。
 
 | 未実装のもの | 仕様書の該当箇所 | 影響 |
 |---|---|---|
 | 本番のアート | §9-4 | 敵は既定スプライト＋名前から決めた色、背景は1枚の仮素材。木人（B6）も仮スプライト。`EnemyData.sprite` / `StageData` の背景 / `SpellData.cutInSprite` / `EnemyAttackData.effectPrefab` を差し替えるだけで入る |
-| サウンド（`castSE` / `attackSE` / `bgm`） | §3-2 | フィールドはあるが未使用（B7） |
 | 印でのメニュー操作 | — | Title〜Result・Calibration・Tutorial のスキップはキーとマウスのみ（B5 からの持ち越し） |
 | 手印の判定しきい値のキャリブレーション | — | Calibration（B6）はカメラと手が映るかの確認と認識テストまで。しきい値は C# の const 固定のまま |
 | `StatusEffectType.Slow` | §3-1 | enumにあるが実装クラスが無い |
@@ -362,6 +369,7 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 2. `sequence` に詠唱印を並べる（発動印 `Release` は**含めない**）
 3. App.unity の `AppInitializer` の `_allSpells` に登録する
 4. 演出: `effectPrefab`（`Particle/Spell/PS_*.prefab` を参考に）と `element`（カットインの帯の色）を設定する。自分に掛ける術は `effectOnCaster` を true にする
+5. 音: `castSE` に `SE_Cast_<アセット名>` を入れる。発動と命中は同じフレームなので、放つ音から当たる音までを1つの素材にする（[03 §8](03_sound.md)）
 
 ### 新しい印を追加する
 

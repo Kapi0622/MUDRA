@@ -252,7 +252,8 @@ public class BattleInitializer : MonoBehaviour
             _sectionProgressManager,
             _enemyStateManager,
             _battleModel,
-            _presentationTiming
+            _presentationTiming,
+            _context.Bgm
         );
         _enemyPresenter.PrepareStage(FirstStage);
 

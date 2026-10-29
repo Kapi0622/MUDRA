@@ -11,11 +11,19 @@ using R3;
 /// </summary>
 public class HandSignPresenter : MonoBehaviour
 {
+    // 印を1つ重ねるごとに上げる音程（半音）。詠唱の進み具合を耳で分かるようにする（B7）
+    private const float SignPitchSemitoneStep = 2f;
+    private const float SemitonesPerOctave = 12f;
+
     [SerializeField] private SpellEffectView _spellEffectView;
     [SerializeField] [CanBeNull] private TextMeshProUGUI _debugSignText;
     [SerializeField] private SequenceGuideView _sequenceGuideView;
     [SerializeField] private SpellTelopView _spellTelopView;
     [SerializeField] private HandSignStatusView _handSignStatusView;
+
+    [Header("サウンド（B7）")]
+    [SerializeField] private SePlayer _se;
+    [SerializeField] private SoundData _sound;
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         [SerializeField, Tooltip("アタッチするとカメラをバイパスしてキーボード入力でテスト可能")]
@@ -123,6 +131,7 @@ public class HandSignPresenter : MonoBehaviour
             {
                 _sequenceGuideView.UpdateGuide(_model.MatchCandidates, _model.InputCount);
                 _sequenceGuideView.PlayConfirmEffect();
+                _se.Play(_sound.signConfirm, SignPitch(_model.InputCount));
             })
             .AddTo(_disposables);
 
@@ -235,16 +244,28 @@ public class HandSignPresenter : MonoBehaviour
             var spell = result.Spell;
             _spellEffectView.PlaySpellEffect(spell.effectPrefab, spell.effectOnCaster);
             _spellTelopView.ShowCutIn(spell.spellName, spell.element, spell.cutInSprite);
+            // 発動と命中は同じフレームで起きるので、術の音は「放つ〜当たる」までを1つの音にしている（B7）
+            _se.Play(spell.castSE);
         }
         else
         {
             Debug.Log("[SpellSequence] 暴発");
             _spellTelopView.ShowMisfire();
+            // 暴発の自傷ダメージでは被弾音を鳴らさない（BattlePresenter）。暴発の音だけにする
+            _se.Play(_sound.misfire);
         }
+    }
+
+    /// <summary>入力済みの印の数に応じた再生速度。1つ目は元の高さで、以降1つごとに SignPitchSemitoneStep 半音上げる</summary>
+    private static float SignPitch(int inputCount)
+    {
+        float semitones = Mathf.Max(0, inputCount - 1) * SignPitchSemitoneStep;
+        return Mathf.Pow(2f, semitones / SemitonesPerOctave);
     }
 
     private void HandleSequenceReset(SequenceResetReason reason)
     {
         Debug.Log($"[SpellSequence] リセット: {reason}");
+        _se.Play(_sound.signCancel);
     }
-}
+}

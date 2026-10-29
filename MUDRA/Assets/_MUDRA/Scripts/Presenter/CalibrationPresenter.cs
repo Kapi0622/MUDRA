@@ -1,5 +1,6 @@
 using System.Linq;
 using Mediapipe.Unity.Sample.HandLandmarkDetection;
+using MUDRA.Data;
 using MUDRA.HandTracking;
 using R3;
 using UnityEngine;
@@ -38,6 +39,10 @@ public class CalibrationPresenter : MonoBehaviour
     [SerializeField] private CalibrationView _view;
     [SerializeField] private HandSignStatusView _handSignStatusView;
     [SerializeField] private CameraPreviewView _cameraPreviewView;
+
+    [Header("サウンド（B7）")]
+    [SerializeField] private SePlayer _se;
+    [SerializeField] private SoundData _sound;
 
     [Tooltip("再試行でカメラと推論を起動し直す（Solution）")]
     [SerializeField] private HandLandmarkerRunner _runner;
@@ -97,11 +102,19 @@ public class CalibrationPresenter : MonoBehaviour
             .AddTo(_disposables);
 
         _view.OnBackRequested
-            .Subscribe(_ => _gameStateManager.ToTitle())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiBack);
+                _gameStateManager.ToTitle();
+            })
             .AddTo(_disposables);
 
         _view.OnRetryRequested
-            .Subscribe(_ => RetryCamera())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                RetryCamera();
+            })
             .AddTo(_disposables);
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
@@ -152,6 +165,7 @@ public class CalibrationPresenter : MonoBehaviour
 
     private void Proceed()
     {
+        _se.Play(_sound.uiDecide);
         _gameStateManager.CompleteCalibration();
     }
 
@@ -210,6 +224,8 @@ public class CalibrationPresenter : MonoBehaviour
         if (!_isActive) return;
 
         _handSignStatusView.PlayConfirm(SequenceGuideView.GetSignDisplayName(sign));
+        // 手の練習の手応え。バトルと同じ確定音（印の数でピッチを上げるのはバトルだけ）
+        _se.Play(_sound.signConfirm);
         _view.MarkTested(System.Array.IndexOf(TestSigns, sign));
     }
 

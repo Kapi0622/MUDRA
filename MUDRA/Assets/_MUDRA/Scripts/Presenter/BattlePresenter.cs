@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using R3;
+using MUDRA.Data;
 
 /// <summary>
 /// BattleModel・EnemyStateManagerの通知を購読し、
@@ -30,6 +31,10 @@ public class BattlePresenter : MonoBehaviour
     [SerializeField] private DamageNumberView _damageNumberView;
     [SerializeField] private ComboView _comboView;
     [SerializeField] private StatusIconView _statusIconView;
+
+    [Header("サウンド（B7）")]
+    [SerializeField] private SePlayer _se;
+    [SerializeField] private SoundData _sound;
 
     private readonly CompositeDisposable _disposables = new();
 
@@ -89,12 +94,26 @@ public class BattlePresenter : MonoBehaviour
                 result.PerHitDamage, result.HitCount, result.IsWeakness, result.HasSpeedBonus))
             .AddTo(_disposables);
 
+        // 命中の音は術の音（castSE）に含めているので、重ねるのは弱点の時のアクセントだけ（B7）
+        _battleModel.OnSpellHit
+            .Where(result => result.TotalDamage > 0 && result.IsWeakness)
+            .Subscribe(_ => _se.Play(_sound.hitWeakness))
+            .AddTo(_disposables);
+
         _battleModel.OnDotTick
-            .Subscribe(damage => _damageNumberView.ShowDotTick(damage))
+            .Subscribe(damage =>
+            {
+                _damageNumberView.ShowDotTick(damage);
+                _se.Play(_sound.dotTick);
+            })
             .AddTo(_disposables);
 
         _battleModel.OnHealed
-            .Subscribe(amount => _damageNumberView.ShowHeal(amount))
+            .Subscribe(amount =>
+            {
+                _damageNumberView.ShowHeal(amount);
+                _se.Play(_sound.healTick);
+            })
             .AddTo(_disposables);
 
         // --- 継続中の効果のアイコン ---
@@ -121,6 +140,11 @@ public class BattlePresenter : MonoBehaviour
             .Subscribe(isGuarding => _guardView.SetStance(isGuarding))
             .AddTo(_disposables);
 
+        _guardWindowManager.IsGuarding
+            .Where(isGuarding => isGuarding)
+            .Subscribe(_ => _se.Play(_sound.guardStance))
+            .AddTo(_disposables);
+
         // --- 術発動結果 → ダメージ適用(成功・暴発の両方をBattleModelに委ねる) ---
         _spellSequenceModel.OnSpellCast
             .Subscribe(result => _battleModel.ApplySpellDamage(result))
@@ -144,6 +168,8 @@ public class BattlePresenter : MonoBehaviour
         bool isGuarding = _guardWindowManager.IsGuarding.CurrentValue;
         _battleModel.ApplyEnemyDamage(action, isGuarding);
         _spellEffectView.PlayEnemyAttackEffect(action.attackData.effectPrefab);
+        // 攻撃の系統の音。当たった結果（被弾・ガード成功）の音は HandlePlayerDamaged で重ねる（B7）
+        _se.Play(action.attackData.attackSE);
 
         string attackType = action.isHeavy ? "大技" : "通常";
         string guardStatus = isGuarding ? " [GUARD]" : "";
@@ -154,6 +180,7 @@ public class BattlePresenter : MonoBehaviour
     {
         _damageNumberView.ShowPlayerDamage(info.Damage, info.WasGuarded);
 
+        // 暴発の自傷では被弾音を鳴らさない（暴発の音は HandSignPresenter が鳴らす）
         if (info.IsMisfire)
         {
             _screenFlashView.FlashMisfire();
@@ -162,12 +189,14 @@ public class BattlePresenter : MonoBehaviour
 
         if (info.WasGuarded)
         {
+            _se.Play(_sound.guardSuccess);
             _guardView.PlayGuardSuccess();
             _screenFlashView.FlashGuard();
             _cameraShakeView.ShakeGuard();
             return;
         }
 
+        _se.Play(info.IsHeavy ? _sound.playerDamageHeavy : _sound.playerDamage);
         _screenFlashView.FlashDamage(info.IsHeavy);
         _cameraShakeView.ShakeDamage(info.IsHeavy);
     }
@@ -176,4 +205,4 @@ public class BattlePresenter : MonoBehaviour
     {
         _disposables.Dispose();
     }
-}
+}

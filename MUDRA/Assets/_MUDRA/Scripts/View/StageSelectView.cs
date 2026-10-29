@@ -33,6 +33,10 @@ public class StageSelectView : ScreenView
     private readonly Subject<Unit> _onBackRequested = new();
     public Observable<Unit> OnBackRequested => _onBackRequested;
 
+    private readonly Subject<Unit> _onCursorMoved = new();
+    /// <summary>キー操作でカーソルが別のカードへ動いた（B7。画面を開いた時の初期位置では流さない）</summary>
+    public Observable<Unit> OnCursorMoved => _onCursorMoved;
+
     private void Awake()
     {
         _backButton.onClick.AddListener(() => _onBackRequested.OnNext(Unit.Default));
@@ -88,7 +92,11 @@ public class StageSelectView : ScreenView
 
         for (int i = 0; i < NumberKeys.Length && i < _cards.Count; i++)
         {
-            if (Input.GetKeyDown(NumberKeys[i])) Select(i);
+            if (Input.GetKeyDown(NumberKeys[i]) && i != _selectedIndex)
+            {
+                Select(i);
+                _onCursorMoved.OnNext(Unit.Default);
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
@@ -101,5 +109,6 @@ public class StageSelectView : ScreenView
     {
         _onStageDecided.Dispose();
         _onBackRequested.Dispose();
+        _onCursorMoved.Dispose();
     }
 }

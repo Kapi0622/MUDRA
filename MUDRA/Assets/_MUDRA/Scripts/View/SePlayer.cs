@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Audio;
 
@@ -18,6 +21,12 @@ public class SePlayer : MonoBehaviour
     /// <summary>同時に鳴らせる数。超えたら一番古い音を止めて使い回す</summary>
     private const int PoolSize = 8;
     private const float NormalPitch = 1f;
+    // 溜めの音の再生速度の範囲。Unityの上限は3倍。極端な溜め時間でも聞き取れる範囲に収める
+    private const float MinHeldPitch = 0.5f;
+    private const float MaxHeldPitch = 3f;
+
+    [Tooltip("出力先（MX_Main の SE グループ）。設定画面の効果音の音量はこのグループにかかる（B7）")]
+    [SerializeField] private AudioMixerGroup _outputGroup;
 
     private AudioSource[] _pool;
     private int _nextIndex;
@@ -54,6 +63,7 @@ public class SePlayer : MonoBehaviour
         var source = gameObject.AddComponent<AudioSource>();
         source.playOnAwake = false;
         source.loop = false;
+        source.outputAudioMixerGroup = _outputGroup;
         return source;
     }
 
@@ -76,15 +86,49 @@ public class SePlayer : MonoBehaviour
     }
 
     /// <summary>
-    /// 途中で止めるかもしれない音を鳴らす（敵の攻撃の溜め）。同時に鳴らせるのは1つだけで、前の音は止める。
+    /// delay 秒待ってから効果音を1回鳴らす。待つのはゲーム内時間（ポーズ中は待ちも止まる）。
+    /// 演出の時間表（PresentationTimingData）に合わせて鳴らす音に使う（咆哮・前進・「結印！」）。
+    /// 待っている間にこのオブジェクトが破棄されたら鳴らさない。
     /// </summary>
-    public void PlayHeld(AudioResource sound)
+    public void PlayDelayed(AudioResource sound, float delay)
+    {
+        if (sound == null) return;
+        if (delay <= 0f)
+        {
+            Play(sound);
+            return;
+        }
+
+        PlayDelayedAsync(sound, delay, destroyCancellationToken).Forget();
+    }
+
+    private async UniTaskVoid PlayDelayedAsync(AudioResource sound, float delay, CancellationToken token)
+    {
+        try
+        {
+            await UniTask.Delay(TimeSpan.FromSeconds(delay), cancellationToken: token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        Play(sound);
+    }
+
+    /// <summary>
+    /// 途中で止めるかもしれない音を鳴らす（敵の攻撃の溜め）。同時に鳴らせるのは1つだけで、前の音は止める。
+    /// duration 秒でちょうど鳴り終わるよう再生速度を変える（せり上がる音の頂点を攻撃の瞬間に合わせるため）。
+    /// 長さを読む必要があるので AudioClip だけを受け取る。
+    /// </summary>
+    public void PlayHeld(AudioClip clip, float duration)
     {
         EnsureInitialized();
         _heldSource.Stop();
-        if (sound == null) return;
+        if (clip == null) return;
 
-        _heldSource.resource = sound;
+        _heldSource.resource = clip;
+        _heldSource.pitch = duration > 0f ? Mathf.Clamp(clip.length / duration, MinHeldPitch, MaxHeldPitch) : NormalPitch;
         _heldSource.Play();
     }
 

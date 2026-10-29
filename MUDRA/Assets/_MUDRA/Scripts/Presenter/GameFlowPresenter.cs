@@ -28,6 +28,12 @@ public class GameFlowPresenter : MonoBehaviour
     [Tooltip("BGMの再生役（B7）。バトル側へもBattleContextで渡す")]
     [SerializeField] private BgmPlayer _bgmPlayer;
 
+    [Tooltip("バトル以外の画面で流す曲（タイトル・リザルト）と遷移の音の取り出し元（B7）")]
+    [SerializeField] private SoundData _sound;
+
+    [Tooltip("App側の効果音（遷移のワイプ）（B7）")]
+    [SerializeField] private SePlayer _se;
+
     [Tooltip("App側のカメラ。InGameを読み込んでいる間はInGameのMain Cameraに任せて止める。\n" +
              "AudioListenerはカメラではなくAppの Audio に1つだけ置く（B7。カメラの切り替えで2つ重なる瞬間を作らない）")]
     [SerializeField] private GameObject _appCamera;
@@ -81,6 +87,7 @@ public class GameFlowPresenter : MonoBehaviour
         SetAppCameraActive(true);
         _transitionView.SetCovered(true);
         _screenPresenter.ShowScreen(_gameStateManager.CurrentPhase.CurrentValue);
+        _bgmPlayer.Play(ScreenBgm(_gameStateManager.CurrentPhase.CurrentValue));
         RevealAsync().Forget();
     }
 
@@ -145,6 +152,7 @@ public class GameFlowPresenter : MonoBehaviour
     {
         // ポーズメニューから設定を開いたまま抜けることは無いが、念のため閉じてから覆う
         _settingsPresenter.Close();
+        _se.Play(_sound.transition);
         await _transitionView.CoverAsync(_timing.screenCoverDuration, token);
 
         _screenPresenter.HideAll();
@@ -155,9 +163,15 @@ public class GameFlowPresenter : MonoBehaviour
 
         bool canBegin = false;
         if (GameStateManager.UsesBattleScene(transition.To))
+        {
+            // バトルの曲はEnemyPresenterが決める（覆っている間に前の曲を止め、「結印！」の後にステージの曲を始める）
             canBegin = await LoadBattleAsync(token);
+        }
         else
+        {
             _screenPresenter.ShowScreen(transition.To);
+            _bgmPlayer.Play(ScreenBgm(transition.To));
+        }
 
         await _transitionView.RevealAsync(_timing.screenRevealDuration, token);
 
@@ -222,6 +236,15 @@ public class GameFlowPresenter : MonoBehaviour
             if (battle != null) return battle;
         }
         return null;
+    }
+
+    /// <summary>
+    /// バトル以外の画面で流す曲。Result だけリザルト曲で、Title・Calibration・StageSelect はタイトル曲を流し続ける。
+    /// バトル（InGame・Tutorial）の曲はバトル側（EnemyPresenter）が決める（B7）
+    /// </summary>
+    private AudioClip ScreenBgm(GamePhase phase)
+    {
+        return phase == GamePhase.Result ? _sound.resultBgm : _sound.titleBgm;
     }
 
     private void SetAppCameraActive(bool isActive)

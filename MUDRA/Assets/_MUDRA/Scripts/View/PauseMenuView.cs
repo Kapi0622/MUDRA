@@ -53,6 +53,15 @@ public class PauseMenuView : MonoBehaviour
     private readonly Subject<Unit> _onSettingsRequested = new();
     public Observable<Unit> OnSettingsRequested => _onSettingsRequested;
 
+    // カウントダウンの合図（B7）。刻みの時間はこのViewが決めるので、音はこの合図に合わせて鳴らしてもらう
+    private readonly Subject<Unit> _onCountdownTick = new();
+    /// <summary>カウントダウンの数字が出た（3・2・1 のそれぞれ）</summary>
+    public Observable<Unit> OnCountdownTick => _onCountdownTick;
+
+    private readonly Subject<Unit> _onResumeCall = new();
+    /// <summary>カウントダウンが終わり「結印！」が出た（ここで時間が動き出す）</summary>
+    public Observable<Unit> OnResumeCall => _onResumeCall;
+
     private CancellationTokenSource _countdownCts;
     private bool _isLocked;
     private bool _isInputEnabled = true;
@@ -142,6 +151,7 @@ public class PauseMenuView : MonoBehaviour
             while (remaining > 0f)
             {
                 _countdownText.text = Mathf.CeilToInt(remaining).ToString();
+                _onCountdownTick.OnNext(Unit.Default);
                 float step = Mathf.Min(1f, remaining);
                 await UniTask.Delay(TimeSpan.FromSeconds(step), ignoreTimeScale: true, cancellationToken: token);
                 remaining -= step;
@@ -149,6 +159,7 @@ public class PauseMenuView : MonoBehaviour
 
             // ここで時間が動き出す。「結印！」は少しだけ残してから消す
             _countdownText.text = ResumeCallText;
+            _onResumeCall.OnNext(Unit.Default);
             await UniTask.Delay(TimeSpan.FromSeconds(ResumeCallDuration), ignoreTimeScale: true, cancellationToken: token);
             _countdownGroup.alpha = 0f;
         }
@@ -187,5 +198,7 @@ public class PauseMenuView : MonoBehaviour
         _onRetryRequested.Dispose();
         _onStageSelectRequested.Dispose();
         _onSettingsRequested.Dispose();
+        _onCountdownTick.Dispose();
+        _onResumeCall.Dispose();
     }
 }

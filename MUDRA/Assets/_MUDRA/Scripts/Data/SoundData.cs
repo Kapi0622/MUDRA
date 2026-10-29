@@ -12,6 +12,9 @@ namespace MUDRA.Data
     /// 音量もここに入れる素材の側（Audio Random Container の Volume）で調整し、コードには音量の値を持たない。
     ///
     /// 未設定の欄は鳴らさないだけ（SePlayer / BgmPlayer が null を無視する）。
+    ///
+    /// 術の発動から命中までは同じフレームで起きるため、術の音は「放つ〜当たる」までを1つの音（SpellData.castSE）にし、
+    /// 同じ瞬間に重ねる共通の音は弱点のアクセントだけにしている（B7で決定。共通の発動音・迅速・コンボ・スタンの音は持たない）。
     /// 各欄の素材の目安は docs/sound_asset_list.md。Tooltip の名前はそこでのファイル名。
     /// </summary>
     [CreateAssetMenu(fileName = "NewSound", menuName = "MUDRA/Sound Data")]
@@ -30,12 +33,9 @@ namespace MUDRA.Data
         [Tooltip("JGL_Defeat。「敗北」の表示と同時に1回だけ鳴らす")]
         public AudioClip defeatJingle;
 
-        [Header("手印・術（術ごとの発動音は SpellData.castSE）")]
+        [Header("手印・術（術の発動〜命中の音は SpellData.castSE）")]
         [Tooltip("SE_SignConfirm。詠唱印の確定。印の数に応じて再生側でピッチを上げる")]
         public AudioResource signConfirm;
-
-        [Tooltip("SE_CastCommon。術の発動（全術共通。castSE に重ねる）")]
-        public AudioResource castCommon;
 
         [Tooltip("SE_Misfire。暴発")]
         public AudioResource misfire;
@@ -50,20 +50,11 @@ namespace MUDRA.Data
         public AudioResource guardSuccess;
 
         [Header("命中・状態")]
-        [Tooltip("SE_Hit。術の命中（MultiHit はヒット数ぶん鳴らす）")]
+        [Tooltip("SE_Hit。術の命中の共通音。今は鳴らしていない（命中は castSE に含める方針）。必要になった時のために残している")]
         public AudioResource hit;
 
-        [Tooltip("SE_HitWeakness。弱点命中（hit に重ねる）")]
+        [Tooltip("SE_HitWeakness。弱点命中（castSE に重ねる）")]
         public AudioResource hitWeakness;
-
-        [Tooltip("SE_SpeedBonus。迅速ボーナス")]
-        public AudioResource speedBonus;
-
-        [Tooltip("SE_ComboUp。コンボ加算（2コンボ以上）")]
-        public AudioResource comboUp;
-
-        [Tooltip("SE_ComboBreak。コンボが途切れた")]
-        public AudioResource comboBreak;
 
         [Tooltip("SE_DotTick。燃焼の継続ダメージ（毎秒）")]
         public AudioResource dotTick;
@@ -71,12 +62,10 @@ namespace MUDRA.Data
         [Tooltip("SE_HealTick。継続回復（毎秒）")]
         public AudioResource healTick;
 
-        [Tooltip("SE_Stun。敵のスタン")]
-        public AudioResource stun;
-
         [Header("敵（攻撃音は EnemyAttackData.attackSE）")]
-        [Tooltip("SE_EnemyCharge。攻撃の溜め。溜めが終わったら途中で止める")]
-        public AudioResource enemyCharge;
+        [Tooltip("SE_EnemyCharge。攻撃の溜め。溜め時間ちょうどで鳴り終わるよう再生速度を変え、溜めが終わったら止める。\n" +
+                 "長さを読むため、この欄だけ AudioClip（Audio Random Container は不可）。1.5〜2秒の素材が目安")]
+        public AudioClip enemyCharge;
 
         [Tooltip("SE_HeavyWarning。ボスの大技予告（enemyCharge に重ねる）")]
         public AudioResource heavyWarning;

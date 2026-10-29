@@ -26,5 +26,5 @@ MonoBehaviour:
   healPower: 0
   effectPrefab: {fileID: 4979361439896125199, guid: e9271e8f787a18a4593c68f7868c9754, type: 3}
   effectOnCaster: 0
-  castSE: {fileID: 0}
+  castSE: {fileID: 8300000, guid: 4716af3862dfa3e49b56a22eefeee3c3, type: 3}
   cutInSprite: {fileID: 0}

@@ -1,6 +1,6 @@
 # 📘 仕様書：「MUDRA」
 
-> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/26（B6.5：InGame の 2.5D 化を反映） **ステータス:** v1.8 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
+> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/10/30（B7：サウンドを反映） **ステータス:** v1.9 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
 
 ---
 
@@ -186,6 +186,9 @@ Scripts/
 |`StatusIconView`|継続中の効果のアイコン（蝕＝DoT・封＝Stun・癒＝HoT）|MonoBehaviour|
 |`BattleResultView`|「討伐」「敗北」の決着表示（B5のリザルト画面までの仮）|MonoBehaviour|
 |`BossEncounterView`|ボス戦専用の画面演出（登場時の暗転と帯・大技の特別予告・撃破時のヒットストップ）|MonoBehaviour|
+|`SePlayer`|効果音の再生。AudioSourceを使い回し、Audio Random Containerも鳴らせる。遅らせて鳴らす・溜め時間に合わせて伸縮する・ポーズで一時停止する。AppとInGameに1つずつ（B7）|MonoBehaviour|
+|`BgmPlayer`|BGMとジングルの再生（フェードアウト→フェードイン、ジングル中の曲の要求は終わるまで待つ）。Appに常駐し、バトル側には`BattleContext`で渡す（B7）|MonoBehaviour|
+|`AudioVolumeView`|設定画面の音量（0〜1）をAudioMixerのBGM/SEグループのデシベルへ反映する（B7）|MonoBehaviour|
 
 > **B4での変更:** 当初の`BattleView` / `HandSignView`のような大きなViewは作らず、演出の単位ごとに小さなViewに分けた。各Viewは命令的メソッドを公開するだけでModelを知らない。ボス演出のように複数のViewにまたがる演出は、各Viewが「開始までの遅延」を受け取り、秒数を時間表`PresentationTimingData`に集約して順番を揃える（Presenterにタイマーを持たせないため）。
 
@@ -198,9 +201,10 @@ Scripts/
 |`EnemyAttackData`|攻撃1種分のテンプレートデータ（ダメージ・チャージ時間・演出）|ScriptableObject|
 |`EnemyAction`|行動パターン1要素分のデータ（`EnemyAttackData`参照・大技フラグ・行動後の待機時間）|Serializable struct|
 |`StageSection`|ステージ内の1セクション分のデータ（敵データ参照・ボスフラグ）|Serializable struct|
-|`StageData`|ステージ定義データ（セクション配列・背景・BGM）。1ステージは道中雑魚×N + ボス×1のセクションで構成される|ScriptableObject|
+|`StageData`|ステージ定義データ（セクション配列・環境・道中とボスのBGM）。1ステージは道中雑魚×N + ボス×1のセクションで構成される|ScriptableObject|
 |`PresentationTimingData`|演出の時間表（複数のクラスにまたがる尺）。Modelの待機時間もここから計算する（B4）|ScriptableObject|
 |`BattlePaletteData`|複数のViewで使う意味の色（DoT・回復・ガード・弱点・属性）（B4）|ScriptableObject|
+|`SoundData`|術・敵の攻撃・ステージの曲以外の固定の音（タイトル・リザルトの曲、勝敗のジングル、印・被弾・UIなどの効果音）（B7）|ScriptableObject|
 
 ### 2-2. インターフェース定義
 
@@ -433,8 +437,8 @@ public class SpellData : ScriptableObject
     [Tooltip("エフェクトを術者（プレイヤー）側に出すか。回復術など自分に掛ける術でtrue（B4）")]
     public bool effectOnCaster;
 
-    [Tooltip("発動時のSE")]
-    public AudioClip castSE;
+    [Tooltip("発動〜命中までを1つにした音（B7）。発動と命中は同じフレームで起きるため、別々の音にしない")]
+    public AudioResource castSE;   // AudioClip でも Audio Random Container でもよい
 
     [Tooltip("カットイン演出のSprite（術名テロップ）")]
     public Sprite cutInSprite;
@@ -459,7 +463,7 @@ public class EnemyAttackData : ScriptableObject
 
     [Header("演出")]
     public GameObject effectPrefab;
-    public AudioClip se;
+    public AudioResource attackSE;   // 系統ごとの音を複数の攻撃で使い回す（B7）
 }
 
 /// <summary>
@@ -529,7 +533,8 @@ public class StageData : ScriptableObject
     public StageSection[] sections;
 
     [Header("演出")]
-    public AudioClip bgm;
+    public AudioClip bgm;       // 道中の曲
+    public AudioClip bossBgm;   // ボス戦の曲。ステージごとに別。空ならボス戦も bgm のまま（B7）
 
     [Tooltip("道中セクションの背景")]
     public Sprite roadBackgroundSprite;
@@ -538,6 +543,18 @@ public class StageData : ScriptableObject
     public Sprite bossBackgroundSprite;
 }
 ```
+
+#### SoundData（B7）
+
+固定の音をまとめた1つのアセット（`ScriptableObject/Sound/SND_Sound.asset`）。AppとInGameの両方から同じアセットを参照する。術・敵の攻撃・ステージの曲は、それぞれ`SpellData.castSE` / `EnemyAttackData.attackSE` / `StageData.bgm`・`bossBgm`に持つ。
+
+| 区分 | 欄 | 型 |
+|---|---|---|
+| BGM・ジングル | `titleBgm` / `resultBgm` / `victoryJingle` / `defeatJingle` | `AudioClip` |
+| 効果音 | 印・術・命中・状態・敵・ステージの流れ・ポーズ・画面とUIの30欄 | `AudioResource`（素材でもAudio Random Containerでもよい） |
+| 溜めの音 | `enemyCharge` | `AudioClip`（溜め時間に合わせて再生速度を変えるため、長さを読む） |
+
+未設定の欄は鳴らさないだけでエラーにしない。欄の一覧と、どのきっかけで鳴るかは `docs/architecture/03_sound.md`。
 
 #### アセット命名規則（B3で制定）
 
@@ -548,6 +565,11 @@ public class StageData : ScriptableObject
 | EnemyAttackData | `EA_` | `EA_MudSplash` |
 | EnemyData | `ED_` | `ED_MudBlob` |
 | StageData | `SD_` | `SD_Stage01_SealedVillage` |
+| SoundData（B7） | `SND_` | `SND_Sound` |
+| BGM / ジングル（B7） | `BGM_` / `JGL_` | `BGM_Stage01_SealedVillage` / `JGL_Victory` |
+| 効果音（B7） | `SE_`（術は `SE_Cast_`＋術アセット名、敵の攻撃は `SE_EnemyAtk_`＋系統） | `SE_Cast_Fireball` / `SE_EnemyAtk_Fire` |
+| Audio Random Container（B7） | `ARC_`（元の素材名から `SE_` を除く） | `ARC_EnemyAtk_Fire` |
+| AudioMixer（B7） | `MX_` | `MX_Main` |
 
 ※ 術（SpellData）は対象外（既存のまま）。
 
@@ -1521,6 +1543,8 @@ B4完了後、「確定が鈍く、誤判定がやや多い」という体感か
 - SE組み込み（印確定音、術発動音、被弾音、Guard成功音、Stun音、DoT tick音、Charging予告音、勝敗ジングル、UI操作音）
 - BGM選定・組み込み（`StageData.bgm`再生、シーン遷移時クロスフェード）
 - AudioManager設計（SE/BGM再生管理）
+
+> **進捗実績:** B7（10/23〜10/30）完了。AudioManagerは作らず、効果音の`SePlayer`（AppとInGameに1つずつ）とBGMの`BgmPlayer`（Appに常駐）の2つのViewに分けた。BGMの切り替えはクロスフェードではなくフェードアウト→フェードイン。ボス戦の曲をステージごとに追加し（`StageData.bossBgm`）、ステージの曲は開始演出の「結印！」の後から流す。発動と命中が同じフレームで起きるため、術の音は「放つ〜当たる」までを1つの音にし、Stun音・共通の命中音は鳴らさない（弱点の時だけ共通の音を重ねる）。内訳に加え、設定画面のBGM/効果音の音量スライダー（AudioMixer）、Audio Random Containerによる音程・音量のばらつき、溜め時間に合わせた予告音の伸縮を実装した。一部の素材は保留。詳細は dev_log_B7 と `docs/architecture/03_sound.md`。
 
 #### B8：バランス調整の内訳
 

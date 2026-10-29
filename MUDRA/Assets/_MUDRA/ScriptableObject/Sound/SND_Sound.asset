@@ -12,43 +12,38 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: acae4e906527f6f438fd89795c04e34b, type: 3}
   m_Name: SND_Sound
   m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.SoundData
-  titleBgm: {fileID: 0}
-  resultBgm: {fileID: 0}
-  victoryJingle: {fileID: 0}
-  defeatJingle: {fileID: 0}
-  signConfirm: {fileID: 0}
-  castCommon: {fileID: 0}
-  misfire: {fileID: 0}
-  signCancel: {fileID: 0}
-  guardStance: {fileID: 0}
-  guardSuccess: {fileID: 0}
-  hit: {fileID: 0}
-  hitWeakness: {fileID: 0}
-  speedBonus: {fileID: 0}
-  comboUp: {fileID: 0}
-  comboBreak: {fileID: 0}
-  dotTick: {fileID: 0}
+  titleBgm: {fileID: 8300000, guid: d5e4a6a40527dbb4e9a40805bd72f0bf, type: 3}
+  resultBgm: {fileID: 8300000, guid: e61f7d6a42bb84b48bcad48d2a8d6c82, type: 3}
+  victoryJingle: {fileID: 8300000, guid: eb2530685e8624245ac69d2b2b00d45b, type: 3}
+  defeatJingle: {fileID: 8300000, guid: 8dda386fcc420f64ca3ec507039668ef, type: 3}
+  signConfirm: {fileID: 8300000, guid: 90277d2369c9c964aac0bb2b1e5d966c, type: 3}
+  misfire: {fileID: 8300000, guid: 56faa065ec894544ca5478ff411f2531, type: 3}
+  signCancel: {fileID: 8300000, guid: 2ee48a2e03cb4b948b3fd60fa28892b5, type: 3}
+  guardStance: {fileID: 8300000, guid: 78b957047a51c754192726af16adcd11, type: 3}
+  guardSuccess: {fileID: 6418180475301049370, guid: 0c240e0a7bd1913499492175856f0cb8, type: 2}
+  hit: {fileID: 8300000, guid: bb82469a7c1162743ab7457ece8cf360, type: 3}
+  hitWeakness: {fileID: 6418180475301049370, guid: dfe1646c37c2e49428803833621327de, type: 2}
+  dotTick: {fileID: 6418180475301049370, guid: 2bad010ebf376a94bb474782bcb9ca94, type: 2}
   healTick: {fileID: 0}
-  stun: {fileID: 0}
-  enemyCharge: {fileID: 0}
-  heavyWarning: {fileID: 0}
-  playerDamage: {fileID: 0}
-  playerDamageHeavy: {fileID: 0}
-  enemyAppear: {fileID: 0}
-  bossAppear: {fileID: 0}
-  bossRoar: {fileID: 0}
-  enemyDefeat: {fileID: 0}
-  bossDefeat: {fileID: 0}
-  advance: {fileID: 0}
-  stageIntro: {fileID: 0}
-  ketsuin: {fileID: 0}
+  enemyCharge: {fileID: 8300000, guid: 1f4c3bab512629046ba7be9441c4acf7, type: 3}
+  heavyWarning: {fileID: 8300000, guid: 8d1968163b81ad24197b50d5f343e474, type: 3}
+  playerDamage: {fileID: 6418180475301049370, guid: 46a17c822dcad4c44ba3397b9e046a43, type: 2}
+  playerDamageHeavy: {fileID: 6418180475301049370, guid: 0757d566c9c668643905ec6f995b43f4, type: 2}
+  enemyAppear: {fileID: 8300000, guid: ca35d2ac78dbed242a0f69a33123e879, type: 3}
+  bossAppear: {fileID: 8300000, guid: 284cb480a412e894cba30396075a9fff, type: 3}
+  bossRoar: {fileID: 8300000, guid: dbd48bcbf3c77cb4482407c99c2ec9c9, type: 3}
+  enemyDefeat: {fileID: 6418180475301049370, guid: 38b24cdb07e310f499129825d19db491, type: 2}
+  bossDefeat: {fileID: 8300000, guid: dbd48bcbf3c77cb4482407c99c2ec9c9, type: 3}
+  advance: {fileID: 8300000, guid: e578a7146e70cb44882943058cc696b3, type: 3}
+  stageIntro: {fileID: 8300000, guid: 2ed83f5ed0a518543bdc135b6235aa8f, type: 3}
+  ketsuin: {fileID: 8300000, guid: 35d2c5dea4c347a42ba48a10692aa56e, type: 3}
   ketsuinVoice: {fileID: 0}
-  pause: {fileID: 0}
-  countdownTick: {fileID: 0}
-  transition: {fileID: 0}
-  uiDecide: {fileID: 0}
-  uiBack: {fileID: 0}
-  uiCursor: {fileID: 0}
-  rankStamp: {fileID: 0}
+  pause: {fileID: 8300000, guid: d3cc5bd1d020caf4082978f1d7e12743, type: 3}
+  countdownTick: {fileID: 8300000, guid: b61952f633c43fc4cb10ca0a9981e888, type: 3}
+  transition: {fileID: 8300000, guid: 94f1b44c93898854f80fd2aa6f435caf, type: 3}
+  uiDecide: {fileID: 8300000, guid: c82e3fd9396ff18468e03c7ef16827de, type: 3}
+  uiBack: {fileID: 8300000, guid: e2baedcc9049b6a4eafaa9ecf9b185a4, type: 3}
+  uiCursor: {fileID: 6418180475301049370, guid: dda5e491f78d2874eaabeebd40e061d7, type: 2}
+  rankStamp: {fileID: 8300000, guid: f8b5788c86e096e488f5baee0fadd430, type: 3}
   newRecord: {fileID: 0}
-  uiToggle: {fileID: 0}
+  uiToggle: {fileID: 8300000, guid: c82e3fd9396ff18468e03c7ef16827de, type: 3}
