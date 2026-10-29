@@ -1,5 +1,6 @@
 using MUDRA.HandTracking;
 using UnityEngine;
+using UnityEngine.Audio;
 
 namespace MUDRA.Data
 {
@@ -62,10 +63,11 @@ namespace MUDRA.Data
                  "falseなら敵側（着弾点）に出す")]
         public bool effectOnCaster;
 
-        [Tooltip("発動時のSE")] 
-        public AudioClip castSE;
+        [Tooltip("発動時のSE（SE_Cast_*）。AudioClip でも Audio Random Container でもよい（B7）。\n" +
+                 "発動と命中は同じ瞬間に起きるので、「放つ〜当たる」までを1つの音にする（共通の命中音は鳴らさない）")] 
+        public AudioResource castSE;
 
         [Tooltip("カットイン演出のSprite（術名テロップ）")] 
         public Sprite cutInSprite;
     }
-}
+}

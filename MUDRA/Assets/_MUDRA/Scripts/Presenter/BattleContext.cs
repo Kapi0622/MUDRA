@@ -41,6 +41,12 @@ public sealed class BattleContext
     /// <summary>手の映り具合（B6）。App側で常に判定していて、手を見失った時の自動ポーズに使う</summary>
     public HandPresenceModel HandPresence { get; }
 
+    /// <summary>
+    /// BGMの再生役（B7）。App側に常駐していて、InGameの読み込み・破棄をまたいで鳴り続ける。
+    /// ボス曲への切り替えと勝敗のジングルはバトル側で決めるため渡す
+    /// </summary>
+    public BgmPlayer Bgm { get; }
+
     public BattleContext(
         StageData stage,
         IReadOnlyList<StageData> allStages,
@@ -50,7 +56,8 @@ public sealed class BattleContext
         ReadOnlyReactiveProperty<bool> isAutoPauseEnabled,
         SettingsPresenter settings,
         bool isTutorial,
-        HandPresenceModel handPresence)
+        HandPresenceModel handPresence,
+        BgmPlayer bgm)
     {
         Stage = stage;
         AllStages = allStages;
@@ -61,5 +68,6 @@ public sealed class BattleContext
         Settings = settings;
         IsTutorial = isTutorial;
         HandPresence = handPresence;
+        Bgm = bgm;
     }
 }

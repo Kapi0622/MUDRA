@@ -36,8 +36,12 @@ public class StageData : ScriptableObject
     public StageSection[] sections;
 
     [Header("演出")]
-    [Tooltip("B7で使用")]
+    [Tooltip("道中のBGM（BGM_Stage0N_*）。ループで流す（B7）")]
     public AudioClip bgm;
+
+    [Tooltip("ボス戦のBGM。ステージごとに別の曲を設定する（B7）。\n" +
+             "未設定ならボス戦でも道中の bgm を流し続ける（チュートリアルの木人戦など）")]
+    public AudioClip bossBgm;
 
     [Tooltip("道中セクションの背景。B4で使用")]
     public Sprite roadBackgroundSprite;

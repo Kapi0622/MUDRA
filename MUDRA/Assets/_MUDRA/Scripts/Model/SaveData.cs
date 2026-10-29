@@ -39,4 +39,8 @@ public class SettingsData
     public bool isFullScreen = true;
     public bool showCameraPreview = true;
     public bool isAutoPauseEnabled = true;
+
+    // 音量（B7）。0〜1。古いファイルには無い項目なので、読み込み時はこの既定値になる
+    public float bgmVolume = 0.7f;
+    public float seVolume = 1f;
 }

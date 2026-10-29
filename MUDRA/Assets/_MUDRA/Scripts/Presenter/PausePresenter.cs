@@ -21,6 +21,10 @@ public class PausePresenter : MonoBehaviour
     [SerializeField] private SpellListView _spellListView;
     [SerializeField] private TimeScaleView _timeScaleView;
 
+    [Tooltip("戦闘の効果音。ポーズ中は鳴っている音を止める（BGMはApp側にあり、止めない）（B7）")]
+    [SerializeField] private SePlayer _battleSe;
+    [SerializeField] private SoundData _sound;
+
     [Tooltip("術一覧の属性名の色に使う")]
     [SerializeField] private BattlePaletteData _palette;
 
@@ -60,7 +64,11 @@ public class PausePresenter : MonoBehaviour
         if (settings != null)
         {
             _pauseMenuView.OnSettingsRequested
-                .Subscribe(_ => settings.Open())
+                .Subscribe(_ =>
+                {
+                    _battleSe.Play(_sound.uiDecide);
+                    settings.Open();
+                })
                 .AddTo(_disposables);
 
             // 設定画面を開いている間は、ポーズメニューのキー操作（Esc・Space）を止める
@@ -74,10 +82,17 @@ public class PausePresenter : MonoBehaviour
             .Subscribe(isPaused =>
             {
                 _timeScaleView.SetPaused(isPaused);
+                _battleSe.SetPaused(isPaused);
                 if (isPaused)
+                {
+                    // 戦闘の音を止めた後に鳴らす（ポーズ中に新しく鳴らす音は止まらない）
+                    _battleSe.Play(_sound.pause);
                     ShowMenu();
+                }
                 else
+                {
                     _pauseMenuView.HideMenu();
+                }
             })
             .AddTo(_disposables);
 
@@ -93,7 +108,21 @@ public class PausePresenter : MonoBehaviour
             })
             .AddTo(_disposables);
 
+        // --- カウントダウンの刻みと「結印！」。刻む時刻はPauseMenuViewが決める（B7） ---
+        _pauseMenuView.OnCountdownTick
+            .Subscribe(_ => _battleSe.Play(_sound.countdownTick))
+            .AddTo(_disposables);
+
+        _pauseMenuView.OnResumeCall
+            .Subscribe(_ =>
+            {
+                _battleSe.Play(_sound.ketsuin);
+                _battleSe.Play(_sound.ketsuinVoice);
+            })
+            .AddTo(_disposables);
+
         // --- メニューからの要求 ---
+        // 再開はすぐカウントダウンの刻みが鳴るので、決定音は重ねない
         _pauseMenuView.OnPauseToggleRequested
             .Subscribe(_ => _pauseModel.TogglePause())
             .AddTo(_disposables);
@@ -105,14 +134,18 @@ public class PausePresenter : MonoBehaviour
         _pauseMenuView.OnRetryRequested
             .Subscribe(_ =>
             {
-                if (gameStateManager.Retry()) _pauseMenuView.Lock();
+                if (!gameStateManager.Retry()) return;
+                _battleSe.Play(_sound.uiDecide);
+                _pauseMenuView.Lock();
             })
             .AddTo(_disposables);
 
         _pauseMenuView.OnStageSelectRequested
             .Subscribe(_ =>
             {
-                if (gameStateManager.ToStageSelect()) _pauseMenuView.Lock();
+                if (!gameStateManager.ToStageSelect()) return;
+                _battleSe.Play(_sound.uiDecide);
+                _pauseMenuView.Lock();
             })
             .AddTo(_disposables);
     }

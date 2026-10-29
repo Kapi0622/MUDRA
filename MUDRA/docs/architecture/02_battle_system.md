@@ -2,7 +2,7 @@
 
 > **ドキュメント種別:** アーキテクチャ復習ドキュメント
 > **対象:** `Scripts/Data/` `Scripts/Model/` `Scripts/Presenter/` `Scripts/View/`（バトル側。App 側の画面とフローは [00 §4](00_overview.md#4-起動シーケンス) と仕様書 §4-1）
-> **関連:** [00_overview.md](00_overview.md) / [01_hand_input.md](01_hand_input.md)
+> **関連:** [00_overview.md](00_overview.md) / [01_hand_input.md](01_hand_input.md) / [03_sound.md](03_sound.md)（音の配線はこちら）
 > **仕様書:** §6 シーケンス管理 / §7 バトルシステム / §8 MVP構成
 
 確定した印を受け取ってから、ダメージが出てHPバーが減るまで。
@@ -29,7 +29,7 @@
 | `cutInSprite` | カットインの帯に載せる絵 | ✅（B4。未設定なら帯と術名だけ） |
 | `effectPrefab` | 術ごとのエフェクト | ✅（B4。未設定なら `SpellEffectView` の既定エフェクト） |
 | `effectOnCaster` | エフェクトを術者側に出すか（回復術で true） | ✅（B4） |
-| `castSE` | 発動時のSE | ⚠️ 未使用（B7で接続） |
+| `castSE` | 発動〜命中を1つにした音（`AudioResource`。素材でも Audio Random Container でも可） | ✅（B7。[03 §5](03_sound.md)） |
 
 ### EnemyData / EnemyAttackData / EnemyAction
 
@@ -45,6 +45,8 @@ flowchart LR
     SD --> SS -->|"enemyData"| ED
     ED --> AP --> EA -->|"attackData"| AD
 ```
+
+`attackSE` は `AudioResource`（B7）。系統ごとの `ARC_EnemyAtk_*` を複数の攻撃で使い回す（[03 §8](03_sound.md)）。
 
 雑魚とボスに構造上の差は無く、`EnemyData` のパラメータで差をつける。`isBoss` は演出（背景切替・ボス戦専用演出）、1手目までの待機（ボスは長い）、デバッグメニューの「ボスへ飛ぶ」で使う。
 
@@ -304,6 +306,8 @@ stateDiagram-v2
 ## 7. Presenter — 配線一覧
 
 ロジックは書かない。「誰のどのストリームを購読して、誰の何を呼ぶか」だけ。
+
+> **音（B7）:** 以下の Presenter（と `PausePresenter`）は、購読の中で `SePlayer` / `BgmPlayer` も呼んでいる。どのきっかけでどの音を鳴らすかは [03_sound.md §5](03_sound.md#5-発音ポイント一覧) にまとめ、ここには重ねて書かない。
 
 ### HandSignPresenter
 

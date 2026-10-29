@@ -23,7 +23,8 @@ MonoBehaviour:
     isBoss: 0
   - enemyData: {fileID: 11400000, guid: f6ea9583307d07744a69abfd8124282d, type: 2}
     isBoss: 1
-  bgm: {fileID: 0}
+  bgm: {fileID: 8300000, guid: 10eb96c00fa49d540afa1e79aef7ea71, type: 3}
+  bossBgm: {fileID: 8300000, guid: b7b2e1baedd156c45b2b829ffdaba7a6, type: 3}
   roadBackgroundSprite: {fileID: 5138433683246006060, guid: 61d75b1248efa6145bf03f8f5b7c2e59, type: 3}
   bossBackgroundSprite: {fileID: -6061146747047014980, guid: 51ee5428337f68f4893c0dd4b18f8dd9, type: 3}
   environmentPrefab: {fileID: 6553322380439397105, guid: 307e23a051a726b40b82f75389f2ee5d, type: 3}

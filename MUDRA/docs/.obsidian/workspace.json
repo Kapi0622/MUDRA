@@ -123,8 +123,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 200
   },
   "right": {
     "id": "2fd3bbb2af97ba4a",
@@ -231,12 +230,16 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "devlog/dev_log_B7.md",
+    "devlog/dev_log_B7.md.tmp.1201.b46aa236fbad",
+    "architecture/03_sound.md",
+    "architecture/03_sound.md.tmp.1201.0fe5eb04c262",
+    "specification_MUDRA.md",
+    "sound_asset_list.md",
     "devlog/dev_log_B6.5.md",
     "stage04_environment_asset_prompts.md",
     "stage03_environment_asset_prompts.md",
     "stage02_environment_asset_prompts.md",
-    "sound_asset_list.md",
-    "specification_MUDRA.md",
     "B3_enemy_stage_content.md",
     "hand_sign_tuning.md",
     "stage01_environment_asset_prompts.md",
@@ -252,8 +255,6 @@
     "devlog/dev_log_B5.md",
     "devlog/dev_log_B4.5.md",
     "devlog/sedG70iiR",
-    "devlog/dev_log_B4.5.md.tmp.2413.244d487a89c4",
-    "hand_sign_tuning.md.tmp.2413.a33a9f7c6b5b",
     "devlog/dev_log_B4.md",
     "devlog/dev_log_B3.md",
     "architecture/00_overview.md",
@@ -264,8 +265,6 @@
     "devlog/dev_log_P2.md",
     "devlog/dev_log_B2.md",
     "devlog/dev_log_A5.md",
-    "devlog/dev_log_B1.md",
-    "devlog/dev_log_A2.md",
-    "devlog/dev_log_A4.md"
+    "devlog/dev_log_B1.md"
   ]
 }

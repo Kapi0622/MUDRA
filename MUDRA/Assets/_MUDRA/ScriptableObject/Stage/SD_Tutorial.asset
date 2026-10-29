@@ -17,7 +17,8 @@ MonoBehaviour:
   sections:
   - enemyData: {fileID: 11400000, guid: 78f54f458745bb149b67946cb4d70004, type: 2}
     isBoss: 1
-  bgm: {fileID: 0}
+  bgm: {fileID: 8300000, guid: f73fde1ec4e8b2c4f866b6016068b164, type: 3}
+  bossBgm: {fileID: 0}
   roadBackgroundSprite: {fileID: 0}
   bossBackgroundSprite: {fileID: 0}
   environmentPrefab: {fileID: 6390410876268880580, guid: 828c0c9678dfa434283cad41830d8823, type: 3}

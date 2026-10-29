@@ -19,6 +19,10 @@ public class ScreenPresenter : MonoBehaviour
     [Tooltip("弱点属性の文字色に使う")]
     [SerializeField] private BattlePaletteData _palette;
 
+    [Header("サウンド（B7）")]
+    [SerializeField] private SePlayer _se;
+    [SerializeField] private SoundData _sound;
+
     // --- Result画面の戦績の項目名 ---
     private const string TimeLabel = "討伐時間";
     private const string TimeLabelOnLose = "戦った時間";
@@ -51,11 +55,19 @@ public class ScreenPresenter : MonoBehaviour
         _stageSelectView.SetStages(BuildStageCards());
 
         _titleView.OnStartRequested
-            .Subscribe(_ => _gameStateManager.StartGame())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                _gameStateManager.StartGame();
+            })
             .AddTo(_disposables);
 
         _titleView.OnSettingsRequested
-            .Subscribe(_ => _settingsPresenter.Open())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                _settingsPresenter.Open();
+            })
             .AddTo(_disposables);
 
         // 設定画面を開いている間は、下のタイトル画面のキー操作（Spaceでスタート）を止める
@@ -70,23 +82,56 @@ public class ScreenPresenter : MonoBehaviour
             .AddTo(_disposables);
 
         _stageSelectView.OnStageDecided
-            .Subscribe(index => _gameStateManager.SelectStage(_gameStateManager.AllStages[index]))
+            .Subscribe(index =>
+            {
+                _se.Play(_sound.uiDecide);
+                _gameStateManager.SelectStage(_gameStateManager.AllStages[index]);
+            })
+            .AddTo(_disposables);
+
+        _stageSelectView.OnCursorMoved
+            .Subscribe(_ => _se.Play(_sound.uiCursor))
             .AddTo(_disposables);
 
         _stageSelectView.OnBackRequested
-            .Subscribe(_ => _gameStateManager.ToTitle())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiBack);
+                _gameStateManager.ToTitle();
+            })
             .AddTo(_disposables);
 
         _resultView.OnRetryRequested
-            .Subscribe(_ => _gameStateManager.Retry())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                _gameStateManager.Retry();
+            })
             .AddTo(_disposables);
 
         _resultView.OnStageSelectRequested
-            .Subscribe(_ => _gameStateManager.ToStageSelect())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                _gameStateManager.ToStageSelect();
+            })
             .AddTo(_disposables);
 
         _resultView.OnTitleRequested
-            .Subscribe(_ => _gameStateManager.ToTitle())
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                _gameStateManager.ToTitle();
+            })
+            .AddTo(_disposables);
+
+        // ランクのハンコが押された瞬間。自己ベストなら祝いの音を重ねる
+        _resultView.OnRankStamped
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.rankStamp);
+                if (_progressModel.LastResultWasNewBest) _se.Play(_sound.newRecord);
+            })
             .AddTo(_disposables);
     }
 

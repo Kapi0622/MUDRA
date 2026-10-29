@@ -4,13 +4,13 @@
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
 Unity 6000.4.4f1 / URP（App は 2D Renderer、InGame は Universal Renderer）/ Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B6.5（InGame の 2.5D 化）まで完了。次は B7（サウンド）。**
+現在地: **β版 B7（サウンド）まで完了。次は B8（バランス調整）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の121ファイル・約12,500行が全て。** 小さい。
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の125ファイル・約13,400行が全て。** 小さい。
 （うち `Editor/` の2本・約660行は敵・ステージSOの生成ツールと再生開始シーンの切替で、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
@@ -52,6 +52,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 生成と注入は App 側が `Presenter/AppInitializer.cs`、バトル側が `Presenter/BattleInitializer.cs` に集約（DIコンテナ・シングルトンは不使用）。
 シーンは常駐の `App.unity`（カメラ・画面・遷移）と、バトル（InGame・Tutorial）のたびに加算ロードする `InGame.unity` の2つ。
 InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステージの見た目は環境 Prefab（`StageData.environmentPrefab`）で、カメラ・敵は `BattleRig` ごとマーカー間を移動する（B6.5）。
+音は View の `SePlayer`（App と InGame に1つずつ）と `BgmPlayer`（App に常駐。バトルへは `BattleContext.Bgm`）が鳴らし、どの音かは `SoundData`（`SND_Sound`）と各 Data が持つ（B7）。
 
 **詳細は `MUDRA/docs/architecture/00_overview.md` を読む。**
 
@@ -61,12 +62,13 @@ InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステー�
 
 | ファイル | 位置づけ |
 |---|---|
-| `MUDRA/docs/architecture/` 3本 | **現コードの断面図。調査はまずここから** |
-| `MUDRA/docs/specification_MUDRA.md` | 設計の正典（v1.8）。**未実装のものも含む。**§指定で部分読み |
+| `MUDRA/docs/architecture/` 4本 | **現コードの断面図。調査はまずここから**（03_sound が BGM・効果音・音量。「この音はどこで鳴る？」は 03 §5） |
+| `MUDRA/docs/specification_MUDRA.md` | 設計の正典（v1.9）。**未実装のものも含む。**§指定で部分読み |
 | `MUDRA/docs/hand_sign_tuning.md` | 手印認識の閾値の調整手順。判定の違和感を直すときに読む |
 | `MUDRA/docs/devlog/dev_log_*.md` | 当時のスナップショット。設計理由を追う時だけ該当1本 |
 | `MUDRA/docs/devlog/dev_log_B6.5.md` | **InGame の 3D の仕組み・描画のルール・環境 Prefab の作り方。環境やカメラを触る前に読む** |
 | `MUDRA/docs/stage0N_environment_asset_prompts.md` | ステージ環境の素材の生成プロンプト（4本） |
+| `MUDRA/docs/sound_asset_list.md` | サウンド素材の一覧（ファイル名・探す語・入手記録）。素材を足す・探すときに読む |
 | `README.md` / `docs/proposal_MUDRA.md` | 企画・世界観。実装作業では通常不要 |
 
 ---
@@ -97,6 +99,9 @@ InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステー�
   の2行（`OnLandmarkDetected` の宣言と `Invoke`）は**手動パッチ**。ゲーム側への唯一の入口なので消さない
 - 印を追加したら `View/SequenceGuideView.cs` の `GetSignDisplayName()` にも表示名を追加する
   （漏れると「？」と表示される）
+- **AudioListener は App の `Audio` に1つだけ。** カメラ（App・InGame）に付けると遷移の瞬間に2つ重なる
+- `MX_Main` の公開パラメータ名 `BgmVolume` / `SeVolume` は `View/AudioVolumeView.cs` の定数と一致させる（ずれると音量設定が効かない）
+- 一部の `.cs` は改行コードが CRLF（`BattlePresenter` / `EnemyPresenter` / `HandSignPresenter` など）。**スクリプトで置換するときは改行コードを保つ**（LF で書き戻すと全行が差分になる）
 
 ---
 

@@ -31,8 +31,15 @@ public class EnemyPresenter : MonoBehaviour
     [Tooltip("撃破時のヒットストップ。timeScaleはポーズと共有するため、TimeScaleViewにだけ書き換えさせる（B5）")]
     [SerializeField] private TimeScaleView _timeScaleView;
 
+    [Header("サウンド（B7）")]
+    [SerializeField] private SePlayer _se;
+    [Tooltip("勝敗のジングル・効果音の取り出し元。ステージの曲は StageData に持つ")]
+    [SerializeField] private SoundData _sound;
+
     private SectionProgressManager _sectionProgressManager;
     private PresentationTimingData _timing;
+    // App側に常駐しているBGMの再生役。BattleContext経由で受け取る（シーンをまたぐのでInspectorで結べない）
+    private BgmPlayer _bgm;
 
     private readonly CompositeDisposable _disposables = new();
 
@@ -43,10 +50,12 @@ public class EnemyPresenter : MonoBehaviour
         SectionProgressManager sectionProgressManager,
         EnemyStateManager enemyStateManager,
         BattleModel battleModel,
-        PresentationTimingData timing)
+        PresentationTimingData timing,
+        BgmPlayer bgm)
     {
         _sectionProgressManager = sectionProgressManager;
         _timing = timing;
+        _bgm = bgm;
 
         // --- ステージ開始 → ステージ名 ---
         // 最初のステージ名はバトル開始前の演出（PlayStageIntroAsync）で出しているので、
@@ -58,14 +67,23 @@ public class EnemyPresenter : MonoBehaviour
 
         // --- 決着 → 討伐/敗北の表示。戦闘が再開したら消す（デバッグのステージ/セクションジャンプ） ---
         // ボスを倒した時は撃破演出を見せ切ってから「討伐」を出す。
-        // OnStageClearedの時点ではCurrentSectionはまだ撃破したセクションを指している
+        // OnStageClearedの時点ではCurrentSectionはまだ撃破したセクションを指している。
+        // 勝敗のジングルは表示と同じ遅れで鳴らす。ボス曲はジングルの前に BgmPlayer が止める
         sectionProgressManager.OnStageCleared
-            .Subscribe(_ => _battleResultView.ShowClear(
-                _sectionProgressManager.CurrentSection.isBoss ? _timing.BossDefeatDuration : 0f))
+            .Subscribe(_ =>
+            {
+                float delay = _sectionProgressManager.CurrentSection.isBoss ? _timing.BossDefeatDuration : 0f;
+                _battleResultView.ShowClear(delay);
+                _bgm.PlayJingle(_sound.victoryJingle, delay);
+            })
             .AddTo(_disposables);
 
         sectionProgressManager.OnGameOver
-            .Subscribe(_ => _battleResultView.ShowGameOver())
+            .Subscribe(_ =>
+            {
+                _battleResultView.ShowGameOver();
+                _bgm.PlayJingle(_sound.defeatJingle);
+            })
             .AddTo(_disposables);
 
         sectionProgressManager.OnSectionStarted
@@ -96,10 +114,15 @@ public class EnemyPresenter : MonoBehaviour
             {
                 var attack = action.Value.attackData;
                 _enemyView.PlayCharging(attack.attackName, attack.chargeTime, action.Value.isHeavy);
+                // せり上がる音の頂点が攻撃の瞬間に来るよう、溜め時間に合わせて伸縮する。溜めを抜けたら HandleEnemyPhase で止める
+                _se.PlayHeld(_sound.enemyCharge, attack.chargeTime);
 
                 // ボスの大技だけ、画面全体でも危険を伝える
                 if (action.Value.isHeavy && _sectionProgressManager.CurrentSection.isBoss)
+                {
                     _bossEncounterView.ShowHeavyWarning(attack.attackName);
+                    _se.Play(_sound.heavyWarning);
+                }
             })
             .AddTo(_disposables);
 
@@ -119,9 +142,11 @@ public class EnemyPresenter : MonoBehaviour
     /// ステージの見た目を開始前の状態にする（B5）。環境を用意してカメラを先頭セクションに置き、敵は登場まで隠す。
     /// 遷移の覆いがかかっている間（BattleInitializer.Initialize）に呼ぶ。開始演出の裏に仮の背景・敵が映らないようにするため。
     /// 先頭セクションの開始時にもう一度Build/MoveToSectionが呼ばれるが、同じステージ・同じ位置なので何もしない。
+    /// 前の画面の曲もここで止める。ステージの曲は開始の演出（「結印！」）の後、先頭セクションの開始で始める（B7）。
     /// </summary>
     public void PrepareStage(StageData stage)
     {
+        _bgm.Stop();
         _environmentView.Build(stage);
         _environmentView.MoveToSection(0);
         _enemyView.Hide();
@@ -142,6 +167,11 @@ public class EnemyPresenter : MonoBehaviour
             _palette != null ? _palette.ElementColor(weakElement) : Color.white,
             string.Empty);
 
+        // 帯と同時に拍子木、帯が消えて「結印！」が出る時（introTitleDuration 後）に太鼓と掛け声
+        _se.Play(_sound.stageIntro);
+        _se.PlayDelayed(_sound.ketsuin, _timing.introTitleDuration);
+        _se.PlayDelayed(_sound.ketsuinVoice, _timing.introTitleDuration);
+
         return _stageIntroView.PlayAsync(data, _timing.introTitleDuration, _timing.introCallDuration, token);
     }
 
@@ -150,6 +180,10 @@ public class EnemyPresenter : MonoBehaviour
         // 通常の進行では前進演出で既に着いている。デバッグのステージ/セクションジャンプの時だけ作り直し・置き直しになる
         _environmentView.Build(_sectionProgressManager.CurrentStage);
         _environmentView.MoveToSection(_sectionProgressManager.CurrentSectionIndex.CurrentValue);
+
+        // 道中は同じ曲なので頭に戻らない。ボス曲が未設定のステージ（チュートリアル）は道中の曲のまま
+        var stage = _sectionProgressManager.CurrentStage;
+        _bgm.Play(section.isBoss && stage.bossBgm != null ? stage.bossBgm : stage.bgm);
 
         var enemy = section.enemyData;
         _enemyView.Appear(enemy.sprite, enemy.enemyName, section.isBoss);
@@ -160,6 +194,12 @@ public class EnemyPresenter : MonoBehaviour
             _bossEncounterView.PlayEncounter();
             _cameraShakeView.ShakeBossRoar(_timing.roar);
             _stageTitleView.ShowBossTitle(enemy.enemyName, _timing.roar);
+            _se.Play(_sound.bossAppear);
+            _se.PlayDelayed(_sound.bossRoar, _timing.roar);
+        }
+        else
+        {
+            _se.Play(_sound.enemyAppear);
         }
     }
 
@@ -174,25 +214,33 @@ public class EnemyPresenter : MonoBehaviour
             _screenFlashView.FlashBossDefeat();
             _cameraShakeView.ShakeBossDefeat();
             _enemyView.PlayBossDefeat();
+            _se.Play(_sound.bossDefeat);
         }
         else
         {
             _enemyView.PlayDefeat();
+            _se.Play(_sound.enemyDefeat);
         }
 
         // 最終セクション（ボス）の撃破はステージクリアで、先へは進まない
         bool hasNextSection = clearedIndex < _sectionProgressManager.SectionCount - 1;
         if (hasNextSection)
+        {
             _environmentView.PlayAdvance(clearedIndex + 1, _timing.NormalDefeatDuration);
+            _se.PlayDelayed(_sound.advance, _timing.NormalDefeatDuration);
+        }
     }
 
     private void HandleEnemyPhase(EnemyPhase phase)
     {
         _enemyView.SetStunned(phase == EnemyPhase.Stunned);
 
-        // ボスの大技予告は予告中だけ。攻撃・Stun・ループ停止のどれで抜けても消す
+        // ボスの大技予告と溜めの音は予告中だけ。攻撃・Stun・ループ停止のどれで抜けても消す
         if (phase != EnemyPhase.Charging)
+        {
             _bossEncounterView.HideHeavyWarning();
+            _se.StopHeld();
+        }
 
         switch (phase)
         {
