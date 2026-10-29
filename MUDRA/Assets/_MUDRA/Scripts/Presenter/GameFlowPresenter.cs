@@ -25,7 +25,11 @@ public class GameFlowPresenter : MonoBehaviour
     [SerializeField] private ScreenPresenter _screenPresenter;
     [SerializeField] private SettingsPresenter _settingsPresenter;
 
-    [Tooltip("App側のカメラ（AudioListener付き）。InGameを読み込んでいる間はInGameのMain Cameraに任せて止める")]
+    [Tooltip("BGMの再生役（B7）。バトル側へもBattleContextで渡す")]
+    [SerializeField] private BgmPlayer _bgmPlayer;
+
+    [Tooltip("App側のカメラ。InGameを読み込んでいる間はInGameのMain Cameraに任せて止める。\n" +
+             "AudioListenerはカメラではなくAppの Audio に1つだけ置く（B7。カメラの切り替えで2つ重なる瞬間を作らない）")]
     [SerializeField] private GameObject _appCamera;
 
     private GameStateManager _gameStateManager;
@@ -184,7 +188,7 @@ public class GameFlowPresenter : MonoBehaviour
     {
         if (!_battleScene.IsValid() || !_battleScene.isLoaded) return;
 
-        // InGameのカメラが消える前にApp側のカメラへ戻す（カメラもAudioListenerも無いフレームを作らない）
+        // InGameのカメラが消える前にApp側のカメラへ戻す（カメラが無いフレームを作らない）
         SetAppCameraActive(true);
         SceneManager.SetActiveScene(gameObject.scene);
 
@@ -206,7 +210,8 @@ public class GameFlowPresenter : MonoBehaviour
             _progressModel.IsAutoPauseEnabled,
             _settingsPresenter,
             isTutorial,
-            _handPresence);
+            _handPresence,
+            _bgmPlayer);
     }
 
     private static BattleInitializer FindBattleInitializer(Scene scene)

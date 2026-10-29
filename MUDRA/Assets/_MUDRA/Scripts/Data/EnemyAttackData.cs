@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Audio;
 
 /// <summary>
 /// 敵の攻撃1種分のテンプレートデータ。
@@ -18,5 +19,7 @@ public class EnemyAttackData : ScriptableObject
 
     [Header("演出")]
     public GameObject effectPrefab;
-    public AudioClip attackSE;
+    [Tooltip("攻撃の瞬間のSE（SE_EnemyAtk_*）。系統ごとの音を複数の攻撃で使い回す。\n" +
+             "AudioClip でも Audio Random Container でもよい（B7）")]
+    public AudioResource attackSE;
 }

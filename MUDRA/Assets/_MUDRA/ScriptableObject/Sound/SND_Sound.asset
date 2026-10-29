@@ -1,0 +1,54 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: acae4e906527f6f438fd89795c04e34b, type: 3}
+  m_Name: SND_Sound
+  m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.SoundData
+  titleBgm: {fileID: 0}
+  resultBgm: {fileID: 0}
+  victoryJingle: {fileID: 0}
+  defeatJingle: {fileID: 0}
+  signConfirm: {fileID: 0}
+  castCommon: {fileID: 0}
+  misfire: {fileID: 0}
+  signCancel: {fileID: 0}
+  guardStance: {fileID: 0}
+  guardSuccess: {fileID: 0}
+  hit: {fileID: 0}
+  hitWeakness: {fileID: 0}
+  speedBonus: {fileID: 0}
+  comboUp: {fileID: 0}
+  comboBreak: {fileID: 0}
+  dotTick: {fileID: 0}
+  healTick: {fileID: 0}
+  stun: {fileID: 0}
+  enemyCharge: {fileID: 0}
+  heavyWarning: {fileID: 0}
+  playerDamage: {fileID: 0}
+  playerDamageHeavy: {fileID: 0}
+  enemyAppear: {fileID: 0}
+  bossAppear: {fileID: 0}
+  bossRoar: {fileID: 0}
+  enemyDefeat: {fileID: 0}
+  bossDefeat: {fileID: 0}
+  advance: {fileID: 0}
+  stageIntro: {fileID: 0}
+  ketsuin: {fileID: 0}
+  ketsuinVoice: {fileID: 0}
+  pause: {fileID: 0}
+  countdownTick: {fileID: 0}
+  transition: {fileID: 0}
+  uiDecide: {fileID: 0}
+  uiBack: {fileID: 0}
+  uiCursor: {fileID: 0}
+  rankStamp: {fileID: 0}
+  newRecord: {fileID: 0}
+  uiToggle: {fileID: 0}
