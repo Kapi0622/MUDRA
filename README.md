@@ -45,8 +45,8 @@ NARUTO や呪術廻戦の「印を結んで技を出す」あの感覚を、コ�
 
 <table>
   <tr>
-    <td><img src="MUDRA/docs/images/stage01.png" alt="Stage 1 封土の里"></td>
-    <td><img src="MUDRA/docs/images/stage02.png" alt="Stage 2 水底の社"></td>
+    <td><img src="MUDRA/Assets/_MUDRA/Sprites/Background/r_SealedVillage.png" alt="Stage 1 封土の里"></td>
+    <td><img src="MUDRA/Assets/_MUDRA/Sprites/Background/BG_Stage02_Route.png" alt="Stage 2 水底の社"></td>
   </tr>
   <tr>
     <td align="center">Stage 1 封土の里</td>
