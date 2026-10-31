@@ -11,6 +11,12 @@ public class SaveData
     /// <summary>形式の版。中身の形を変えた時に上げる</summary>
     public int version = 1;
 
+    /// <summary>
+    /// このファイルを書いたビルドのID（Application.buildGUID）。エディタでは空文字になる。
+    /// ビルド版は起動時に自分のIDと比べ、違えば読まずに初期状態で始める（新しいビルドは必ずまっさらで始めるため）
+    /// </summary>
+    public string buildId;
+
     public List<StageRecordData> stageRecords = new();
 
     public SettingsData settings = new();

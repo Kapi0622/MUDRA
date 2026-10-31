@@ -244,6 +244,8 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "devlog/dev_log_B8.2.md",
+    "devlog/dev_log_B8.2.md.tmp.14128.a07dab32689d",
     "devlog/dev_log_B8.1.md",
     "devlog/dev_log_B8.1.md.tmp.14606.98f96b0d6e94",
     "spell_icon_prompts.md",
@@ -268,7 +270,6 @@
     "architecture/sed7JKkUs",
     "architecture/02_battle_system.md.tmp.14128.69adfd5cdcc8",
     "architecture/02_battle_system.md.tmp.14128.18b68bc5c675",
-    "architecture/00_overview.md.tmp.14128.df8855b98700",
     "specification_MUDRA.md",
     "proposal_MUDRA.md",
     "B3_enemy_stage_content.md",
@@ -278,7 +279,6 @@
     "devlog/dev_log_B4.5.md",
     "devlog/dev_log_B4.md",
     "devlog/dev_log_B3.md",
-    "architecture/00_overview.md",
-    "architecture/02_battle_system.md"
+    "architecture/00_overview.md"
   ]
 }
