@@ -19,6 +19,7 @@ public class AppInitializer : MonoBehaviour
     [SerializeField] private SettingsPresenter _settingsPresenter;
     [SerializeField] private HandStatusPresenter _handStatusPresenter;
     [SerializeField] private CalibrationPresenter _calibrationPresenter;
+    [SerializeField] private CodexPresenter _codexPresenter;
 
     [Header("Input")]
     [SerializeField] private MediaPipeHandLandmarkProvider _provider;
@@ -28,7 +29,7 @@ public class AppInitializer : MonoBehaviour
     [SerializeField] private StageData[] _allStages;
     [Tooltip("チュートリアル（練習バトル）のステージ。_allStagesには入れない。未設定ならチュートリアルを飛ばす")]
     [SerializeField] private StageData _tutorialStage;
-    [Tooltip("全ての術。バトルの詠唱と、Result画面の敗北時ヒントで使う")]
+    [Tooltip("全ての術。バトルの詠唱と、Result画面の敗北時ヒントと、図鑑で使う")]
     [SerializeField] private SpellData[] _allSpells;
     [Tooltip("画面遷移の尺を含む演出の時間表")]
     [SerializeField] private PresentationTimingData _presentationTiming;
@@ -73,7 +74,8 @@ public class AppInitializer : MonoBehaviour
         // ScreenPresenterのInitializeでCalibration画面も消すので、その前に組み立てておく
         _calibrationPresenter.Initialize(
             _gameStateManager, _provider, _cameraStatusModel, _handPresenceModel, _handStatusPresenter);
-        _screenPresenter.Initialize(_gameStateManager, _progressModel, _settingsPresenter, _allSpells);
+        _codexPresenter.Initialize(_allStages, _allSpells, _progressModel);
+        _screenPresenter.Initialize(_gameStateManager, _progressModel, _settingsPresenter, _codexPresenter, _allSpells);
         _gameFlowPresenter.Initialize(
             _gameStateManager, _provider, _handPresenceModel, _allSpells, _progressModel, _presentationTiming, preloadedBattle);
     }

@@ -40,6 +40,7 @@ public class ScreenPresenter : MonoBehaviour
     private IReadOnlyList<SpellData> _allSpells;
     private ProgressModel _progressModel;
     private SettingsPresenter _settingsPresenter;
+    private CodexPresenter _codexPresenter;
     private readonly CompositeDisposable _disposables = new();
 
     /// <summary>AppInitializerから呼ばれる</summary>
@@ -47,11 +48,13 @@ public class ScreenPresenter : MonoBehaviour
         GameStateManager gameStateManager,
         ProgressModel progressModel,
         SettingsPresenter settingsPresenter,
+        CodexPresenter codexPresenter,
         IReadOnlyList<SpellData> allSpells)
     {
         _gameStateManager = gameStateManager;
         _progressModel = progressModel;
         _settingsPresenter = settingsPresenter;
+        _codexPresenter = codexPresenter;
         _allSpells = allSpells;
 
         HideAll();
@@ -90,6 +93,22 @@ public class ScreenPresenter : MonoBehaviour
                 _se.Play(_sound.uiDecide);
                 _gameStateManager.SelectStage(_gameStateManager.AllStages[index]);
             })
+            .AddTo(_disposables);
+
+        _stageSelectView.OnCodexRequested
+            .Subscribe(_ =>
+            {
+                _se.Play(_sound.uiDecide);
+                _stageSelectView.Lock();
+                _codexPresenter.Open();
+            })
+            .AddTo(_disposables);
+
+        // 図鑑を閉じたら、ステージ選択の操作を選択位置のまま戻す
+        _codexPresenter.IsOpen
+            .Skip(1)
+            .Where(isOpen => !isOpen && _gameStateManager.CurrentPhase.CurrentValue == GamePhase.StageSelect)
+            .Subscribe(_ => _stageSelectView.Resume())
             .AddTo(_disposables);
 
         _stageSelectView.OnCursorMoved
@@ -184,6 +203,7 @@ public class ScreenPresenter : MonoBehaviour
 
     public void HideAll()
     {
+        _codexPresenter.Close();
         _titleView.Hide();
         _stageSelectView.Hide();
         _resultView.Hide();
@@ -256,20 +276,9 @@ public class ScreenPresenter : MonoBehaviour
     }
 
     /// <summary>カードに出すクリア記録。未クリアなら空</summary>
-    private string BuildRecordText(StageData stage)
-    {
-        var record = _progressModel.FindRecord(stage);
-        if (record == null) return string.Empty;
+    private string BuildRecordText(StageData stage) => StageRecordFormat.Format(_progressModel.FindRecord(stage));
 
-        return $"討伐済　{(BattleRank)record.bestRank}　{FormatTime(record.bestTimeSeconds)}";
-    }
-
-    /// <summary>「分:秒」。1時間を超えることは想定しない</summary>
-    private static string FormatTime(float seconds)
-    {
-        int total = Mathf.FloorToInt(seconds);
-        return $"{total / 60}:{total % 60:00}";
-    }
+    private static string FormatTime(float seconds) => StageRecordFormat.FormatTime(seconds);
 
     /// <summary>
     /// 敗北時のヒント。負けた相手の弱点と、その属性で攻撃できる術（印の並び付き）を出す。

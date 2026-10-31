@@ -3,6 +3,7 @@ using MUDRA.Data;
 
 /// <summary>
 /// ボス1体分の定義データ。
+/// 図鑑で使う説明文も持つ（数値はぼかして見せるので、図鑑専用の欄は説明文だけ）。
 /// </summary>
 [CreateAssetMenu(fileName = "NewEnemy", menuName = "MUDRA/Enemy Data")]
 public class EnemyData : ScriptableObject
@@ -10,6 +11,10 @@ public class EnemyData : ScriptableObject
     [Header("基本情報")]
     public string enemyName;
     public Sprite sprite;
+
+    [Tooltip("敵の説明文（図鑑用）")]
+    [TextArea(2, 4)]
+    public string description;
 
     [Header("戦闘パラメータ")]
     public int maxHp;

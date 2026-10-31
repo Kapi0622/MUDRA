@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::MUDRA.Data.SpellData
   spellName: "\u96F7\u9023\u6483"
   element: 2
-  icon: {fileID: 0}
-  description: 
+  icon: {fileID: 21300000, guid: 4d955ee15666a864d99cb3d2ab895934, type: 3}
+  description: "\u6307\u5148\u304B\u3089\u96F7\u3092\u8D70\u3089\u305B\u3001\u7D9A\u3051\u3056\u307E\u306B\u6253\u3061\u636E\u3048\u308B\u3002\u53D7\u3051\u305F\u5996\u306F\u75FA\u308C\u3066\u3057\u3070\u3057\u52D5\u3051\u306A\u304F\u306A\u308B\u3002\u5927\u6280\u306E\u6E9C\u3081\u3092\u898B\u305F\u3089\u6483\u3066\u3002"
   sequence: 0200000005000000
   basePower: 85
   damageType: 1
