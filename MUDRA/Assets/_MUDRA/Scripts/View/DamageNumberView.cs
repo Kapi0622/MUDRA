@@ -38,10 +38,13 @@ public class DamageNumberView : MonoBehaviour
     private static readonly Color LabelColor = new Color(1f, 0.95f, 0.7f);
     // 連続減衰した一撃の数字とラベル。このViewでしか使わない色なのでパレットには置かない
     private static readonly Color RepeatedColor = new Color(0.62f, 0.64f, 0.68f);
+    // Stunが入らなかった時のラベル（B8）。Stunのアイコン「封」と同じ白銀系にして、何が防がれたかを結び付ける
+    private static readonly Color StunResistedColor = new Color(0.8f, 0.84f, 0.9f);
 
     private const string WeakLabel = "弱点！";
     private const string SpeedLabel = "迅速！";
     private const string RepeatedLabel = "連続↓";
+    private const string StunResistedLabel = "抵抗";
 
     [Tooltip("弱点・DoT・回復・ガードの数字の色。敵のフラッシュ・画面フラッシュと同じ色を使う")]
     [SerializeField] private BattlePaletteData _palette;
@@ -69,11 +72,11 @@ public class DamageNumberView : MonoBehaviour
 
     /// <summary>
     /// 術のヒット。hitCountが2以上なら1ヒットずつ時間差で出す（MultiHitの連撃に見せる）。
-    /// 弱点・速度ボーナス・連続減衰は最初の数字の上にラベルを添える。
+    /// 弱点・速度ボーナス・連続減衰・Stunの抵抗（B8）は最初の数字の上にラベルを添える。
     /// 連続減衰（B8）の一撃は数字を灰色にする。弱点でも灰色を優先するのは、
     /// 「弱点なのに伸びない」理由がその場で分かるようにするため（色が弱点のままだと減衰に気づけない）。
     /// </summary>
-    public void ShowSpellHit(int perHitDamage, int hitCount, bool isWeakness, bool hasSpeedBonus, bool isRepeated)
+    public void ShowSpellHit(int perHitDamage, int hitCount, bool isWeakness, bool hasSpeedBonus, bool isRepeated, bool isStunResisted)
     {
         var origin = EnemyPosition();
         float size = isWeakness ? WeakSize : NormalSize;
@@ -85,18 +88,19 @@ public class DamageNumberView : MonoBehaviour
             Spawn(perHitDamage.ToString(), origin + RandomOffset(), size, color, i * MultiHitInterval);
         }
 
-        string label = BuildHitLabel(isWeakness, hasSpeedBonus, isRepeated);
+        string label = BuildHitLabel(isWeakness, hasSpeedBonus, isRepeated, isStunResisted);
         if (label.Length > 0)
             Spawn(label, origin + new Vector2(0f, LabelOffsetY), LabelSize, LabelColor, 0f);
     }
 
-    /// <summary>「弱点！ 迅速！ 連続↓」のように該当するものを並べる。連続だけは数字と同じ灰色にする</summary>
-    private static string BuildHitLabel(bool isWeakness, bool hasSpeedBonus, bool isRepeated)
+    /// <summary>「弱点！ 迅速！ 連続↓ 抵抗」のように該当するものを並べる。連続は数字と同じ灰色、抵抗は白銀にする</summary>
+    private static string BuildHitLabel(bool isWeakness, bool hasSpeedBonus, bool isRepeated, bool isStunResisted)
     {
-        var parts = new System.Collections.Generic.List<string>(3);
+        var parts = new System.Collections.Generic.List<string>(4);
         if (isWeakness) parts.Add(WeakLabel);
         if (hasSpeedBonus) parts.Add(SpeedLabel);
         if (isRepeated) parts.Add($"<color=#{ColorUtility.ToHtmlStringRGB(RepeatedColor)}>{RepeatedLabel}</color>");
+        if (isStunResisted) parts.Add($"<color=#{ColorUtility.ToHtmlStringRGB(StunResistedColor)}>{StunResistedLabel}</color>");
         return string.Join(" ", parts);
     }
 

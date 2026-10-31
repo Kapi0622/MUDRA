@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_BranchWhip
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u679D\u6253\u3061"
-  damage: 4
+  damage: 6
   chargeTime: 1.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 2ea27472b9704ac4380d61167f051f6a, type: 2}

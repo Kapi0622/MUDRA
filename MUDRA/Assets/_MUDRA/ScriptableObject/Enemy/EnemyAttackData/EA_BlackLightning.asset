@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_BlackLightning
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u9ED2\u96F7"
-  damage: 10
+  damage: 18
   chargeTime: 1.2
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: e3ce3391368768f46aeb4031e5cb25ed, type: 2}

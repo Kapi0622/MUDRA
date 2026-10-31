@@ -34,7 +34,8 @@ public class BattleInitializer : MonoBehaviour
     [SerializeField] private TutorialPresenter _tutorialPresenter;
 
     [Header("Data")]
-    [SerializeField] private int _playerMaxHp = 100;
+    [Tooltip("バトルの調整値（B8）。PlayerMaxHp・ガード・速度ボーナス・コンボ・連続減衰")]
+    [SerializeField] private BalanceData _balance;
     [Tooltip("演出の時間表。Modelの待機時間とViewの尺を同じ表から決める")]
     [SerializeField] private PresentationTimingData _presentationTiming;
 
@@ -172,11 +173,11 @@ public class BattleInitializer : MonoBehaviour
         var firstEnemy = FirstStage.sections[0].enemyData;
 
         _handTrackingService = new HandTrackingService(_context.Provider);
-        _spellSequenceModel = new SpellSequenceModel(_context.AllSpells.ToArray(), () => Time.time);
+        _spellSequenceModel = new SpellSequenceModel(_context.AllSpells.ToArray(), _balance, () => Time.time);
         _playerStateManager = new PlayerStateManager();
         _enemyStateManager = new EnemyStateManager(firstEnemy);
-        _battleModel = new BattleModel(_playerMaxHp, firstEnemy);
-        _guardWindowManager = new GuardWindowManager();
+        _battleModel = new BattleModel(_balance, firstEnemy, () => UnityEngine.Random.value);
+        _guardWindowManager = new GuardWindowManager(_balance);
 
         // EnemyStateManagerとBattleModelの両方が揃ってから配線する
         _statusEffectManager = new StatusEffectManager();
@@ -359,7 +360,7 @@ public class BattleInitializer : MonoBehaviour
     private BattleRecord CreateRecord(bool isWin)
     {
         var stats = _battleStatsModel.CreateSnapshot();
-        BattleRank? rank = isWin ? RankCalculator.Calculate(stats, _playerMaxHp) : null;
+        BattleRank? rank = isWin ? RankCalculator.Calculate(stats, _battleModel.PlayerMaxHp) : null;
         return new BattleRecord(
             _sectionProgressManager.CurrentStage,
             isWin,

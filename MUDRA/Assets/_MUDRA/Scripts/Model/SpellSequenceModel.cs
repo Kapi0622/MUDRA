@@ -20,12 +20,10 @@ public enum SequenceResetReason
 /// </summary>
 public class SpellSequenceModel : IDisposable
 {
-    // 速度ボーナスの基準時間(印1つあたりの許容秒数)
-    // 詠唱時間が「印数 × この値」以内なら速度ボーナス適用
-    private const float SpeedBonusTimePerSign = 1.0f;
-    // B8で1.5から下げた（上級者だけ戦闘が極端に短くなるのを抑えるため）
-    private const float SpeedBonusMultiplier = 1.3f;
     private const float NormalSpeedMultiplier = 1.0f;
+
+    // 速度ボーナスの基準時間と倍率（B8でconstから移した）
+    private readonly BalanceData _balance;
 
     private readonly IReadOnlyList<SpellData> _allSpells;
     private readonly List<HandSign> _inputHistory = new List<HandSign>();
@@ -53,9 +51,10 @@ public class SpellSequenceModel : IDisposable
     /// <summary>詠唱印がシーケンスに追加された通知。候補絞り込み完了後に発火する。</summary>
     public Observable<HandSign> OnSignAdded => _onSignAdded;
     
-    public SpellSequenceModel(IReadOnlyList<SpellData> allSpells, Func<float> getTime)
+    public SpellSequenceModel(IReadOnlyList<SpellData> allSpells, BalanceData balance, Func<float> getTime)
     {
         _allSpells = allSpells;
+        _balance = balance;
         _getTime = getTime;
         _matchCandidates = new List<SpellData>(_allSpells);
     }
@@ -125,8 +124,8 @@ public class SpellSequenceModel : IDisposable
     private float CalculateSpeedBonus(int signCount)
     {
         var totalChantTime = _getTime() - _chantStartTime;
-        var threshold = signCount * SpeedBonusTimePerSign;
-        return totalChantTime <= threshold ? SpeedBonusMultiplier : NormalSpeedMultiplier;
+        var threshold = signCount * _balance.speedBonusTimePerSign;
+        return totalChantTime <= threshold ? _balance.speedBonusMultiplier : NormalSpeedMultiplier;
     }
 
     private void ResetState()

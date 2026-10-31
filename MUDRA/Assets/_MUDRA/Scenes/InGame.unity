@@ -3679,7 +3679,7 @@ MonoBehaviour:
   m_fontMaterials: []
   m_fontColor32:
     serializedVersion: 2
-    rgba: 4282404095
+    rgba: 4294967295
   m_fontColor: {r: 1, g: 1, b: 1, a: 1}
   m_enableVertexGradient: 0
   m_colorMode: 3
@@ -4873,7 +4873,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 40, y: -40}
+  m_AnchoredPosition: {x: 40, y: -124}
   m_SizeDelta: {x: 640, y: 320}
   m_Pivot: {x: 0, y: 1}
 --- !u!225 &916821522
@@ -7949,7 +7949,7 @@ MonoBehaviour:
   _enemyPresenter: {fileID: 1560692255}
   _pausePresenter: {fileID: 1560692256}
   _tutorialPresenter: {fileID: 1560692258}
-  _playerMaxHp: 100
+  _balance: {fileID: 11400000, guid: 76b918f191df00042b3530f19e63d70f, type: 2}
   _presentationTiming: {fileID: 11400000, guid: e38c2877c8b9e914994d4e57bdce1127, type: 2}
   _playerHpBarView: {fileID: 1569285708}
   _bossHpBarView: {fileID: 1183724156}

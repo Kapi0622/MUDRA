@@ -15,6 +15,7 @@ public struct DamageResult
     public float EffectDuration;
     public int PerTickDamage;       // tick1回あたりのダメージ（DoT専用。他Strategyは0）
     public int TickCount;           // tick回数（DoT専用。他Strategyは0）
+    public bool StunResisted;       // Stunが確率判定で入らなかったか（B8）。BattleModelが埋める
 
     // tick1回あたりの回復量（HoT専用）。
     // 回復は敵の弱点属性やコンボに影響されないため、Strategyでは算出せず
