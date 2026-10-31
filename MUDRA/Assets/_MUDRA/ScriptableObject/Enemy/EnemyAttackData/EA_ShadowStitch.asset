@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_ShadowStitch
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u5F71\u7E2B\u3044"
-  damage: 8
-  chargeTime: 1
+  damage: 14
+  chargeTime: 1.3
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: b2f247c5d09817849aca5df71cbbced8, type: 2}

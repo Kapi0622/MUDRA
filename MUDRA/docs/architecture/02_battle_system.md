@@ -87,10 +87,12 @@ float           _chantStartTime;   // 詠唱開始時刻（速度ボーナス用
 ### 速度ボーナス
 
 ```csharp
-threshold = 印数 × 1.0秒          // SpeedBonusTimePerSign
-詠唱時間 <= threshold  →  ×1.5    // SpeedBonusMultiplier
+threshold = 印数 × 1.0秒          // BalanceData.speedBonusTimePerSign
+詠唱時間 <= threshold  →  ×1.3    // BalanceData.speedBonusMultiplier（B8で1.5から下げた）
 それ以外                →  ×1.0
 ```
+
+値は `BalanceData`（`BD_Balance`）からコンストラクタで受け取る（B8）。
 
 時刻取得は `Func<float> getTime` としてコンストラクタに注入される（`BattleInitializer` が `() => Time.time` を渡す）。**テスト時に偽の時計を差せるようにするため**の意図的な設計（A4）。
 
@@ -135,38 +137,64 @@ Observable<DamageResult>       OnSpellHit          // 術の命中（回復術�
 Observable<int>                OnDotTick           // DoTのtickダメージ
 Observable<PlayerDamageInfo>   OnPlayerDamaged     // 被弾（敵の攻撃・暴発）。量・ガード有無・大技か・暴発か。無敵中は流れない
 Observable<int>                OnHealed            // 実回復量（満タンで0なら流れない）
-int PlayerMaxHp                                    // 不変
+int PlayerMaxHp                                    // 不変（生成時に BalanceData.playerMaxHp から確定）
 int BossMaxHp                                      // SetEnemy で変わる
 ```
 
 ### 敵の差し替え
 
-`SetEnemy(enemyData)` は `SectionProgressManager` から呼ばれ、敵データ・BossHp・BossMaxHp を差し替えて `_isBattleActive` を true に戻す。**プレイヤーHPとコンボには触らない**（セクション間の引き継ぎ）。`BattleModel` 自身はセクションの概念を持たない。
+`SetEnemy(enemyData)` は `SectionProgressManager` から呼ばれ、敵データ・BossHp・BossMaxHp を差し替えて `_isBattleActive` を true に戻す。連続減衰の記憶（直前の属性）と Stun の連続成功回数もここで消す。**プレイヤーHPとコンボには触らない**（セクション間の引き継ぎ）。`BattleModel` 自身はセクションの概念を持たない。
 
 ### ダメージ・回復の5経路
 
 | メソッド | 呼び出し元 | 内容 |
 |---|---|---|
-| `ApplySpellDamage(result)` | `BattlePresenter`（`OnSpellCast` 購読） | 成功: Strategyで計算 → ボスHP減 → コンボ++ → 副次効果付与 ／ 暴発: `ApplyMisfireDamage` へ |
+| `ApplySpellDamage(result)` | `BattlePresenter`（`OnSpellCast` 購読） | 成功: Strategyで計算 → ボスHP減 → コンボ++ → Stunの確率判定 → `OnSpellHit` → 副次効果付与 ／ 暴発: `ApplyMisfireDamage` へ |
 | `ApplyDotDamage(damage)` | `DotEffect` から `Action` 経由で毎秒 | ボスHPのみ減らす。**コンボ・速度倍率は乗せない**（初撃のみ適用の方針） |
 | `ApplyEnemyDamage(action, isGuarding)` | `BattlePresenter`（`OnAttackExecuted` 購読） | ガード中なら軽減率を掛けてプレイヤーHP減 |
-| `ApplyMisfireDamage()`（private） | 上記から | **MaxHPの5%**のセルフダメージ + コンボリセット |
+| `ApplyMisfireDamage()`（private） | 上記から | **MaxHPの5%**（`misfireDamageRate`）のセルフダメージ + コンボリセット |
 | `ApplyHeal(amount)` | `HotEffect` から `Action` 経由で毎秒 | プレイヤーHPを MaxHP 上限で回復。勝敗に関与しないので `CheckBattleEnd` は呼ばない |
 
-### 定数
+### 調整値（`BalanceData` / `BD_Balance`。B8）
 
-| 定数 | 値 | 意味 |
-|---|---|---|
-| `NormalGuardRate` | 0.5 | 通常攻撃をガードしたときのダメージ倍率 |
-| `HeavyGuardRate` | 0.3 | 大技（`isHeavy`）をガードしたときの倍率 |
-| `MisfireDamageRate` | 0.05 | 暴発セルフダメージ（MaxHP比） |
+B8 までは各 Model の `const` と `BattleInitializer._playerMaxHp` に散っていた。通しプレイ中に Inspector で直せるよう SO 1つにまとめた。Model は読むだけで、`playerMaxHp` 以外は使う度に読むので再生中の変更がその場で効く。
+
+| フィールド | 値 | 使う所 | 意味 |
+|---|---|---|---|
+| `playerMaxHp` | 100 | `BattleModel` | プレイヤーの最大HP |
+| `misfireDamageRate` | 0.05 | `BattleModel` | 暴発セルフダメージ（MaxHP比） |
+| `guardWindowDuration` | 1.0 | `GuardWindowManager` | ガード受付窓の秒数 |
+| `normalGuardRate` | 0.5 | `BattleModel` | 通常攻撃をガードしたときのダメージ倍率 |
+| `heavyGuardRate` | 0.3 | `BattleModel` | 大技（`isHeavy`）をガードしたときの倍率 |
+| `speedBonusTimePerSign` | 1.0 | `SpellSequenceModel` | 速度ボーナスの基準秒（印1つあたり） |
+| `speedBonusMultiplier` | 1.3 | `SpellSequenceModel` | 速度ボーナスの倍率 |
+| `comboBonusPerCount` | 0.03 | `BattleModel` | 1コンボあたりの倍率の増分 |
+| `comboBonusCap` | 10 | `BattleModel` | 倍率に乗せるコンボ数の上限（10コンボで×1.3） |
+| `repeatElementMultiplier` | 0.6 | `BattleModel` | 直前と同じ属性の攻撃術に掛ける倍率（連続減衰） |
+| `stunBaseChance` | 0.6 | `BattleModel` | Stun が入る基本の確率 |
+| `stunChanceDecay` | 0.5 | `BattleModel` | 同じ敵に Stun が入るたびに確率へ掛ける値 |
+
+### Stun の確率判定（B8）
+
+雷連撃を撃ち続けて敵を止め続ける「封殺し」の対策。
+
+```
+確率 = stunBaseChance × EnemyData.stunChanceMultiplier × stunChanceDecay ^ 連続成功回数
+```
+
+- 入ると連続成功回数 +1、外れると 0 に戻る。`SetEnemy` でも 0 に戻る（初期値で 60% → 30% → 15% → 外れたら 60%）
+- 外れたら `DamageResult.AppliedEffect` を `None` にし、`StunResisted = true` を立てる。`DamageNumberView` が「抵抗」と出す
+- **倒した一撃と、既に Stun 中の敵への一撃は判定しない**（`StatusEffectManager.HasEffect`）。どちらも Stun は実際には掛からないので、判定すると回数だけ進んだり「抵抗」が出たりする
+- 乱数は `Func<float>` でコンストラクタに注入（`BattleInitializer` が `() => UnityEngine.Random.value` を渡す）。確率が 1 以上なら乱数を見ずに入れる
+- 免疫期間・効果時間の逓減ではなく確率にしたのは、運の要素を残したいのと、外れを「抵抗」の一言で伝えられるから（免疫は「今は効かない」を出し続ける表示が要る）
+- `DebugMenuView` からの Stun 付与は確率を通らない
 
 回復以外のすべての経路が最後に `CheckBattleEnd()` を通り、どちらかのHPが0になった時点で `_isBattleActive = false` にして `OnBattleEnd` を1回だけ流す。
 
 ### 2段階初期化
 
 ```csharp
-var battleModel = new BattleModel(playerMaxHp, enemyData);
+var battleModel = new BattleModel(balance, enemyData, () => UnityEngine.Random.value);
 var factory = new StatusEffectFactory(
     battleModel.ApplyDotDamage,      // Action<int>
     enemyStateManager.ApplyStun,     // Action
@@ -190,29 +218,32 @@ battleModel.SetStatusEffectDependencies(statusEffectManager, factory);
 ```csharp
 public interface IDamageCalculator
 {
-    DamageResult Calculate(SpellData spellData, EnemyData enemyData, float speedBonus, int comboCount);
+    DamageResult Calculate(SpellData spellData, EnemyData enemyData, DamageBonus bonus);
 }
 ```
+
+`DamageBonus`（readonly struct）は速度・コンボ・連続減衰の3つの倍率を束ねたもので、`Total` がその積。`BattleModel` が作って渡す。
 
 ### 共通倍率
 
 | 倍率 | 式 |
 |---|---|
-| 弱点 | `spellData.element == enemyData.weakElement` なら `weakMultiplier`（ClayDollは 1.5）、でなければ 1.0 |
-| 速度ボーナス | 1.5 または 1.0（`SpellSequenceModel` が算出済み） |
-| コンボ | `1.0 + comboCount × 0.1` |
+| 弱点 | `spellData.element == enemyData.weakElement` なら `weakMultiplier`（全敵 1.5）、でなければ 1.0 |
+| 速度ボーナス `bonus.Speed` | 1.3 または 1.0（`SpellSequenceModel` が算出済み） |
+| コンボ `bonus.Combo` | `1.0 + comboBonusPerCount × min(comboCount, comboBonusCap)`（初期値で最大 ×1.3） |
+| 連続減衰 `bonus.Repeat` | 直前の攻撃術と同じ属性なら `repeatElementMultiplier`（0.6）、でなければ 1.0。回復術は対象外で、記憶も更新しない |
 
 ### 3つの実装
 
 | Strategy | 式 |
 |---|---|
-| `SingleHitCalculator` | `basePower × 弱点 × 速度 × コンボ` |
-| `MultiHitCalculator` | 1ヒット = `basePower ÷ hitCount × 弱点 × 速度 × コンボ`、合計 = 1ヒット × `hitCount` |
-| `DamageOverTimeCalculator` | 初撃 = `basePower × 0.3 × 弱点 × 速度 × コンボ`<br>tick1回 = `basePower × 0.7 ÷ tick数 × 弱点`（tick数 = `statusEffectDuration ÷ 1.0秒`） |
+| `SingleHitCalculator` | `basePower × 弱点 × bonus.Total` |
+| `MultiHitCalculator` | 1ヒット = `basePower ÷ hitCount × 弱点 × bonus.Total`、合計 = 1ヒット × `hitCount` |
+| `DamageOverTimeCalculator` | 初撃 = `basePower × 0.3 × 弱点 × bonus.Total`<br>tick1回 = `basePower × 0.7 ÷ tick数 × 弱点`（tick数 = `statusEffectDuration ÷ 1.0秒`） |
 
 > **MultiHitの端数について:** 1ヒットをintに丸めてから掛けるため、同じ `basePower` の SingleHit より合計が微妙に低くなる。**仕様として許容**するとコード中に明記されている。
 
-`DamageResult` は public field を持つ mutable struct。`TotalDamage` / `PerHitDamage` / `HitCount` / `IsWeakness` / `HasSpeedBonus` / `AppliedEffect` / `EffectDuration` / `PerTickDamage` / `TickCount`。`PerHitDamage` と `HitCount` は `DamageNumberView` の MultiHit 時間差表示で使う（B4）。
+`DamageResult` は public field を持つ mutable struct。`TotalDamage` / `PerHitDamage` / `HitCount` / `IsWeakness` / `HasSpeedBonus` / `IsRepeated` / `AppliedEffect` / `EffectDuration` / `PerTickDamage` / `TickCount` / `PerTickHeal` / `StunResisted`（B8。`BattleModel` が埋める）。`PerHitDamage` と `HitCount` は `DamageNumberView` の MultiHit 時間差表示で使う（B4）。
 
 ---
 
@@ -233,7 +264,7 @@ public interface IStatusEffect
 
 | クラス | 役割 |
 |---|---|
-| `StatusEffectManager` | 付与・解除を `OnEffectApplied` / `OnEffectRemoved` で通知する（解除は期限切れ・`ClearEnemyEffects`・`ClearAll` の全経路。状態アイコン用・B4）。アクティブな効果をListで保持。`BattlePresenter.Update()` から `Tick(deltaTime)`。**同種の効果は重複不可**（既に同じ `Type` があれば無視）。セクション遷移時は `ClearEnemyEffects()`（HoT以外を除去）、ステージ決着時は `ClearAll()` |
+| `StatusEffectManager` | 付与・解除を `OnEffectApplied` / `OnEffectRemoved` で通知する（解除は期限切れ・`ClearEnemyEffects`・`ClearAll` の全経路。状態アイコン用・B4）。アクティブな効果をListで保持。`BattlePresenter.Update()` から `Tick(deltaTime)`。**同種の効果は重複不可**（既に同じ `Type` があれば無視）。`HasEffect(type)` で今アクティブかを問い合わせられる（Stun の確率判定用・B8）。セクション遷移時は `ClearEnemyEffects()`（HoT以外を除去）、ステージ決着時は `ClearAll()` |
 | `StatusEffectFactory` | `DamageResult.AppliedEffect` を見て `DotEffect` / `StunEffect` / `HotEffect` を生成。`None` なら null。生成に必要な処理は全て `Action` で受け取っており、**BattleModel / EnemyStateManager への参照を持たない** |
 | `DotEffect` | 残り時間を減らしつつ、1.0秒 tick ごとに `_applyDamage(perTickDamage)` を呼ぶ。初撃は `BattleModel` 側で処理済みなので、ここは tick のスケジュール管理のみ |
 | `StunEffect` | `OnApply` で `EnemyStateManager.ApplyStun()`、`OnExpire` で `EndStun()`。時間管理は `OnTick` |
@@ -246,7 +277,7 @@ public interface IStatusEffect
 ```csharp
 Activate()                              // Guard印確定時に呼ぶ。受付窓を開く
 ReadOnlyReactiveProperty<bool> IsGuarding  // 残り時間 > 0。開閉の2回だけ通知（構え枠の表示用・B4）
-private const float WindowDuration = 1f;
+// 窓の長さは BalanceData.guardWindowDuration（初期値 1秒。B8 で const から移した）
 ```
 
 > **設計意図:** A5 で「構え続けるガード」から**タイミングガード**に方針転換した。`PlayerPhase` から独立させているので、**詠唱中でもガードできる**。`PlayerPhase` に `Guarding` を追加しなかったのはこのため（仕様書 §4-2）。

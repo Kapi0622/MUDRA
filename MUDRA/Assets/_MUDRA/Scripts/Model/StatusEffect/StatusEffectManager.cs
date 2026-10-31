@@ -41,6 +41,17 @@ public class StatusEffectManager : IDisposable
         _onEffectApplied.OnNext(effect.Type);
     }
 
+    /// <summary>指定した種類の効果が今アクティブか。Stunの確率判定で「既にStun中か」を見るのに使う（B8）</summary>
+    public bool HasEffect(StatusEffectType type)
+    {
+        for (int i = 0; i < _activeEffects.Count; i++)
+        {
+            if (_activeEffects[i].Type == type)
+                return true;
+        }
+        return false;
+    }
+
     /// <summary>
     /// 毎フレーム呼ばれる。各効果の時間を進め、期限切れを除去する。
     /// </summary>

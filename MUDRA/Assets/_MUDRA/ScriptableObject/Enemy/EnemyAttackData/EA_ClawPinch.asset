@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_ClawPinch
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u92CF\u631F\u307F"
-  damage: 6
+  damage: 9
   chargeTime: 2
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 88757506be91a854cba8529a2dd8794a, type: 2}

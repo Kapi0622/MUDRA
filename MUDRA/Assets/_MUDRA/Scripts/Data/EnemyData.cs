@@ -16,6 +16,9 @@ public class EnemyData : ScriptableObject
     public ElementType weakElement;
     [Tooltip("弱点属性ヒット時の倍率")]
     public float weakMultiplier = 1.5f;
+    [Tooltip("Stunの入りやすさ（B8）。BalanceDataの確率に掛ける。1 = 標準、0 = Stunが入らない。ボスを止めにくくする時に下げる")]
+    [Min(0f)]
+    public float stunChanceMultiplier = 1f;
 
     [Header("行動パターン")]
     [Tooltip("順番に実行し、末尾に達したら先頭に戻る")]

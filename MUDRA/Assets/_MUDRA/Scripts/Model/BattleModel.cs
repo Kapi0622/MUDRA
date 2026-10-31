@@ -8,17 +8,11 @@ using MUDRA.Data;
 public class BattleModel : IDisposable
 {
     // --- 定数 ---
-    private const float NormalGuardRate = 0.5f;
-    private const float HeavyGuardRate = 0.3f;
-    private const float MisfireDamageRate = 0.05f;
     // HoTのtick間隔。HotEffect.TickIntervalと一致させること
     private const float HealTickInterval = 1.0f;
-    // コンボ倍率 = 1 + ComboBonusPerCount × min(コンボ数, ComboBonusCap)。10コンボで×1.3が上限（B8）。
-    // カウント自体は上限を超えても増え続ける（表示とランク評価のため）
-    private const float ComboBonusPerCount = 0.03f;
-    private const int ComboBonusCap = 10;
-    // 直前に撃った攻撃術と同じ属性の術に掛ける倍率（連続減衰・B8）
-    private const float RepeatElementMultiplier = 0.6f;
+
+    // ガード軽減率・暴発ダメージ・コンボ・連続減衰の値（B8でconstから移した）
+    private readonly BalanceData _balance;
 
     // --- HP ---
     private readonly ReactiveProperty<int> _playerHp;
@@ -44,6 +38,12 @@ public class BattleModel : IDisposable
     /// 「同じ術」ではなく「同じ属性」で見るのは、同じ属性の術どうしの交互撃ちも抑えるため。
     /// </summary>
     public ReadOnlyReactiveProperty<ElementType?> LastAttackElement => _lastAttackElement;
+
+    // --- Stunの確率（B8） ---
+    // 0〜1の乱数。テストで固定できるよう外から渡す
+    private readonly Func<float> _random01;
+    // 今の敵にStunが続けて入った回数。失敗・敵の交代で0に戻る
+    private int _stunStreak;
 
     // --- バトル状態 ---
     private readonly ReactiveProperty<bool> _isBattleActive = new(false);
@@ -98,11 +98,15 @@ public class BattleModel : IDisposable
     private StatusEffectManager _statusEffectManager;
     private StatusEffectFactory _statusEffectFactory;
 
-    public BattleModel(int playerMaxHp, EnemyData enemyData)
+    /// <param name="balance">調整値。PlayerMaxHpだけは生成時に確定し、他の値は使う度に読む</param>
+    /// <param name="random01">0〜1の乱数を返す関数。Stunの確率判定に使う</param>
+    public BattleModel(BalanceData balance, EnemyData enemyData, Func<float> random01)
     {
-        PlayerMaxHp = playerMaxHp;
+        _balance = balance;
+        _random01 = random01;
+        PlayerMaxHp = balance.playerMaxHp;
         BossMaxHp = enemyData.maxHp;
-        _playerHp = new ReactiveProperty<int>(playerMaxHp);
+        _playerHp = new ReactiveProperty<int>(PlayerMaxHp);
         _bossHp = new ReactiveProperty<int>(enemyData.maxHp);
         _enemyData = enemyData;
         _isBattleActive.Value = true;
@@ -122,7 +126,7 @@ public class BattleModel : IDisposable
     /// 交戦相手を差し替える。セクション遷移時にSectionProgressManagerから呼ぶ。
     /// 敵側の状態（HP・最大HP）のみをリセットし、
     /// プレイヤーHPとコンボは意図的に据え置く（セクション間の引き継ぎ要素）。
-    /// 連続減衰の記憶は消す（新しい敵には何を撃っても減衰しない）。
+    /// 連続減衰の記憶とStunの連続成功回数は消す（新しい敵には何を撃っても減衰しない・Stunは基本の確率に戻る）。
     /// 決着済みで落ちている_isBattleActiveもここでtrueに戻す。
     /// </summary>
     public void SetEnemy(EnemyData enemyData)
@@ -132,6 +136,7 @@ public class BattleModel : IDisposable
         _bossHp.Value = enemyData.maxHp;
         _isBattleActive.Value = true;
         _lastAttackElement.Value = null;
+        _stunStreak = 0;
 
         _onEnemyChanged.OnNext(enemyData);
     }
@@ -179,7 +184,7 @@ public class BattleModel : IDisposable
         var bonus = new DamageBonus(
             result.SpeedBonus,
             CalculateComboMultiplier(_comboCount.Value),
-            isRepeated ? RepeatElementMultiplier : 1.0f);
+            isRepeated ? _balance.repeatElementMultiplier : 1.0f);
 
         var calculator = ResolveCalculator(spell.damageType);
         var damageResult = calculator.Calculate(spell, _enemyData, bonus);
@@ -188,6 +193,14 @@ public class BattleModel : IDisposable
         _comboCount.Value++;
         if (isAttack)
             _lastAttackElement.Value = spell.element;
+
+        // Stunは確率で判定する。OnSpellHitより前に決め、失敗を数字のラベルで見せる
+        if (damageResult.AppliedEffect == StatusEffectType.Stun && ShouldRollStun() && !RollStun())
+        {
+            damageResult.AppliedEffect = StatusEffectType.None;
+            damageResult.StunResisted = true;
+        }
+
         _onSpellHit.OnNext(damageResult);
 
         // --- 副次効果の付与 ---
@@ -236,7 +249,7 @@ public class BattleModel : IDisposable
 
         if (isGuarding)
         {
-            float guardRate = action.isHeavy ? HeavyGuardRate : NormalGuardRate;
+            float guardRate = action.isHeavy ? _balance.heavyGuardRate : _balance.normalGuardRate;
             baseDamage = (int)(baseDamage * guardRate);
         }
 
@@ -258,7 +271,7 @@ public class BattleModel : IDisposable
         }
     #endif
         
-        int damage = (int)(PlayerMaxHp * MisfireDamageRate);
+        int damage = (int)(PlayerMaxHp * _balance.misfireDamageRate);
         _playerHp.Value = Math.Max(0, _playerHp.Value - damage);
         _comboCount.Value = 0;
         _onPlayerDamaged.OnNext(new PlayerDamageInfo(damage, wasGuarded: false, isHeavy: false, isMisfire: true));
@@ -269,10 +282,45 @@ public class BattleModel : IDisposable
     /// HoTのtick1回あたりの回復量を算出する。
     /// healPowerを持続時間で割って均等に分配する（端数は切り捨て）。
     /// </summary>
-    /// <summary>コンボ数から倍率を出す。ComboBonusCap を超えた分は倍率に乗せない</summary>
-    private static float CalculateComboMultiplier(int comboCount)
+    /// <summary>
+    /// Stunの確率判定をするか。倒した一撃と、既にStun中の敵への一撃は判定しない。
+    /// どちらもStunは実際には掛からない（後者はStatusEffectManagerが重複を無視する）ので、
+    /// 判定すると連続成功回数だけが進んだり「抵抗」が出たりして、見た目と中身がずれるため。
+    /// </summary>
+    private bool ShouldRollStun()
     {
-        return 1.0f + ComboBonusPerCount * Math.Min(comboCount, ComboBonusCap);
+        if (_bossHp.Value <= 0) return false;
+        return _statusEffectManager == null || !_statusEffectManager.HasEffect(StatusEffectType.Stun);
+    }
+
+    /// <summary>
+    /// Stunが入るかを判定する（B8の封殺し対策）。
+    /// 確率 = stunBaseChance × 敵のstunChanceMultiplier × stunChanceDecay ^ 連続成功回数。
+    /// 入るたびに次が入りにくくなり、失敗したら基本の確率に戻る。
+    /// 運の要素を残しつつ、同じ敵を止め続けられる確率を急速に下げるための形。
+    /// </summary>
+    private bool RollStun()
+    {
+        float chance = _balance.stunBaseChance
+                       * _enemyData.stunChanceMultiplier
+                       * MathF.Pow(_balance.stunChanceDecay, _stunStreak);
+        // 1以上は必ず入れる（UnityEngine.Random.value は 1.0 ちょうどを返すことがある）
+        if (chance >= 1f || _random01() < chance)
+        {
+            _stunStreak++;
+            return true;
+        }
+        _stunStreak = 0;
+        return false;
+    }
+
+    /// <summary>
+    /// コンボ数から倍率を出す。倍率 = 1 + comboBonusPerCount × min(コンボ数, comboBonusCap)。
+    /// 上限を超えた分は倍率に乗せない（カウント自体は表示とランク評価のため増え続ける）
+    /// </summary>
+    private float CalculateComboMultiplier(int comboCount)
+    {
+        return 1.0f + _balance.comboBonusPerCount * Math.Min(comboCount, _balance.comboBonusCap);
     }
 
     private static int CalculatePerTickHeal(SpellData spell)

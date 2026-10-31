@@ -4,13 +4,13 @@
 
 **MUDRA** — Webカメラで手印（ハンドサイン）を組んで術を放つ、ボス戦アクションゲーム。
 Unity 6000.4.4f1 / URP（App は 2D Renderer、InGame は Universal Renderer）/ Windowsスタンドアロン（WebGL非対応）。開発は個人1名。
-現在地: **β版 B7（サウンド）まで完了。次は B8（バランス調整）。**
+現在地: **β版 B8（バランス調整）まで完了。次は B9（バグフィックス・最終調整）。**
 
 ---
 
 ## コードの場所と規模
 
-**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の125ファイル・約13,400行が全て。** 小さい。
+**自前コードは `MUDRA/Assets/_MUDRA/Scripts/` の129ファイル・約14,250行が全て。** 小さい。
 （うち `Editor/` の2本・約660行は敵・ステージSOの生成ツールと再生開始シーンの切替で、ランタイムからは参照しない）
 
 - git管理下の `.cs` は501個あるが、**456個はサードパーティ**
@@ -53,6 +53,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 シーンは常駐の `App.unity`（カメラ・画面・遷移）と、バトル（InGame・Tutorial）のたびに加算ロードする `InGame.unity` の2つ。
 InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステージの見た目は環境 Prefab（`StageData.environmentPrefab`）で、カメラ・敵は `BattleRig` ごとマーカー間を移動する（B6.5）。
 音は View の `SePlayer`（App と InGame に1つずつ）と `BgmPlayer`（App に常駐。バトルへは `BattleContext.Bgm`）が鳴らし、どの音かは `SoundData`（`SND_Sound`）と各 Data が持つ（B7）。
+バランスの数値は、全体の調整値（PlayerMaxHp・ガード・速度ボーナス・コンボ・連続減衰・Stun の確率）が `BalanceData`（`BD_Balance`）、敵と攻撃が `Editor/B3ContentGenerator.cs` の定義表（アセットを直接直すと再生成で上書きされる）、術が `SpellData` アセット（B8）。
 
 **詳細は `MUDRA/docs/architecture/00_overview.md` を読む。**
 
@@ -69,6 +70,7 @@ InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステー�
 | `MUDRA/docs/devlog/dev_log_B6.5.md` | **InGame の 3D の仕組み・描画のルール・環境 Prefab の作り方。環境やカメラを触る前に読む** |
 | `MUDRA/docs/stage0N_environment_asset_prompts.md` | ステージ環境の素材の生成プロンプト（4本） |
 | `MUDRA/docs/sound_asset_list.md` | サウンド素材の一覧（ファイル名・探す語・入手記録）。素材を足す・探すときに読む |
+| `MUDRA/docs/balance_sheet.md` | 術・敵の数値の早見表（確定数・被ダメージ）。B8 時点のスナップショットで、値を変えたら作り直す |
 | `README.md` / `docs/proposal_MUDRA.md` | 企画・世界観。実装作業では通常不要 |
 
 ---

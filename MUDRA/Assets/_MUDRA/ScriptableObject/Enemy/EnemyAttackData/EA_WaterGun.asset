@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_WaterGun
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u6C34\u9244\u7832"
-  damage: 3
+  damage: 5
   chargeTime: 1
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 2345609918f050a4f85c70a8d9787903, type: 2}

@@ -92,7 +92,8 @@ public class BattlePresenter : MonoBehaviour
         _battleModel.OnSpellHit
             .Where(result => result.TotalDamage > 0)
             .Subscribe(result => _damageNumberView.ShowSpellHit(
-                result.PerHitDamage, result.HitCount, result.IsWeakness, result.HasSpeedBonus, result.IsRepeated))
+                result.PerHitDamage, result.HitCount, result.IsWeakness, result.HasSpeedBonus, result.IsRepeated,
+                result.StunResisted))
             .AddTo(_disposables);
 
         // 命中の音は術の音（castSE）に含めているので、重ねるのは弱点の時のアクセントだけ（B7）

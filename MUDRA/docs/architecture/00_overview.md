@@ -60,7 +60,7 @@ Assets/_MUDRA/
 └── Scripts/
     ├── Data/                    … ScriptableObject定義とenum
     │   SpellData / EnemyData / EnemyAttackData / EnemyAction / StageData(+StageSection) / SpellEnums
-    │   PresentationTimingData（演出の時間表） / BattlePaletteData（意味の色） / SoundData（固定の音。B7）
+    │   PresentationTimingData（演出の時間表） / BattlePaletteData（意味の色） / SoundData（固定の音。B7） / BalanceData（全体の調整値。B8）
     ├── Input/                   … 手印認識（namespace MUDRA.HandTracking）
     │   IHandLandmarkProvider / MediaPipeHandLandmarkProvider
     │   HandTrackingService(約840行・中核) / HandLandmark / HandSignCandidate / FingerState / HandSignEnum
@@ -291,25 +291,30 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 **環境アセットの置き場所:** 環境 Prefab・マテリアル・パーティクルは `Assets/_MUDRA/Environment/`、素材画像は `Assets/_MUDRA/Sprites/Environment/Stage0N/`。生成プロンプトは `docs/stage0N_environment_asset_prompts.md`。Tutorial は Stage01 の環境を使う。
 
-`BattleInitializer` の設定値: `_playerMaxHp` = 100。ステージと術は App から `BattleContext` で受け取る。
+`BattleInitializer` の設定値: `_balance` = `BD_Balance`（PlayerMaxHp 100 ほか全体の調整値。B8）。ステージと術は App から `BattleContext` で受け取る。
 
 ### 術アセット（`ScriptableObject/Player/`）
 
+B8 時点の値。ダメージの早見表（弱点時・確定数・敵の被ダメージ）は `docs/balance_sheet.md`。
+
 | アセット | 術名 | シーケンス | 属性 | 威力 | 計算方式 | 副次効果 |
 |---|---|---|---|---|---|---|
-| WindBlade | 風刃 | 合 | Wind | 180 | SingleHit | — |
+| WindBlade | 風刃 | 合 | Wind | 60 | SingleHit | — |
+| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 60 | SingleHit | — |
 | WaterCrow | 水爪 | 刃 → 握 | Water | 100 | SingleHit | — |
-| IceWind | 氷風 | 開 → 指 → 握 | Wind | 150 | SingleHit | — |
-| Lightning | 雷連撃 | 指 → 刃 | Thunder | 150 | MultiHit ×5 | Stun 3秒 |
-| Fireball | 火炎弾 | 掌 → 握 | Fire | 120 | DoT | DamageOverTime 3秒 |
-| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 100 | SingleHit | — |
-| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 30） |
-| Halo | 光輪 | 握 → 開 | Light | 100 | SingleHit | HealOverTime 1秒（healPower 3） |
+| Halo | 光輪 | 握 → 開 | Light | 100 | SingleHit | — |
+| Lightning | 雷連撃 | 指 → 刃 | Thunder | 85 | MultiHit ×5 | Stun 1.5秒（確率。B8） |
+| Fireball | 火炎弾 | 掌 → 握 | Fire | 110 | DoT | DamageOverTime 3秒 |
+| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 50） |
+| IceWind | 氷風 | 開 → 指 → 握 | Wind | 140 | SingleHit | — |
+| RockShatter | 岩砕 | 握 → 掌 → 刃 | Earth | 140 | SingleHit | — |
+| PurifyingLight | 破魔光 | 握 → 開 → 掌 | Light | 140 | SingleHit | — |
+| Hellfire | 業火 | 掌 → 握 → 指 → 開 | Fire | 175 | SingleHit | — |
 
 ### 敵・攻撃・ステージアセット
 
 4ステージ / 敵15種（雑魚ユニーク8 + 派生3 + ボス4）/ 攻撃23種。加えてチュートリアル用に SD_Tutorial / ED_TrainingDummy（木人）/ EA_DummyStrike（B6）。ファイル名は `EA_` / `ED_` / `SD_` プレフィックス + 英語（仕様書 §3-2 の命名規則）。
-全数値の一覧と設計意図は `docs/B3_enemy_stage_content.md` が正。**値の変更は `Editor/B3ContentGenerator.cs` の定義表を直して再実行する**（アセットを直接いじると次回の再実行で上書きされる）。
+数値の正は `Editor/B3ContentGenerator.cs` の定義表（B8 時点の早見表は `docs/balance_sheet.md`）。各敵の設計意図は `docs/B3_enemy_stage_content.md`（数値は B3 当時のもの）。**値の変更は `Editor/B3ContentGenerator.cs` の定義表を直して再実行する**（アセットを直接いじると次回の再実行で上書きされる）。
 
 | ステージ | セクション（最後がボス） |
 |---|---|

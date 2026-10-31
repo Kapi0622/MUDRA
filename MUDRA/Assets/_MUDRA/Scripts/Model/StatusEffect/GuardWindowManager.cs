@@ -1,15 +1,16 @@
 using System;
 using R3;
+using MUDRA.Data;
 
 /// <summary>
 /// ガード受付窓を管理する。
-/// Guard印確定 → 1秒の受付窓が開く → 自動終了。
+/// Guard印確定 → 受付窓が開く（長さはBalanceData.guardWindowDuration） → 自動終了。
 /// PlayerPhaseとは独立して動作し、詠唱中でもガードできる。
 /// BattlePresenter.Update()から毎フレームTick()で駆動する。
 /// </summary>
 public class GuardWindowManager : IDisposable
 {
-    private const float WindowDuration = 1f;
+    private readonly BalanceData _balance;
 
     private float _remainingTime;
 
@@ -21,10 +22,15 @@ public class GuardWindowManager : IDisposable
     /// </summary>
     public ReadOnlyReactiveProperty<bool> IsGuarding => _isGuarding;
 
+    public GuardWindowManager(BalanceData balance)
+    {
+        _balance = balance;
+    }
+
     /// <summary>Guard印が確定した時に呼ぶ。受付窓を開く。</summary>
     public void Activate()
     {
-        _remainingTime = WindowDuration;
+        _remainingTime = _balance.guardWindowDuration;
         _isGuarding.Value = true;
     }
 

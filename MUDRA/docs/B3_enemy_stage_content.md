@@ -62,6 +62,8 @@ MUDRAのB3「全ステージ実装」のうち、敵・攻撃・ステージのS
 
 ## 6. 攻撃データ（EnemyAttackData）
 
+> **現在の値ではない（B8注記）:** この表は B3 当時の依頼の値。B7.5〜B8 で調整済みで、今の値の正は `Editor/B3ContentGenerator.cs` の定義表、早見表は `docs/balance_sheet.md`。各敵の役割・設計意図の説明は今も有効。
+
 | ファイル名 | attackName | damage | chargeTime | 大技 | 備考 |
 |---|---|---|---|---|---|
 | `EA_MudSplash` | 泥はね | 4 | 1.5 | | |
@@ -91,6 +93,8 @@ MUDRAのB3「全ステージ実装」のうち、敵・攻撃・ステージのS
 ※「大技」列はEnemyAttackDataのフィールドではない。行動パターン設定時の `isHeavy` の値を示す。
 
 ## 7. 敵データ（EnemyData）
+
+> **現在の値ではない（B8注記）:** この表は B3 当時の依頼の値。B7.5〜B8 で調整済みで、今の値の正は `Editor/B3ContentGenerator.cs` の定義表、早見表は `docs/balance_sheet.md`。各敵の役割・設計意図の説明は今も有効。
 
 ### ステージ1「封土の里」
 

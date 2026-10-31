@@ -22,3 +22,4 @@ MonoBehaviour:
   roadBackgroundSprite: {fileID: 0}
   bossBackgroundSprite: {fileID: 0}
   environmentPrefab: {fileID: 6390410876268880580, guid: 828c0c9678dfa434283cad41830d8823, type: 3}
+  selectThumbnail: {fileID: 0}

@@ -17,6 +17,7 @@ MonoBehaviour:
   maxHp: 350
   weakElement: 2
   weakMultiplier: 1.5
+  stunChanceMultiplier: 1
   actionPattern:
   - attackData: {fileID: 11400000, guid: a48233b5b4928194fbafcbc4f88a5f12, type: 2}
     isHeavy: 0

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_RunOver
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u8F62\u304D"
-  damage: 5
+  damage: 8
   chargeTime: 1
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: 2ea27472b9704ac4380d61167f051f6a, type: 2}

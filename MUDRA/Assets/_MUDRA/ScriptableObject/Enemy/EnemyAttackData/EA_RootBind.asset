@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: EA_RootBind
   m_EditorClassIdentifier: Assembly-CSharp::EnemyAttackData
   attackName: "\u6839\u7E1B\u308A"
-  damage: 10
+  damage: 18
   chargeTime: 2.5
   effectPrefab: {fileID: 0}
   attackSE: {fileID: 6418180475301049370, guid: b2f247c5d09817849aca5df71cbbced8, type: 2}
