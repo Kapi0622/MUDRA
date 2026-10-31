@@ -80,7 +80,7 @@ Assets/_MUDRA/
     ├── Persistence/             … JsonFileSaveStorage（ISaveStorage の実装。Unity API を使うので Model の外）
     ├── Presenter/               … Model購読 → View呼び出しの配線のみ
     │   App:    AppInitializer(起動) / GameFlowPresenter(遷移の実行) / ScreenPresenter / SettingsPresenter
-    │           HandStatusPresenter / CalibrationPresenter（B6）
+    │           HandStatusPresenter / CalibrationPresenter（B6）/ CodexPresenter（図鑑）/ StageRecordFormat
     │   InGame: BattleInitializer(組み立て) / BattleContext / HandSignPresenter / BattlePresenter
     │           EnemyPresenter / PausePresenter / TutorialPresenter（B6）
     │   共有:   SceneNames
@@ -149,7 +149,7 @@ App 側の Model（`GameStateManager` / `ProgressModel` / `CameraStatusModel` / 
 1. `GameStateManager` を生成（`_allStages` と `_tutorialStage`）。InGame が先に読み込まれていれば Title を飛ばす（§9 の起動の仕方）
 2. `HandStatusPresenter.Initialize` — カメラと手の状態を毎フレーム実時間で判定し始める（B6）
 3. Result への遷移で `ProgressModel.RecordBattle`（クリア記録の保存）を購読
-4. `SettingsPresenter` → `CalibrationPresenter` → `ScreenPresenter` → `GameFlowPresenter` の順に注入
+4. `SettingsPresenter` → `CalibrationPresenter` → `CodexPresenter` → `ScreenPresenter` → `GameFlowPresenter` の順に注入（図鑑はステージ選択から開くので、ScreenPresenter より先に組み立てる）
 
 ### 4-2. 遷移（`GameStateManager` → `GameFlowPresenter`）
 
@@ -260,11 +260,17 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 | GameObject | 載っているもの |
 |---|---|
-| `AppSystem` | `AppInitializer` / `GameFlowPresenter` / `ScreenPresenter` / `SettingsPresenter` / `HandStatusPresenter` / `CalibrationPresenter` / `DisplayModeView` |
+| `AppSystem` | `AppInitializer` / `GameFlowPresenter` / `ScreenPresenter` / `SettingsPresenter` / `HandStatusPresenter` / `CalibrationPresenter` / `CodexPresenter` / `DisplayModeView` |
 | `Solution` | MediaPipe の `HandLandmarkerRunner`（カメラ入力〜推論） |
 | `MediaPipeHandLandmarkProvider` | `MediaPipeHandLandmarkProvider` ＋ 無効のテスト用2本 |
 | `Main Canvas`（Overlay・order 0） | MediaPipe サンプル由来のカメラ映像（`Body/Annotatable Screen`）。`CameraPreviewView`（設定での表示切替、Calibration 中の強調表示） |
-| `ScreenCanvas`（order 10） | `TitleScreen` / `StageSelectScreen` / `ResultScreen` / `CalibrationScreen`（認識テスト・エラーパネル・`HandGuide`） |
+| `ScreenCanvas`（order 10） | `TitleScreen` / `StageSelectScreen` / `CodexScreen`（図鑑。ステージ選択の上に重ねて開く）/ `ResultScreen` / `CalibrationScreen`（認識テスト・エラーパネル・`HandGuide`） |
+
+**図鑑（`CodexScreen`）:** ステージ選択の `C` / 図鑑ボタンで開く。タブ（術／妖）・一覧・詳細の3つで、`CodexPresenter` が開くたびに `SpellData` / `EnemyData` とクリア記録から中身を組む。
+術は最初から全部、妖は出てくるステージをクリアしていれば解放（未解放は黒い影と「？？？」）。セーブに図鑑用の項目は無い。
+数値は★5段階にぼかす（閾値は `CodexPresenter` 冒頭の定数）。説明文は各 SO の `description`（下書きと書き方の決まりは `docs/codex_text.md`）。
+術アイコン（`Sprites/SpellIcon/`）は白地に黒い墨の絵で、和紙の台紙 `T_UI_IconPlate` に載せて円で切り抜く（`CodexImagePlate`。素材のプロンプトは `docs/spell_icon_prompts.md`）。
+図鑑を閉じたキーをステージ選択が同じフレームで拾わないよう、`StageSelectView.Resume` と `CodexView.Show` はそのフレームのキー入力を読まない。
 | `SettingsCanvas`（order 30） | 設定画面 |
 | `TransitionCanvas`（order 100） | 墨のワイプ（`TransitionView`） |
 | `Audio` | **唯一の AudioListener** / `SePlayer`（画面・UI の音）/ `BgmPlayer` / `AudioVolumeView`（B7。[03 §2](03_sound.md)） |

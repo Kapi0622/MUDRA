@@ -8,9 +8,12 @@ using UnityEngine.UI;
 ///
 /// 操作: 数字キー1〜4でカーソル移動 → Space / Enter で決定。カードのクリックは即決定。
 /// Backspace / Esc、または戻るボタンでタイトルへ。
+/// C、または図鑑ボタンで図鑑を開く（上に重ねて開き、その間はScreenPresenterがこの画面をLockする）。
 /// </summary>
 public class StageSelectView : ScreenView
 {
+    private const KeyCode CodexKey = KeyCode.C;
+
     // 数字キーでカーソルを動かせるのは先頭から9枚まで
     private static readonly KeyCode[] NumberKeys =
     {
@@ -22,9 +25,12 @@ public class StageSelectView : ScreenView
     [Tooltip("非アクティブのテンプレート。ステージの数だけ複製する")]
     [SerializeField] private StageCardView _cardTemplate;
     [SerializeField] private Button _backButton;
+    [Tooltip("図鑑を開くボタン")]
+    [SerializeField] private Button _codexButton;
 
     private readonly List<StageCardView> _cards = new();
     private int _selectedIndex;
+    private int _resumedFrame = -1;
 
     private readonly Subject<int> _onStageDecided = new();
     /// <summary>ステージが決定された。引数はカードの並び順（=全ステージの並び順）</summary>
@@ -32,6 +38,10 @@ public class StageSelectView : ScreenView
 
     private readonly Subject<Unit> _onBackRequested = new();
     public Observable<Unit> OnBackRequested => _onBackRequested;
+
+    private readonly Subject<Unit> _onCodexRequested = new();
+    /// <summary>図鑑を開く要求</summary>
+    public Observable<Unit> OnCodexRequested => _onCodexRequested;
 
     private readonly Subject<Unit> _onCursorMoved = new();
     /// <summary>キー操作でカーソルが別のカードへ動いた（B7。画面を開いた時の初期位置では流さない）</summary>
@@ -44,6 +54,8 @@ public class StageSelectView : ScreenView
     private void Awake()
     {
         _backButton.onClick.AddListener(() => _onBackRequested.OnNext(Unit.Default));
+        if (_codexButton != null)
+            _codexButton.onClick.AddListener(() => _onCodexRequested.OnNext(Unit.Default));
     }
 
     /// <summary>
@@ -83,6 +95,16 @@ public class StageSelectView : ScreenView
         Select(Mathf.Clamp(selectedIndex, 0, Mathf.Max(_cards.Count - 1, 0)));
     }
 
+    /// <summary>
+    /// 図鑑を閉じた後に、選択位置はそのままで操作を戻す。
+    /// 図鑑を閉じたキー（Esc / Backspace）をこの画面が同じフレームで拾ってタイトルへ戻らないよう、戻したフレームはキーを読まない
+    /// </summary>
+    public void Resume()
+    {
+        SetVisible(true);
+        _resumedFrame = Time.frameCount;
+    }
+
     private void Select(int index)
     {
         _selectedIndex = index;
@@ -93,7 +115,7 @@ public class StageSelectView : ScreenView
 
     private void Update()
     {
-        if (!IsInteractable || _cards.Count == 0) return;
+        if (!IsInteractable || _cards.Count == 0 || Time.frameCount == _resumedFrame) return;
 
         for (int i = 0; i < NumberKeys.Length && i < _cards.Count; i++)
         {
@@ -104,7 +126,9 @@ public class StageSelectView : ScreenView
             }
         }
 
-        if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
+        if (Input.GetKeyDown(CodexKey))
+            _onCodexRequested.OnNext(Unit.Default);
+        else if (Input.GetKeyDown(KeyCode.Space) || Input.GetKeyDown(KeyCode.Return))
             _onStageDecided.OnNext(_selectedIndex);
         else if (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Escape))
             _onBackRequested.OnNext(Unit.Default);
@@ -114,6 +138,7 @@ public class StageSelectView : ScreenView
     {
         _onStageDecided.Dispose();
         _onBackRequested.Dispose();
+        _onCodexRequested.Dispose();
         _onCursorMoved.Dispose();
         _onSelectionChanged.Dispose();
     }

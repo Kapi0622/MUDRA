@@ -14,6 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::EnemyData
   enemyName: "\u5F71\u9B3C\u706B"
   sprite: {fileID: 21300000, guid: b58d7bc21bc039b4792ec5975633e993, type: 3}
+  description: "\u6DF1\u6DF5\u306E\u95C7\u306B\u67D3\u307E\u3063\u305F\u9B3C\u706B\u3002\u7114\u306E\u5EC3\u5BFA\u306E\u3082\u306E\u3088\u308A\u901F\u304F\u3001\u606F\u3064\u304F\u9593\u3082\u306A\u304F\u706B\u306E\u7C89\u3092\u98DB\u3070\u3059\u3002\u5149\u3092\u5F53\u3066\u308C\u3070\u63FA\u3089\u3044\u3067\u6D88\u3048\u308B\u3002"
   maxHp: 500
   weakElement: 5
   weakMultiplier: 1.5
