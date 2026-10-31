@@ -78,6 +78,7 @@ Assets/_MUDRA/
     │   ├── StatusEffect/        … 時限効果（DoT/Stun/HoT）とガード受付窓
     │   └── Strategy/            … ダメージ計算3種
     ├── Persistence/             … JsonFileSaveStorage（ISaveStorage の実装。Unity API を使うので Model の外）
+    │                              persistentDataPath/save.json。ビルド版は書いたビルドのID（buildGUID）が違えば初期状態で始める。手動で消すのは Editor メニュー「MUDRA/Reset Save Data」
     ├── Presenter/               … Model購読 → View呼び出しの配線のみ
     │   App:    AppInitializer(起動) / GameFlowPresenter(遷移の実行) / ScreenPresenter / SettingsPresenter
     │           HandStatusPresenter / CalibrationPresenter（B6）/ CodexPresenter（図鑑）/ StageRecordFormat
