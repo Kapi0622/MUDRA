@@ -15,7 +15,7 @@ Webカメラに映した手の形が、そのまま術の詠唱になるボス�
 
 <img src="MUDRA/docs/images/hero.gif" alt="手印を組んで術を放つ様子" width="720">
 
-▶ **[デモ動画（YouTube）準備中]()**
+▶ **[デモ動画（YouTube）準備中](https://youtu.be/Ny5gaH05u7M)**
 
 ▶ **[ダウンロードサイト（itch.io）](https://kapi-0622.itch.io/mudra/download/DjvbNBJMwAHwMCWH4OFpy4gXtE534_ZtLtTBL7Wn)**
 
