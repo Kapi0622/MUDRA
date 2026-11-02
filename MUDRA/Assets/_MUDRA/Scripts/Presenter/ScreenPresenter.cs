@@ -152,6 +152,15 @@ public class ScreenPresenter : MonoBehaviour
             })
             .AddTo(_disposables);
 
+        // 戦績が1項目数え終わるたび・点数ゲージが伸び始める時
+        _resultView.OnStatRevealed
+            .Subscribe(_ => _se.Play(_sound.resultStat))
+            .AddTo(_disposables);
+
+        _resultView.OnGaugeStarted
+            .Subscribe(_ => _se.Play(_sound.resultGauge))
+            .AddTo(_disposables);
+
         // ランクのハンコが押された瞬間。自己ベストなら祝いの音を重ねる
         _resultView.OnRankStamped
             .Subscribe(_ =>
@@ -244,41 +253,50 @@ public class ScreenPresenter : MonoBehaviour
         var record = _gameStateManager.LastRecord;
         if (!record.HasValue)
             return new ResultScreenData(false, string.Empty, string.Empty,
-                new string[0], new string[0], string.Empty, false);
+                new ResultStat[0], new ResultStat[0], 0f, new float[0], string.Empty, false);
 
         var r = record.Value;
         var stats = r.Stats;
 
-        var labels = new[]
+        // 主役: 速さと被弾。ランクで一番重い被弾と、ベスト記録に使う時間を大きく見せる
+        var primary = new[]
         {
-            r.IsWin ? TimeLabel : TimeLabelOnLose, MaxComboLabel, WeaknessLabel,
-            GuardLabel, SpellsLabel, MisfireLabel, DamageLabel,
+            new ResultStat(r.IsWin ? TimeLabel : TimeLabelOnLose, stats.ElapsedSeconds, isTime: true),
+            new ResultStat(DamageLabel, stats.DamageTaken),
         };
-        var values = new[]
+        var secondary = new[]
         {
-            FormatTime(stats.ElapsedSeconds),
-            stats.MaxCombo.ToString(),
-            stats.WeaknessHits.ToString(),
-            stats.GuardSuccesses.ToString(),
-            stats.SpellsCast.ToString(),
-            stats.Misfires.ToString(),
-            stats.DamageTaken.ToString(),
+            new ResultStat(MaxComboLabel, stats.MaxCombo),
+            new ResultStat(WeaknessLabel, stats.WeaknessHits),
+            new ResultStat(GuardLabel, stats.GuardSuccesses),
+            new ResultStat(SpellsLabel, stats.SpellsCast),
+            new ResultStat(MisfireLabel, stats.Misfires),
+        };
+
+        // ゲージは0点〜最高点。B/A/Sの順で目盛りを渡す
+        float maxScore = RankCalculator.MaxScore;
+        float gaugeRatio = r.Score.HasValue ? Mathf.Clamp01(r.Score.Value / maxScore) : 0f;
+        var gaugeMarks = new[]
+        {
+            RankCalculator.ThresholdB / maxScore,
+            RankCalculator.ThresholdA / maxScore,
+            RankCalculator.ThresholdS / maxScore,
         };
 
         return new ResultScreenData(
             r.IsWin,
             r.Stage != null ? r.Stage.stageName : string.Empty,
             r.Rank.HasValue ? r.Rank.Value.ToString() : string.Empty,
-            labels,
-            values,
+            primary,
+            secondary,
+            gaugeRatio,
+            gaugeMarks,
             r.IsWin ? string.Empty : BuildDefeatHint(r.LastEnemy),
             _progressModel.LastResultWasNewBest);
     }
 
     /// <summary>カードに出すクリア記録。未クリアなら空</summary>
     private string BuildRecordText(StageData stage) => StageRecordFormat.Format(_progressModel.FindRecord(stage));
-
-    private static string FormatTime(float seconds) => StageRecordFormat.FormatTime(seconds);
 
     /// <summary>
     /// 敗北時のヒント。負けた相手の弱点と、その属性で攻撃できる術（印の並び付き）を出す。

@@ -14,15 +14,19 @@ public readonly struct BattleRecord
     /// <summary>クリア時のランク。敗北時はnull</summary>
     public readonly BattleRank? Rank;
 
+    /// <summary>クリア時のランクの点数（RankCalculator.Score）。Result画面のゲージに使う。敗北時はnull</summary>
+    public readonly float? Score;
+
     /// <summary>決着の時に戦っていた敵。敗北時のヒント（弱点）に使う</summary>
     public readonly EnemyData LastEnemy;
 
-    public BattleRecord(StageData stage, bool isWin, BattleStats stats, BattleRank? rank, EnemyData lastEnemy)
+    public BattleRecord(StageData stage, bool isWin, BattleStats stats, BattleRank? rank, float? score, EnemyData lastEnemy)
     {
         Stage = stage;
         IsWin = isWin;
         Stats = stats;
         Rank = rank;
+        Score = score;
         LastEnemy = lastEnemy;
     }
 }

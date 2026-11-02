@@ -5,6 +5,25 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
+/// Result画面の戦績1項目の表示用の値。数え上げるので文字列ではなく数値で持つ。
+/// </summary>
+public readonly struct ResultStat
+{
+    public readonly string Label;
+    public readonly float Value;
+
+    /// <summary>true: 秒数を「分:秒」で出す / false: 整数で出す</summary>
+    public readonly bool IsTime;
+
+    public ResultStat(string label, float value, bool isTime = false)
+    {
+        Label = label;
+        Value = value;
+        IsTime = isTime;
+    }
+}
+
+/// <summary>
 /// Result画面に出す内容（B5）。Modelの型を持ち込まないよう表示用の値だけにする。
 /// </summary>
 public readonly struct ResultScreenData
@@ -15,9 +34,17 @@ public readonly struct ResultScreenData
     /// <summary>ランクの文字（S/A/B/C）。敗北時は空</summary>
     public readonly string RankText;
 
-    /// <summary>戦績の項目名と値。同じ並びで1行ずつ出す</summary>
-    public readonly string[] StatLabels;
-    public readonly string[] StatValues;
+    /// <summary>大きく出す主役の項目（時間・受けたダメージ）</summary>
+    public readonly ResultStat[] PrimaryStats;
+
+    /// <summary>小さく並べる脇役の項目</summary>
+    public readonly ResultStat[] SecondaryStats;
+
+    /// <summary>ランクの点数をゲージの長さ（0〜1）に直したもの。敗北時は使わない</summary>
+    public readonly float GaugeRatio;
+
+    /// <summary>B/A/Sの各しきい値のゲージ上の位置（0〜1）。この並びで目盛りに当てる</summary>
+    public readonly float[] GaugeMarks;
 
     /// <summary>敗北時のヒント。クリア時は空</summary>
     public readonly string HintText;
@@ -26,13 +53,16 @@ public readonly struct ResultScreenData
     public readonly bool IsNewRecord;
 
     public ResultScreenData(bool isWin, string stageName, string rankText,
-        string[] statLabels, string[] statValues, string hintText, bool isNewRecord)
+        ResultStat[] primaryStats, ResultStat[] secondaryStats, float gaugeRatio, float[] gaugeMarks,
+        string hintText, bool isNewRecord)
     {
         IsWin = isWin;
         StageName = stageName;
         RankText = rankText;
-        StatLabels = statLabels;
-        StatValues = statValues;
+        PrimaryStats = primaryStats;
+        SecondaryStats = secondaryStats;
+        GaugeRatio = gaugeRatio;
+        GaugeMarks = gaugeMarks;
         HintText = hintText;
         IsNewRecord = isNewRecord;
     }
@@ -42,8 +72,11 @@ public readonly struct ResultScreenData
 /// Result画面（B5）。勝敗・戦績・ランク（敗北時はヒント）を出し、次の行き先（もう一度 / ステージ選択 / タイトル）の要求を流す。
 /// キー: Space / Enter = もう一度、Backspace / Esc = ステージ選択へ。
 ///
-/// 出し方（UI改修 ステップ4）: 遷移の覆いが晴れてから戦績を1行ずつ出し、出きったらランクの判子を押す。
-/// 判子が着地した瞬間に画面を短く揺らし、判子の後ろに朱の墨の飛沫を広げる。
+/// 出し方: 遷移の覆いが晴れてから、主役の項目（時間・受けたダメージ）を大きく1つずつ数え上げ、
+/// 続けて脇役の項目を間隔を詰めて数え上げる。クリア時はそのあとランクの点数ゲージを伸ばし、
+/// 伸びきったらランクの判子を押す（着地で画面を短く揺らし、判子の後ろに朱の墨の飛沫を広げる）。
+/// 点数は文字では出さず、ゲージの長さとB/A/Sの目盛りだけで見せる（項目ごとの加減点を並べると紛らわしいため）。
+/// 敗北時はゲージと判子を出さず、脇役が出きってからヒントを出す。
 /// どれもポーズ中のリタイアから来た時に止まらないよう実時間で進める。
 /// </summary>
 public class ResultView : ScreenView
@@ -53,14 +86,29 @@ public class ResultView : ScreenView
     private static readonly Color WinColor = new Color(1f, 0.85f, 0.3f);
     private static readonly Color LoseColor = new Color(0.8f, 0.15f, 0.15f);
 
-    // --- 戦績を1行ずつ出す ---
+    // --- 戦績 ---
     // 遷移の覆いが晴れてから出し始める
     private const float StatDelay = 0.4f;
-    private const float StatLineInterval = 0.1f;
+    private const float PrimaryInterval = 0.45f;
+    private const float PrimaryCountDuration = 0.6f;
+    // 主役が出きってから脇役に移るまで
+    private const float SecondaryGap = 0.15f;
+    private const float SecondaryInterval = 0.15f;
+    private const float SecondaryCountDuration = 0.35f;
+
+    // --- 点数ゲージ（クリア時） ---
+    private const float GaugeGap = 0.25f;
+    private const float GaugeDuration = 0.9f;
+    // 届いていない目盛りの濃さ
+    private const float GaugeMarkDimAlpha = 0.35f;
+
+    // --- ヒント（敗北時） ---
+    private const float HintGap = 0.25f;
+    private const float HintFadeDuration = 0.4f;
 
     // --- ランクの判子 ---
-    // 戦績が出きってから、大きい状態から縮めて押す
-    private const float RankStampGap = 0.2f;
+    // ゲージが伸びきってから、大きい状態から縮めて押す
+    private const float RankStampGap = 0.15f;
     private const float RankStampDuration = 0.3f;
     private const float RankStampScaleFrom = 2.5f;
 
@@ -75,8 +123,22 @@ public class ResultView : ScreenView
 
     [SerializeField] private TextMeshProUGUI _resultText;
     [SerializeField] private TextMeshProUGUI _stageNameText;
-    [SerializeField] private TextMeshProUGUI _statLabelsText;
-    [SerializeField] private TextMeshProUGUI _statValuesText;
+
+    [Header("戦績")]
+    [Tooltip("大きく出す主役の項目（時間・受けたダメージ）。ResultScreenData.PrimaryStatsと同じ並び")]
+    [SerializeField] private ResultStatItemView[] _primaryItems;
+    [Tooltip("小さく並べる脇役の項目。ResultScreenData.SecondaryStatsと同じ並び")]
+    [SerializeField] private ResultStatItemView[] _secondaryItems;
+
+    [Header("点数ゲージ（クリア時）")]
+    [Tooltip("ゲージ一式の親。敗北時は隠す")]
+    [SerializeField] private GameObject _gaugeGroup;
+    [Tooltip("Image Type = Filled / Horizontal")]
+    [SerializeField] private Image _gaugeFill;
+    [Tooltip("B/A/Sの目盛り。この並びでしきい値の位置へ動かし、ゲージが届いたら濃くする")]
+    [SerializeField] private CanvasGroup[] _gaugeMarks;
+
+    [Header("ランク")]
     [Tooltip("ランクと「評価」の見出しをまとめた親。敗北時は隠す")]
     [SerializeField] private GameObject _rankGroup;
     [SerializeField] private TextMeshProUGUI _rankText;
@@ -92,8 +154,10 @@ public class ResultView : ScreenView
     [Tooltip("判子の後ろに広がる墨の飛沫。RankGroupの中、Rankより奥に置く")]
     [SerializeField] private Image _inkSplash;
 
+    private MotionHandle _gaugeWaitHandle;
+    private MotionHandle _gaugeHandle;
+    private MotionHandle _hintHandle;
     private MotionHandle _rankHandle;
-    private MotionHandle _statHandle;
     private MotionHandle _shakeHandle;
     private MotionHandle _splashHandle;
 
@@ -105,6 +169,14 @@ public class ResultView : ScreenView
 
     private readonly Subject<Unit> _onTitleRequested = new();
     public Observable<Unit> OnTitleRequested => _onTitleRequested;
+
+    private readonly Subject<Unit> _onStatRevealed = new();
+    /// <summary>戦績の1項目が数え終わった。間合いはこのViewが決めるので、音はこの合図で鳴らしてもらう</summary>
+    public Observable<Unit> OnStatRevealed => _onStatRevealed;
+
+    private readonly Subject<Unit> _onGaugeStarted = new();
+    /// <summary>点数ゲージが伸び始めた（クリア時のみ）</summary>
+    public Observable<Unit> OnGaugeStarted => _onGaugeStarted;
 
     private readonly Subject<Unit> _onRankStamped = new();
     /// <summary>ランクのハンコが押された（縮みきった瞬間）。遅れと尺はこのViewが決めるので、音はこの合図で鳴らしてもらう（B7）</summary>
@@ -124,39 +196,91 @@ public class ResultView : ScreenView
         _resultText.text = data.IsWin ? WinText : LoseText;
         _resultText.color = data.IsWin ? WinColor : LoseColor;
         _stageNameText.text = data.StageName;
-        _statLabelsText.text = string.Join("\n", data.StatLabels);
-        _statValuesText.text = string.Join("\n", data.StatValues);
-        float statsDuration = PlayStatLines(data.StatLabels.Length);
+
+        float t = StatDelay;
+        t = PlayStats(_primaryItems, data.PrimaryStats, t, PrimaryInterval, PrimaryCountDuration);
+        t = PlayStats(_secondaryItems, data.SecondaryStats, t + SecondaryGap, SecondaryInterval, SecondaryCountDuration);
 
         bool hasRank = !string.IsNullOrEmpty(data.RankText);
         _rankGroup.SetActive(hasRank);
+        _gaugeGroup.SetActive(hasRank);
         _rankText.text = data.RankText;
-        if (hasRank) PlayRankStamp(StatDelay + statsDuration + RankStampGap);
+        if (hasRank)
+        {
+            float gaugeStart = t + GaugeGap;
+            PlayGauge(data.GaugeRatio, data.GaugeMarks, gaugeStart);
+            PlayRankStamp(gaugeStart + GaugeDuration + RankStampGap);
+        }
 
         _hintText.text = data.HintText;
+        _hintText.alpha = 0f;
+        if (!string.IsNullOrEmpty(data.HintText)) PlayHint(t + HintGap);
+
         _newRecordLabel.SetActive(data.IsNewRecord);
         SetVisible(true);
     }
 
-    /// <summary>戦績の項目名と値を、上から1行ずつ見せる。出しきるまでの秒数（遅らせる分を除く）を返す</summary>
-    private float PlayStatLines(int lineCount)
+    /// <summary>
+    /// 項目を順に出して数え上げる。start秒後に1つ目を出し、interval秒ずつずらす。
+    /// 最後の項目が数え終わる時刻を返す（項目が無ければstartのまま）
+    /// </summary>
+    private float PlayStats(ResultStatItemView[] items, ResultStat[] stats, float start, float interval, float countDuration)
     {
-        SetVisibleStatLines(0);
-        float duration = lineCount * StatLineInterval;
-        if (lineCount == 0) return 0f;
-
-        _statHandle = LMotion.Create(0f, lineCount, duration)
-            .WithDelay(StatDelay)
-            .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
-            // 1行目を遅れの直後に出すため、切り捨てではなく切り上げで数える
-            .Bind(n => SetVisibleStatLines(Mathf.CeilToInt(n)));
-        return duration;
+        int count = stats != null ? Mathf.Min(items.Length, stats.Length) : 0;
+        for (int i = 0; i < items.Length; i++)
+        {
+            if (i < count)
+                items[i].Play(stats[i], start + i * interval, countDuration, () => _onStatRevealed.OnNext(Unit.Default));
+            else
+                items[i].Clear();
+        }
+        return count > 0 ? start + (count - 1) * interval + countDuration : start;
     }
 
-    private void SetVisibleStatLines(int count)
+    /// <summary>目盛りをしきい値の位置に置き、start秒後にゲージを点数まで伸ばす。届いた目盛りから濃くする</summary>
+    private void PlayGauge(float ratio, float[] marks, float start)
     {
-        _statLabelsText.maxVisibleLines = count;
-        _statValuesText.maxVisibleLines = count;
+        int markCount = marks != null ? Mathf.Min(_gaugeMarks.Length, marks.Length) : 0;
+        for (int i = 0; i < _gaugeMarks.Length; i++)
+        {
+            bool used = i < markCount;
+            _gaugeMarks[i].gameObject.SetActive(used);
+            if (!used) continue;
+
+            var rect = (RectTransform)_gaugeMarks[i].transform;
+            rect.anchorMin = new Vector2(marks[i], rect.anchorMin.y);
+            rect.anchorMax = new Vector2(marks[i], rect.anchorMax.y);
+            rect.anchoredPosition = new Vector2(0f, rect.anchoredPosition.y);
+        }
+        SetGaugeFill(0f, marks, markCount);
+
+        // 伸び始めに合図を出すため、待ちと伸びを分ける
+        _gaugeWaitHandle = LMotion.Create(0f, 1f, start)
+            .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+            .WithOnComplete(() =>
+            {
+                _onGaugeStarted.OnNext(Unit.Default);
+                _gaugeHandle = LMotion.Create(0f, Mathf.Clamp01(ratio), GaugeDuration)
+                    .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+                    .WithEase(Ease.OutCubic)
+                    .Bind(fill => SetGaugeFill(fill, marks, markCount));
+            })
+            .Bind(_ => { });
+    }
+
+    private void SetGaugeFill(float fill, float[] marks, int markCount)
+    {
+        _gaugeFill.fillAmount = fill;
+        for (int i = 0; i < markCount; i++)
+            _gaugeMarks[i].alpha = fill >= marks[i] ? 1f : GaugeMarkDimAlpha;
+    }
+
+    private void PlayHint(float delay)
+    {
+        _hintHandle = LMotion.Create(0f, 1f, HintFadeDuration)
+            .WithDelay(delay)
+            .WithScheduler(MotionScheduler.UpdateIgnoreTimeScale)
+            .Bind(a => _hintText.alpha = a);
     }
 
     private void PlayRankStamp(float delay)
@@ -206,12 +330,31 @@ public class ResultView : ScreenView
 
     private void CancelMotions()
     {
-        if (_statHandle.IsActive()) _statHandle.Cancel();
+        CancelItems(_primaryItems);
+        CancelItems(_secondaryItems);
+        if (_gaugeWaitHandle.IsActive()) _gaugeWaitHandle.Cancel();
+        if (_gaugeHandle.IsActive()) _gaugeHandle.Cancel();
+        if (_hintHandle.IsActive()) _hintHandle.Cancel();
         if (_rankHandle.IsActive()) _rankHandle.Cancel();
         if (_shakeHandle.IsActive()) _shakeHandle.Cancel();
         if (_splashHandle.IsActive()) _splashHandle.Cancel();
         // 終了時の破棄順によっては先に消えていることがある
         if (_shakeTarget != null) _shakeTarget.anchoredPosition = Vector2.zero;
+    }
+
+    protected override void OnHidden()
+    {
+        CancelMotions();
+    }
+
+    private static void CancelItems(ResultStatItemView[] items)
+    {
+        if (items == null) return;
+        foreach (var item in items)
+        {
+            // 終了時の破棄順によっては先に消えていることがある
+            if (item != null) item.Cancel();
+        }
     }
 
     private void Update()
@@ -230,6 +373,8 @@ public class ResultView : ScreenView
         _onRetryRequested.Dispose();
         _onStageSelectRequested.Dispose();
         _onTitleRequested.Dispose();
+        _onStatRevealed.Dispose();
+        _onGaugeStarted.Dispose();
         _onRankStamped.Dispose();
     }
 }

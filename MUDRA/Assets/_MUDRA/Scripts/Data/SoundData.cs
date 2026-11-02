@@ -129,6 +129,12 @@ namespace MUDRA.Data
         [Tooltip("SE_NewRecord。自己ベスト更新")]
         public AudioResource newRecord;
 
+        [Tooltip("SE_ResultStat。リザルトの戦績が1項目数え終わるたび")]
+        public AudioResource resultStat;
+
+        [Tooltip("SE_ResultGauge。リザルトのランクの点数ゲージが伸び始める時")]
+        public AudioResource resultGauge;
+
         [Tooltip("SE_UiToggle。設定の切り替え")]
         public AudioResource uiToggle;
     }
