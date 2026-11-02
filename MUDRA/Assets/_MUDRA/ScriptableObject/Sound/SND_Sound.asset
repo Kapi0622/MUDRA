@@ -46,4 +46,6 @@ MonoBehaviour:
   uiCursor: {fileID: 6418180475301049370, guid: dda5e491f78d2874eaabeebd40e061d7, type: 2}
   rankStamp: {fileID: 8300000, guid: f8b5788c86e096e488f5baee0fadd430, type: 3}
   newRecord: {fileID: 0}
+  resultStat: {fileID: 6418180475301049370, guid: dda5e491f78d2874eaabeebd40e061d7, type: 2}
+  resultGauge: {fileID: 8300000, guid: 94f1b44c93898854f80fd2aa6f435caf, type: 3}
   uiToggle: {fileID: 8300000, guid: c82e3fd9396ff18468e03c7ef16827de, type: 3}

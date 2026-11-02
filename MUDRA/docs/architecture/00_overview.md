@@ -86,7 +86,7 @@ Assets/_MUDRA/
     │           EnemyPresenter / PausePresenter / TutorialPresenter（B6）
     │   共有:   SceneNames
     ├── View/                    … 表示専用MonoBehaviour。Modelを知らない（詳細は 02 §12）
-    │   画面:  ScreenView（基底） / TitleView / StageSelectView+StageCardView / ResultView / CalibrationView
+    │   画面:  ScreenView（基底） / TitleView / StageSelectView+StageCardView / ResultView+ResultStatItemView / CalibrationView
     │          SettingsView / TransitionView（墨のワイプ） / DisplayModeView / CameraPreviewView
     │   HUD:   HpBarView / SequenceGuideView / SpellTelopView / DamageNumberView / ComboView
     │          StatusIconView / StageTitleView / StageIntroView / BattleResultView / GuardView / ScreenFlashView
@@ -280,6 +280,14 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 **キャンバスの並び順:** カメラ映像 0 < BattleCanvas 1 < 画面 10 < ポーズ 20 < 設定 30 < 遷移 100。Calibration の間だけカメラ映像を 15 に上げて画面より手前に出す（B6）。Build Settings は `[App, InGame]`。
 
 `AppInitializer` の設定値: `_allStages` = SD_Stage01〜04 / `_tutorialStage` = SD_Tutorial / 術7種すべて。
+
+**Result（`ResultScreen`）:** 戦績は主役（`PrimaryStats`。討伐時間・受けたダメージ）と脇役（`SecondaryStats`。コンボ・弱点・ガード・発動・暴発）に分ける。
+1項目は Prefab `Prefabs/UI/ResultStatItem`（`ResultStatItemView`）で、主役は大きい版の Variant `ResultStatItem_Primary`。
+どちらも0から数え上げて出し、主役 → 脇役の順に1項目ずつ確定させる。クリア時はそのあと点数ゲージ（`ScoreGauge`）が伸び、伸びきったらランクの判子を押す。
+ゲージは `RankCalculator.Score` を 0〜`MaxScore`（140）に対する比で見せ、B/A/S の目盛り（60/80/100）は届いたものから濃くなる。
+点数は文字では出さない（項目ごとに加点・減点を並べると紛らわしいため）。敗北時はゲージと判子を隠し、同じ辺りに弱点のヒントを出す。
+間合いは `ResultView` 冒頭の定数で決め、音は合図（`OnStatRevealed` / `OnGaugeStarted` / `OnRankStamped`）で `ScreenPresenter` が鳴らす（[03 §5](03_sound.md)）。
+画面が消えたら（`ScreenView.OnHidden`）演出を止める。
 
 ### InGame.unity（バトル・加算ロード）
 

@@ -270,6 +270,8 @@ Assets/_MUDRA/ScriptableObject/Sound/SND_Sound.asset
 | `ScreenPresenter` | Title のスタート・設定 / ステージ決定 / Result の3つのボタン | `uiDecide` |
 | | ステージ選択の戻る | `uiBack` |
 | | `StageSelectView.OnCursorMoved` | `uiCursor` |
+| | `ResultView.OnStatRevealed` | `resultStat`（戦績が1項目数え終わるたび） |
+| | `ResultView.OnGaugeStarted` | `resultGauge`（クリア時のみ） |
 | | `ResultView.OnRankStamped` | `rankStamp`（自己ベストなら `newRecord` も） |
 | `SettingsPresenter` | 3つの切り替え / 閉じる | `uiToggle` / `uiBack` |
 | | 効果音のスライダー | `uiCursor`（新しい音量で確認できるよう、反映してから鳴らす） |
@@ -283,7 +285,9 @@ Assets/_MUDRA/ScriptableObject/Sound/SND_Sound.asset
 | View | 合図 | いつ |
 |---|---|---|
 | `PauseMenuView` | `OnCountdownTick` / `OnResumeCall` | 数字が出るたび / 「結印！」が出た時 |
-| `ResultView` | `OnRankStamped` | ハンコが縮みきった瞬間（`WithOnComplete`） |
+| `ResultView` | `OnStatRevealed` | 戦績の1項目（`ResultStatItemView`）が数え終わった瞬間。主役2項目 → 脇役5項目の順に7回 |
+| | `OnGaugeStarted` | 点数ゲージが伸び始めた瞬間（クリア時のみ。脇役が出きってから） |
+| | `OnRankStamped` | ハンコが縮みきった瞬間（`WithOnComplete`）。ゲージが伸びきってから |
 | `StageSelectView` | `OnCursorMoved` | キーでカーソルが別のカードへ動いた時（初期位置では出ない） |
 
 一方、時刻が `PresentationTimingData` にある演出（咆哮・前進・「結印！」）は、Presenter が `SePlayer.PlayDelayed` に同じ値を渡す。
@@ -393,7 +397,7 @@ SettingsView のスライダー（0〜10 の整数）
 | 項目 | 状態 |
 |---|---|
 | 空の欄 | `healTick` / `ketsuinVoice` / `newRecord`（鳴らないだけ） |
-| 代わりの素材 | `bossRoar` に `SE_BossDefeat`、`uiToggle` に `SE_UiDecide` |
+| 代わりの素材 | `bossRoar` に `SE_BossDefeat`、`uiToggle` に `SE_UiDecide`、`resultStat` に `ARC_UiCursor`、`resultGauge` に `SE_Transition` |
 | 長い素材 | `SE_EnemyCharge`（3.3秒）/ `SE_SignConfirm`（2.5秒）/ `SE_BossDefeat`（6.9秒）/ `SE_Advance`（10秒）など。プレイで違和感が出たら都度切る方針 |
 | 効果音の形式 | mp3 のまま（頭に短い無音が入ることがある。気になれば ogg に揃える） |
 | ジングルの長さ | 勝利 7.1秒・敗北 14.8秒。Result の曲はジングルが終わってから始まる |

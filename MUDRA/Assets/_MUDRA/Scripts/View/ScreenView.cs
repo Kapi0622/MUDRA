@@ -27,7 +27,11 @@ public abstract class ScreenView : MonoBehaviour
     public void Hide()
     {
         SetVisible(false);
+        OnHidden();
     }
+
+    /// <summary>消された時に呼ばれる。画面が消えた後も演出（とその合図の音）が進まないよう、止める場所にする</summary>
+    protected virtual void OnHidden() { }
 
     /// <summary>
     /// 表示したまま操作だけ止める。遷移演出で画面が覆われるまでの間に、

@@ -360,12 +360,14 @@ public class BattleInitializer : MonoBehaviour
     private BattleRecord CreateRecord(bool isWin)
     {
         var stats = _battleStatsModel.CreateSnapshot();
-        BattleRank? rank = isWin ? RankCalculator.Calculate(stats, _battleModel.PlayerMaxHp) : null;
+        float? score = isWin ? RankCalculator.Score(stats, _battleModel.PlayerMaxHp) : null;
+        BattleRank? rank = score.HasValue ? RankCalculator.RankFromScore(score.Value) : null;
         return new BattleRecord(
             _sectionProgressManager.CurrentStage,
             isWin,
             stats,
             rank,
+            score,
             _sectionProgressManager.CurrentSection.enemyData);
     }
 
