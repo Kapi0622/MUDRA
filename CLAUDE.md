@@ -53,7 +53,7 @@ Input ──► Model ◄── Presenter ──► View        Data(ScriptableO
 シーンは常駐の `App.unity`（カメラ・画面・遷移）と、バトル（InGame・Tutorial）のたびに加算ロードする `InGame.unity` の2つ。
 InGame は 2.5D（3D 空間に絵の板を立てる書き割り）。ステージの見た目は環境 Prefab（`StageData.environmentPrefab`）で、カメラ・敵は `BattleRig` ごとマーカー間を移動する（B6.5）。
 音は View の `SePlayer`（App と InGame に1つずつ）と `BgmPlayer`（App に常駐。バトルへは `BattleContext.Bgm`）が鳴らし、どの音かは `SoundData`（`SND_Sound`）と各 Data が持つ（B7）。
-バランスの数値は、全体の調整値（PlayerMaxHp・ガード・速度ボーナス・コンボ・連続減衰・Stun の確率）が `BalanceData`（`BD_Balance`）、敵と攻撃が `Editor/B3ContentGenerator.cs` の定義表（アセットを直接直すと再生成で上書きされる）、術が `SpellData` アセット（B8）。
+バランスの数値は、全体の調整値（PlayerMaxHp・ガード・速度ボーナス・コンボ・連続減衰・Stun の確率）が `BalanceData`（`BD_Balance`）、敵と攻撃が `Editor/B3ContentGenerator.cs` の定義表（アセットを直接直すと再生成で上書きされる）、術が `SpellData` アセット（B8）。クリアランクは時間＋被弾の2軸で、ステージごとの目標値が `StageData` の `rankTargetSeconds` / `rankTargetDamage`（B9。式は `Model/RankCalculator.cs`）。
 
 **詳細は `MUDRA/docs/architecture/00_overview.md` を読む。**
 

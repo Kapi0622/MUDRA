@@ -284,8 +284,10 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 **Result（`ResultScreen`）:** 戦績は主役（`PrimaryStats`。討伐時間・受けたダメージ）と脇役（`SecondaryStats`。コンボ・弱点・ガード・発動・暴発）に分ける。
 1項目は Prefab `Prefabs/UI/ResultStatItem`（`ResultStatItemView`）で、主役は大きい版の Variant `ResultStatItem_Primary`。
 どちらも0から数え上げて出し、主役 → 脇役の順に1項目ずつ確定させる。クリア時はそのあと点数ゲージ（`ScoreGauge`）が伸び、伸びきったらランクの判子を押す。
-ゲージは `RankCalculator.Score` を 0〜`MaxScore`（140）に対する比で見せ、B/A/S の目盛り（60/80/100）は届いたものから濃くなる。
-点数は文字では出さない（項目ごとに加点・減点を並べると紛らわしいため）。敗北時はゲージと判子を隠し、同じ辺りに弱点のヒントを出す。
+ゲージは `RankCalculator.Score` を 0〜`MaxScore`（100）に対する比で見せ、B/A/S の目盛り（50/70/90）は届いたものから濃くなる。
+点数は時間点（0〜70）と被弾点（0〜30）の合計で、脇役の項目は点数に入らない（B9）。時間は `StageData.rankTargetSeconds` 以内で満点・その2倍で0点、
+被弾は `StageData.rankTargetDamage` 以下で満点・それ＋最大HPで0点（間は直線）。目標値はステージのアセットで直接調整する（生成ツールは触らない）。
+点数は文字では出さない（Editor・開発ビルドでは Console に `[Rank]` で内訳を出す）。敗北時はゲージと判子を隠し、同じ辺りに弱点のヒントを出す。
 間合いは `ResultView` 冒頭の定数で決め、音は合図（`OnStatRevealed` / `OnGaugeStarted` / `OnRankStamped`）で `ScreenPresenter` が鳴らす（[03 §5](03_sound.md)）。
 画面が消えたら（`ScreenView.OnHidden`）演出を止める。
 
