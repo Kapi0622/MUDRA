@@ -360,10 +360,28 @@ public class BattleInitializer : MonoBehaviour
     private BattleRecord CreateRecord(bool isWin)
     {
         var stats = _battleStatsModel.CreateSnapshot();
-        float? score = isWin ? RankCalculator.Score(stats, _battleModel.PlayerMaxHp) : null;
+        var stage = _sectionProgressManager.CurrentStage;
+        float targetSeconds = stage != null ? stage.rankTargetSeconds : 0f;
+        int targetDamage = stage != null ? stage.rankTargetDamage : 0;
+
+        float? score = isWin
+            ? RankCalculator.Score(stats, _battleModel.PlayerMaxHp, targetSeconds, targetDamage)
+            : null;
         BattleRank? rank = score.HasValue ? RankCalculator.RankFromScore(score.Value) : null;
+
+    #if UNITY_EDITOR || DEVELOPMENT_BUILD
+        // 目標値の調整用。どちらの軸が足りないかを見る
+        if (isWin)
+        {
+            var (timeScore, damageScore) = RankCalculator.ScoreBreakdown(
+                stats, _battleModel.PlayerMaxHp, targetSeconds, targetDamage);
+            Debug.Log($"[Rank] {rank} {score:F1}点 = 時間 {timeScore:F1}（{stats.ElapsedSeconds:F1}秒 / 目標 {targetSeconds}秒）"
+                      + $" + 被弾 {damageScore:F1}（{stats.DamageTaken} / 目標 {targetDamage}）");
+        }
+    #endif
+
         return new BattleRecord(
-            _sectionProgressManager.CurrentStage,
+            stage,
             isWin,
             stats,
             rank,

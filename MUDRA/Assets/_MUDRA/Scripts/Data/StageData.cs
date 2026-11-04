@@ -57,6 +57,15 @@ public class StageData : ScriptableObject
              "未設定ならカードは無地、背景は共通の絵のまま")]
     public Sprite selectThumbnail;
 
+    [Header("ランク評価（B9）")]
+    [Tooltip("この時間（秒）以内にクリアすれば時間点が満点。この2倍で0点になる。\n" +
+             "移動・ボス登場の演出の時間も含む。0なら時間点は常に満点（チュートリアルなどランクを出さないステージ）")]
+    [Min(0f)] public float rankTargetSeconds;
+
+    [Tooltip("受けたダメージがこれ以下なら被弾点が満点。これに最大HPぶん上乗せすると0点になる。\n" +
+             "ガードしても0にはならないので、上手く遊んだ時に受ける量を目安にする")]
+    [Min(0)] public int rankTargetDamage;
+
     /// <summary>
     /// このステージのボス。isBossのセクションを末尾から探し、無ければ末尾の敵で代用する。
     /// StageSelectの弱点表示とステージ開始の演出で使う（B5）
