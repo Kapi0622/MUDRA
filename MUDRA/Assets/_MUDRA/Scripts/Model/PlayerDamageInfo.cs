@@ -1,3 +1,5 @@
+using MUDRA.Data;
+
 /// <summary>
 /// プレイヤーが受けたダメージの内容。BattleModel.OnPlayerDamaged で通知する。
 /// HPの値変化（PlayerHp）だけでは「何によって」「ガードできたか」が分からず、
@@ -19,11 +21,16 @@ public readonly struct PlayerDamageInfo
     /// <summary>暴発によるセルフダメージか</summary>
     public readonly bool IsMisfire;
 
-    public PlayerDamageInfo(int damage, bool wasGuarded, bool isHeavy, bool isMisfire)
+    /// <summary>敵の攻撃の属性から見た、自分の属性との関係（B8.3）。暴発は常に Neutral</summary>
+    public readonly ElementRelation Relation;
+
+    public PlayerDamageInfo(int damage, bool wasGuarded, bool isHeavy, bool isMisfire,
+        ElementRelation relation = ElementRelation.Neutral)
     {
         Damage = damage;
         WasGuarded = wasGuarded;
         IsHeavy = isHeavy;
         IsMisfire = isMisfire;
+        Relation = relation;
     }
 }

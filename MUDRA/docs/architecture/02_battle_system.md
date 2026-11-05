@@ -18,7 +18,7 @@
 | フィールド | 用途 | 使用状況 |
 |---|---|---|
 | `spellName` | 表示名。テロップに出る | ✅ |
-| `element` | `ElementType`。敵の弱点との相性計算 | ✅ |
+| `element` | `ElementType`。相性の計算（B8.3。双刃・回復術は無） | ✅ |
 | `sequence` | `HandSign[]`。**発動印は含めない** | ✅ |
 | `basePower` | 基礎威力。全Strategyの起点 | ✅ |
 | `damageType` | `DamageType`。Strategyの選択に使う | ✅ |
@@ -37,7 +37,7 @@
 flowchart LR
     SD["StageData<br/>sections : StageSection 配列<br/>先頭から順に進行"]
     SS["StageSection（struct）<br/>enemyData / isBoss"]
-    ED["EnemyData（雑魚・ボス共通）<br/>maxHp<br/>weakElement<br/>weakMultiplier"]
+    ED["EnemyData（雑魚・ボス共通）<br/>maxHp<br/>element（敵自身の属性。B8.3）<br/>stunChanceMultiplier"]
     AP["actionPattern : EnemyAction 配列<br/>順に実行し末尾で先頭へ戻る"]
     EA["EnemyAction（struct）<br/>isHeavy … 大技フラグ。ガード軽減率が変わる<br/>intervalAfter … この行動後の待機秒数"]
     AD["EnemyAttackData（攻撃テンプレート）<br/>複数の敵で使い回せる<br/>attackName / damage / chargeTime<br/>effectPrefab / attackSE"]
@@ -54,7 +54,8 @@ flowchart LR
 
 | enum | 値 |
 |---|---|
-| `ElementType` | Wind, Earth, Thunder, Water, Fire, Light |
+| `ElementType` | Wind=0, Earth=1, Thunder=2, Water=3, Fire=4, Light=5, Dark=6, None=7（全て明示値。追加は末尾に。Dark・NoneはB8.3） |
+| `ElementRelation` | Neutral=0, Advantage=1, Disadvantage=2（攻撃側から見た関係。B8.3） |
 | `AttackRangeType` | Single, Area |
 | `StatusEffectType` | None, Slow, Stun, DamageOverTime（**Slow は実装クラス無し**） |
 | `DamageType` | SingleHit, MultiHit, DamageOverTime |
@@ -135,7 +136,8 @@ Observable<EnemyData>          OnEnemyChanged      // SetEnemy で敵が差し�
 // --- 演出用の出来事通知（B4）。HPを書き換えた直後・CheckBattleEndの前に発火（トドメでも演出が出る） ---
 Observable<DamageResult>       OnSpellHit          // 術の命中（回復術も流れる。TotalDamage=0）
 Observable<int>                OnDotTick           // DoTのtickダメージ
-Observable<PlayerDamageInfo>   OnPlayerDamaged     // 被弾（敵の攻撃・暴発）。量・ガード有無・大技か・暴発か。無敵中は流れない
+Observable<PlayerDamageInfo>   OnPlayerDamaged     // 被弾（敵の攻撃・暴発）。量・ガード有無・大技か・暴発か・相性（B8.3）。無敵中は流れない
+ReadOnlyReactiveProperty<ElementType?> PlayerElement // 自分の属性 = 直前に撃った攻撃術の属性（B8で連続減衰用に導入、B8.3で相性にも使う）。null = まだ撃っていない（相性では無）
 Observable<int>                OnHealed            // 実回復量（満タンで0なら流れない）
 int PlayerMaxHp                                    // 不変（生成時に BalanceData.playerMaxHp から確定）
 int BossMaxHp                                      // SetEnemy で変わる
@@ -143,7 +145,7 @@ int BossMaxHp                                      // SetEnemy で変わる
 
 ### 敵の差し替え
 
-`SetEnemy(enemyData)` は `SectionProgressManager` から呼ばれ、敵データ・BossHp・BossMaxHp を差し替えて `_isBattleActive` を true に戻す。連続減衰の記憶（直前の属性）と Stun の連続成功回数もここで消す。**プレイヤーHPとコンボには触らない**（セクション間の引き継ぎ）。`BattleModel` 自身はセクションの概念を持たない。
+`SetEnemy(enemyData)` は `SectionProgressManager` から呼ばれ、敵データ・BossHp・BossMaxHp を差し替えて `_isBattleActive` を true に戻す。自分の属性（`PlayerElement`。連続減衰と被ダメージの相性が見る）と Stun の連続成功回数もここで消す。**プレイヤーHPとコンボには触らない**（セクション間の引き継ぎ）。`BattleModel` 自身はセクションの概念を持たない。
 
 ### ダメージ・回復の5経路
 
@@ -151,7 +153,7 @@ int BossMaxHp                                      // SetEnemy で変わる
 |---|---|---|
 | `ApplySpellDamage(result)` | `BattlePresenter`（`OnSpellCast` 購読） | 成功: Strategyで計算 → ボスHP減 → コンボ++ → Stunの確率判定 → `OnSpellHit` → 副次効果付与 ／ 暴発: `ApplyMisfireDamage` へ |
 | `ApplyDotDamage(damage)` | `DotEffect` から `Action` 経由で毎秒 | ボスHPのみ減らす。**コンボ・速度倍率は乗せない**（初撃のみ適用の方針） |
-| `ApplyEnemyDamage(action, isGuarding)` | `BattlePresenter`（`OnAttackExecuted` 購読） | ガード中なら軽減率を掛けてプレイヤーHP減 |
+| `ApplyEnemyDamage(action, isGuarding)` | `BattlePresenter`（`OnAttackExecuted` 購読） | `攻撃のダメージ × 相性（敵の属性 → 自分の属性） × ガード軽減` だけプレイヤーHP減（相性はB8.3） |
 | `ApplyMisfireDamage()`（private） | 上記から | **MaxHPの5%**（`misfireDamageRate`）のセルフダメージ + コンボリセット |
 | `ApplyHeal(amount)` | `HotEffect` から `Action` 経由で毎秒 | プレイヤーHPを MaxHP 上限で回復。勝敗に関与しないので `CheckBattleEnd` は呼ばない |
 
@@ -171,6 +173,8 @@ B8 までは各 Model の `const` と `BattleInitializer._playerMaxHp` に散っ
 | `comboBonusPerCount` | 0.03 | `BattleModel` | 1コンボあたりの倍率の増分 |
 | `comboBonusCap` | 10 | `BattleModel` | 倍率に乗せるコンボ数の上限（10コンボで×1.3） |
 | `repeatElementMultiplier` | 0.6 | `BattleModel` | 直前と同じ属性の攻撃術に掛ける倍率（連続減衰） |
+| `advantageMultiplier` | 1.5 | `BattleModel`（`AffinityMultiplier`） | 有利の倍率。術→敵・敵の攻撃→自分の両方（B8.3） |
+| `disadvantageMultiplier` | 0.75 | `BattleModel`（`AffinityMultiplier`） | 不利（受ける側が強い・同じ属性）の倍率（B8.3） |
 | `stunBaseChance` | 0.6 | `BattleModel` | Stun が入る基本の確率 |
 | `stunChanceDecay` | 0.5 | `BattleModel` | 同じ敵に Stun が入るたびに確率へ掛ける値 |
 
@@ -218,9 +222,11 @@ battleModel.SetStatusEffectDependencies(statusEffectManager, factory);
 ```csharp
 public interface IDamageCalculator
 {
-    DamageResult Calculate(SpellData spellData, EnemyData enemyData, DamageBonus bonus);
+    DamageResult Calculate(SpellData spellData, float affinity, DamageBonus bonus);
 }
 ```
+
+Strategy は**受ける側（敵）を知らない**（B8.3）。相性倍率は `BattleModel` が `ElementAffinity.GetRelation(術の属性, 敵の属性)` → `BalanceData.AffinityMultiplier(関係)` で出して渡し、関係は結果の `Relation` に後から埋める。対戦で受ける側がプレイヤーになっても同じ Strategy を使える。
 
 `DamageBonus`（readonly struct）は速度・コンボ・連続減衰の3つの倍率を束ねたもので、`Total` がその積。`BattleModel` が作って渡す。
 
@@ -228,7 +234,7 @@ public interface IDamageCalculator
 
 | 倍率 | 式 |
 |---|---|
-| 弱点 | `spellData.element == enemyData.weakElement` なら `weakMultiplier`（全敵 1.5）、でなければ 1.0 |
+| 相性 `affinity` | 有利 1.5 / 等倍 1.0 / 不利 0.75（B8.3。関係は `ElementAffinity`、倍率は `BalanceData`。下の「相性」） |
 | 速度ボーナス `bonus.Speed` | 1.3 または 1.0（`SpellSequenceModel` が算出済み） |
 | コンボ `bonus.Combo` | `1.0 + comboBonusPerCount × min(comboCount, comboBonusCap)`（初期値で最大 ×1.3） |
 | 連続減衰 `bonus.Repeat` | 直前の攻撃術と同じ属性なら `repeatElementMultiplier`（0.6）、でなければ 1.0。回復術は対象外で、記憶も更新しない |
@@ -237,13 +243,24 @@ public interface IDamageCalculator
 
 | Strategy | 式 |
 |---|---|
-| `SingleHitCalculator` | `basePower × 弱点 × bonus.Total` |
-| `MultiHitCalculator` | 1ヒット = `basePower ÷ hitCount × 弱点 × bonus.Total`、合計 = 1ヒット × `hitCount` |
-| `DamageOverTimeCalculator` | 初撃 = `basePower × 0.3 × 弱点 × bonus.Total`<br>tick1回 = `basePower × 0.7 ÷ tick数 × 弱点`（tick数 = `statusEffectDuration ÷ 1.0秒`） |
+| `SingleHitCalculator` | `basePower × 相性 × bonus.Total` |
+| `MultiHitCalculator` | 1ヒット = `basePower ÷ hitCount × 相性 × bonus.Total`、合計 = 1ヒット × `hitCount` |
+| `DamageOverTimeCalculator` | 初撃 = `basePower × 0.3 × 相性 × bonus.Total`<br>tick1回 = `basePower × 0.7 ÷ tick数 × 相性`（tick数 = `statusEffectDuration ÷ 1.0秒`） |
 
 > **MultiHitの端数について:** 1ヒットをintに丸めてから掛けるため、同じ `basePower` の SingleHit より合計が微妙に低くなる。**仕様として許容**するとコード中に明記されている。
 
-`DamageResult` は public field を持つ mutable struct。`TotalDamage` / `PerHitDamage` / `HitCount` / `IsWeakness` / `HasSpeedBonus` / `IsRepeated` / `AppliedEffect` / `EffectDuration` / `PerTickDamage` / `TickCount` / `PerTickHeal` / `StunResisted`（B8。`BattleModel` が埋める）。`PerHitDamage` と `HitCount` は `DamageNumberView` の MultiHit 時間差表示で使う（B4）。
+`DamageResult` は public field を持つ mutable struct。`TotalDamage` / `PerHitDamage` / `HitCount` / `HasSpeedBonus` / `IsRepeated` / `AppliedEffect` / `EffectDuration` / `PerTickDamage` / `TickCount` / `PerTickHeal` / `StunResisted`（B8。`BattleModel` が埋める）/ `Relation`（B8.3。`BattleModel` が埋める）。`IsWeakness`（= 有利）と `IsDisadvantage`（= 不利）は `Relation` から読むプロパティで、チュートリアル・効果音・戦績・ダメージ数字が見る。`PerHitDamage` と `HitCount` は `DamageNumberView` の MultiHit 時間差表示で使う（B4）。
+
+### 相性（B8.3）
+
+`Model/ElementAffinity.cs`（static class）が「攻撃側 × 受ける側」の関係を決める**唯一の場所**。各所で属性を直接比べない。
+
+- 循環 水 → 火 → 風 → 土 → 雷 → 水（矢印の先に強い）と 光 ⇄ 闇（互いに弱点）
+- 攻撃側が強い → 有利 ／ 受ける側が強い・同じ属性 → 不利 ／ 他 → 等倍 ／ どちらかが無 → 等倍
+- `GetRelation(attacker, defender)` と `GetWeakness(defender)`（その属性に強い属性。無は null → 表示「？」）
+- マス目の表（ScriptableObject）にしていない。規則で全マスが決まり、表にすると規則外のマスを作れてしまうため
+- 全マスは `Editor/Tests/ElementAffinityTests.cs`（EditMode。Test Runner で実行）で確かめる。期待値は規則から計算せず手で書いた表
+- 使う場所: `BattleModel`（術・敵の攻撃）、HPバーの名前欄（`BattlePresenter`）、StageSelect・開始演出・図鑑・敗北ヒント・チュートリアル（弱点の導出）
 
 ---
 
@@ -376,10 +393,11 @@ private void HandleSignConfirmed(HandSign sign)
 | 購読するストリーム | 呼ぶもの |
 |---|---|
 | `BattleModel.PlayerHp` / `BossHp`（`.Skip(1)`） | `HpBarView.SetHp(hp, maxHp)` ※初期表示は `InitializeHp` で別途 |
-| `BattleModel.OnEnemyChanged` | ボスHPバーを `InitializeHp` で新しい敵の MaxHp に合わせ直す |
+| `BattleModel.OnEnemyChanged` | ボスHPバーを `InitializeHp` で新しい敵の MaxHp に合わせ直し、名前欄に敵の名前、属性欄（バーの上の左端）に「属性　土」（B8.3。属性は色付き。名前を中央に保つため欄を分け、弱点は右上の相性図に任せて出さない） |
+| `BattleModel.PlayerElement` | 自分のHPバーの名前欄に「自分の属性　〇」（B8.3。null は無） |
 | `BattleModel.ComboCount` | `ComboView.SetCombo` |
 | `BattleModel.OnSpellHit`（`TotalDamage > 0` のみ）/ `OnDotTick` / `OnHealed` | `DamageNumberView` |
-| `BattleModel.OnPlayerDamaged` | 数字 ＋ 暴発 / ガード成功 / 被弾（大技か）でフラッシュ・揺れ・「防」を出し分け |
+| `BattleModel.OnPlayerDamaged` | 数字（相性で「弱点！」「耐性」のラベル。B8.3）＋ 暴発 / ガード成功 / 被弾（大技か）でフラッシュ・揺れ・「防」を出し分け |
 | `GuardWindowManager.IsGuarding` | `GuardView.SetStance`（構え枠） |
 | `StatusEffectManager.OnEffectApplied` / `OnEffectRemoved` | `StatusIconView.SetEffectActive` |
 | `EnemyStateManager.OnAttackExecuted` | `BattleModel.ApplyEnemyDamage(action, guardWindow.IsGuarding)` ＋ 敵の攻撃エフェクト |

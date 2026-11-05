@@ -36,7 +36,6 @@ public static class B3ContentGenerator
     // 表を読みやすくするための別名
     private const bool Heavy = true;
     private const bool Normal = false;
-    private const float DefaultWeak = 1.5f;
 
     // ============================================================
     // 定義表
@@ -98,47 +97,47 @@ public static class B3ContentGenerator
     private static readonly EnemyDef[] Enemies =
     {
         // --- ステージ1「封土の里」 ---
-        new("MudBlob",         "泥ころ",   250, ElementType.Wind,    DefaultWeak,
+        new("MudBlob",         "泥ころ",   250, ElementType.Earth,
             "MudSplash(3.0)"),
-        new("WitheredKodama",  "枯れ木霊", 250, ElementType.Fire,    DefaultWeak,
+        new("WitheredKodama",  "枯れ木霊", 250, ElementType.Wind,
             "BranchWhip(2.5) > BranchWhip(2.5) > RootBind(4.0)"),
-        new("MudGolem",        "泥人形",  1400, ElementType.Wind,    DefaultWeak,
+        new("MudGolem",        "泥人形",  1400, ElementType.Earth,
             "MudThrow(3.0)x3 > Tremor(5.0)"),
 
         // --- ステージ2「水底の社」 ---
-        new("Kappa",           "河童",     350, ElementType.Thunder, DefaultWeak,
+        new("Kappa",           "河童",     350, ElementType.Water,
             "WaterGun(0.8) > WaterGun(0.8) > WaterGun(4.0)"),
-        new("StoneMudBlob",    "岩泥ころ", 400, ElementType.Wind,    DefaultWeak,
+        new("StoneMudBlob",    "岩泥ころ", 400, ElementType.Earth,
             "MudSplash(2.5)"),
-        new("CrabMonk",        "蟹坊主",   480, ElementType.Earth,   DefaultWeak,
+        new("CrabMonk",        "蟹坊主",   480, ElementType.Earth,
             "ClawPinch(3.0) > ShellCrush(5.0)"),
-        new("WaterSerpent",    "水蛇",    1550, ElementType.Thunder, DefaultWeak,
+        new("WaterSerpent",    "水蛇",    1550, ElementType.Water,
             "WaterBullet(1.5)x3 > Whirlpool(3.5) > WaterBullet(1.5)x2 > Tsunami(6.0)"),
 
         // --- ステージ3「焔の廃寺」 ---
-        new("WillOWisp",       "鬼火",     450, ElementType.Water,   DefaultWeak,
+        new("WillOWisp",       "鬼火",     450, ElementType.Fire,
             "Ember(2.5)"),
-        new("BurningKodama",   "燃え木霊", 550, ElementType.Water,   DefaultWeak,
+        new("BurningKodama",   "燃え木霊", 550, ElementType.Fire,
             "BranchWhip(2.5) > BranchWhip(2.5) > RootBind(4.0)"),
-        new("Kasha",           "火車",     600, ElementType.Earth,   DefaultWeak,
+        new("Kasha",           "火車",     600, ElementType.Thunder,
             "RunOver(3.0) > BlazeWheelRush(5.0)"),
-        new("FlameDemon",      "炎魔",    1800, ElementType.Water,   DefaultWeak,
+        new("FlameDemon",      "炎魔",    1800, ElementType.Fire,
             "InfernoFist(2.0)x2 > ScorchWave(3.0) > InfernoFist(2.0) > FlameBurst(8.0)"),
 
         // --- ステージ4「影の深淵」 ---
-        new("Shade",           "影法師",   550, ElementType.Light,   DefaultWeak,
+        new("Shade",           "影法師",   550, ElementType.Dark,
             "ShadowStab(1.5) > ShadowStab(4.0) > ShadowStitch(4.0)"),
-        new("ShadowWillOWisp", "影鬼火",   500, ElementType.Light,   DefaultWeak,
+        new("ShadowWillOWisp", "影鬼火",   500, ElementType.Dark,
             "Ember(2.0)"),
-        new("Nue",             "鵺",       650, ElementType.Fire,    DefaultWeak,
+        new("Nue",             "鵺",       650, ElementType.Wind,
             "WaterBullet(2.0) > BranchWhip(2.0) > Ember(2.0) > ThunderRoar(5.0)"),
-        new("ShadowDragon",    "影龍",    2250, ElementType.Light,   DefaultWeak,
+        new("ShadowDragon",    "影龍",    2250, ElementType.Dark,
             "ShadowClaw(2.0)x2 > BlackLightning(3.0) > ShadowClaw(1.5) > ShadowStitch(3.0) > NetherPrison(8.0)"),
 
         // --- チュートリアル（B6） ---
-        // 倒しきる前に全段階を終えられるようHPを高くし、弱点は属性の段階で教える風にする（B6.5で泥ころの見た目に変更）。
+        // 倒しきる前に全段階を終えられるようHPを高くし、弱点は属性の段階で教える風にする（B6.5で泥ころの見た目に変更。B8.3で属性は泥ころと同じ土）。
         // 攻撃は予告を長く・間隔を広く・ダメージを小さくして、ガードの練習を何度でもできるようにする
-        new("TrainingDummy",   "泥ころ",  3000, ElementType.Wind,    DefaultWeak,
+        new("TrainingDummy",   "泥ころ",  3000, ElementType.Earth,
             "DummyStrike(4.0)"),
     };
 
@@ -348,8 +347,7 @@ public static class B3ContentGenerator
 
             asset.enemyName = def.EnemyName;
             asset.maxHp = def.MaxHp;
-            asset.weakElement = def.WeakElement;
-            asset.weakMultiplier = def.WeakMultiplier;
+            asset.element = def.Element;
             // sprite には触らない（泥人形には既にスプライトが設定されている）
 
             asset.actionPattern = patterns[def.Key]
@@ -539,17 +537,15 @@ public static class B3ContentGenerator
         public readonly string Key;
         public readonly string EnemyName;
         public readonly int MaxHp;
-        public readonly ElementType WeakElement;
-        public readonly float WeakMultiplier;
+        public readonly ElementType Element;
         public readonly string Pattern;
 
-        public EnemyDef(string key, string enemyName, int maxHp, ElementType weakElement, float weakMultiplier, string pattern)
+        public EnemyDef(string key, string enemyName, int maxHp, ElementType element, string pattern)
         {
             Key = key;
             EnemyName = enemyName;
             MaxHp = maxHp;
-            WeakElement = weakElement;
-            WeakMultiplier = weakMultiplier;
+            Element = element;
             Pattern = pattern;
         }
     }

@@ -1,16 +1,30 @@
 namespace MUDRA.Data
 {
     /// <summary>
-    /// 属性 ボスの弱点属性との相性計算に使用する
+    /// 属性。術・敵・（将来の対戦では）プレイヤーが持ち、相性は ElementAffinity が決める（B8.3）。
+    /// 値はSpellData・EnemyDataにシリアライズ済みなので、全て明示し、追加は必ず末尾にする
+    /// （HandSignで起きた、値の挿入によるずれの予防）。
     /// </summary>
     public enum ElementType
     {
-        Wind,
-        Earth,
-        Thunder,
-        Water,
-        Fire,
-        Light,
+        Wind    = 0, // 風（木を含む）
+        Earth   = 1, // 土
+        Thunder = 2, // 雷
+        Water   = 3, // 水
+        Fire    = 4, // 火
+        Light   = 5, // 光
+        Dark    = 6, // 闇（今は敵だけ）
+        None    = 7, // 無（相性の影響を受けない）
+    }
+
+    /// <summary>
+    /// 攻撃側から見た、受ける側の属性との関係（B8.3）。倍率そのものはBalanceDataが持つ。
+    /// </summary>
+    public enum ElementRelation
+    {
+        Neutral      = 0, // 等倍
+        Advantage    = 1, // 有利（受ける側の弱点）
+        Disadvantage = 2, // 不利（受ける側が強い、または同じ属性）
     }
 
     /// <summary>

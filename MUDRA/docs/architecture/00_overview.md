@@ -15,7 +15,7 @@
 
 | ドキュメント | 役割 | 時制 |
 |---|---|---|
-| `specification_MUDRA.md`（v1.9） | **設計の正典。** 仕様駆動開発の基準であり、これから作るものも含む | 未来を含む |
+| `specification_MUDRA.md`（v2.1） | **設計の正典。** 仕様駆動開発の基準であり、これから作るものも含む | 未来を含む |
 | `devlog/dev_log_*.md` | 各マイルストーン完了時点の実装記録と設計判断の理由 | 当時の過去 |
 | **本書（`architecture/`）** | **いま動いているコードの断面図。** どこに何があるかを思い出すための地図 | 現在 |
 
@@ -312,17 +312,17 @@ Tick/Update で回るものと、UniTaskタイマーで動くものが明確に�
 
 ### 術アセット（`ScriptableObject/Player/`）
 
-B8 時点の値。ダメージの早見表（弱点時・確定数・敵の被ダメージ）は `docs/balance_sheet.md`。
+B8.3 時点の値。ダメージの早見表（相性ごとのダメージ・確定数・自分の被ダメージ）は `docs/balance_sheet.md`。
 
 | アセット | 術名 | シーケンス | 属性 | 威力 | 計算方式 | 副次効果 |
 |---|---|---|---|---|---|---|
 | WindBlade | 風刃 | 合 | Wind | 60 | SingleHit | — |
-| CrossBlade | 双刃 | 双（両手チョキ） | Earth | 60 | SingleHit | — |
+| CrossBlade | 双刃 | 双（両手チョキ） | None（B8.3） | 60 | SingleHit | — |
 | WaterCrow | 水爪 | 刃 → 握 | Water | 100 | SingleHit | — |
 | Halo | 光輪 | 握 → 開 | Light | 100 | SingleHit | — |
 | Lightning | 雷連撃 | 指 → 刃 | Thunder | 85 | MultiHit ×5 | Stun 1.5秒（確率。B8） |
 | Fireball | 火炎弾 | 掌 → 握 | Fire | 110 | DoT | DamageOverTime 3秒 |
-| Heal | 回復術 | 開 → 掌 | Earth | 0 | SingleHit | HealOverTime 5秒（healPower 50） |
+| Heal | 回復術 | 開 → 掌 | None（B8.3） | 0 | SingleHit | HealOverTime 5秒（healPower 50） |
 | IceWind | 氷風 | 開 → 指 → 握 | Wind | 140 | SingleHit | — |
 | RockShatter | 岩砕 | 握 → 掌 → 刃 | Earth | 140 | SingleHit | — |
 | PurifyingLight | 破魔光 | 握 → 開 → 掌 | Light | 140 | SingleHit | — |
@@ -330,16 +330,18 @@ B8 時点の値。ダメージの早見表（弱点時・確定数・敵の被�
 
 ### 敵・攻撃・ステージアセット
 
-4ステージ / 敵15種（雑魚ユニーク8 + 派生3 + ボス4）/ 攻撃23種。加えてチュートリアル用に SD_Tutorial / ED_TrainingDummy（木人）/ EA_DummyStrike（B6）。ファイル名は `EA_` / `ED_` / `SD_` プレフィックス + 英語（仕様書 §3-2 の命名規則）。
-数値の正は `Editor/B3ContentGenerator.cs` の定義表（B8 時点の早見表は `docs/balance_sheet.md`）。各敵の設計意図は `docs/B3_enemy_stage_content.md`（数値は B3 当時のもの）。**値の変更は `Editor/B3ContentGenerator.cs` の定義表を直して再実行する**（アセットを直接いじると次回の再実行で上書きされる）。
+4ステージ / 敵15種（雑魚ユニーク8 + 派生3 + ボス4）/ 攻撃23種。加えてチュートリアル用に SD_Tutorial / ED_TrainingDummy（表示名「泥ころ」。B6 では木人だったが B6.5 で泥ころの見た目に変更）/ EA_DummyStrike（B6）。ファイル名は `EA_` / `ED_` / `SD_` プレフィックス + 英語（仕様書 §3-2 の命名規則）。
+数値の正は `Editor/B3ContentGenerator.cs` の定義表（B8.3 時点の早見表は `docs/balance_sheet.md`）。各敵の設計意図は `docs/B3_enemy_stage_content.md`（数値は B3 当時のもの）。**値の変更は `Editor/B3ContentGenerator.cs` の定義表を直して再実行する**（アセットを直接いじると次回の再実行で上書きされる）。
 
 | ステージ | セクション（最後がボス） |
 |---|---|
-| SD_Stage01_SealedVillage 封土の里 | 泥ころ → 枯れ木霊 → **泥人形** |
-| SD_Stage02_SunkenShrine 水底の社 | 河童 → 岩泥ころ → 蟹坊主 → **水蛇** |
-| SD_Stage03_BurningTemple 焔の廃寺 | 鬼火 → 燃え木霊 → 火車 → **炎魔** |
-| SD_Stage04_ShadowAbyss 影の深淵 | 影法師 → 影鬼火 → 鵺 → **影龍** |
-| SD_Tutorial 修練場（stageNumber 0。`_allStages` には入れない） | **木人**（HP 3000・弱点 火・攻撃は木人打ちのみ） |
+| SD_Stage01_SealedVillage 封土の里 | 泥ころ(土) → 枯れ木霊(風) → **泥人形(土)** |
+| SD_Stage02_SunkenShrine 水底の社 | 河童(水) → 岩泥ころ(土) → 蟹坊主(土) → **水蛇(水)** |
+| SD_Stage03_BurningTemple 焔の廃寺 | 鬼火(火) → 燃え木霊(火) → 火車(雷) → **炎魔(火)** |
+| SD_Stage04_ShadowAbyss 影の深淵 | 影法師(闇) → 影鬼火(闇) → 鵺(風) → **影龍(闇)** |
+| SD_Tutorial 修練場（stageNumber 0。`_allStages` には入れない） | **泥ころ**（ED_TrainingDummy。HP 3000・属性 土（弱点 風）・攻撃は木人打ちのみ） |
+
+（ ）は敵の属性（B8.3）。弱点は属性から相性の規則で決まる（[02 §相性](02_battle_system.md)）。
 
 `isHeavy` は攻撃ごとに固定（同じ攻撃はどの敵が使っても大技か否かが変わらない）。生成スクリプトが攻撃テーブルから自動で設定する。
 
