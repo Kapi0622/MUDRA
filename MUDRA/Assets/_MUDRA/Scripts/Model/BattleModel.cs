@@ -28,16 +28,19 @@ public class BattleModel : IDisposable
     private readonly ReactiveProperty<int> _comboCount = new(0);
     public ReadOnlyReactiveProperty<int> ComboCount => _comboCount;
 
-    // --- 連続減衰（B8） ---
+    // --- 自分の属性（B8で連続減衰用に導入、B8.3で相性にも使うよう拡張） ---
     // 直前に撃った「ダメージのある術」の属性。null = まだ撃っていない（敵が替わった直後を含む）
-    private readonly ReactiveProperty<ElementType?> _lastAttackElement = new(null);
+    private readonly ReactiveProperty<ElementType?> _playerElement = new(null);
     /// <summary>
-    /// 直前に撃った攻撃術の属性。次に同じ属性の術を撃つと威力が下がる。
-    /// 詠唱中の術ガイドで「どの候補が減衰するか」を示すために公開している。
-    /// 1つの術・1つの弱点属性の連打が最適解にならないようにするための仕組みで、
-    /// 「同じ術」ではなく「同じ属性」で見るのは、同じ属性の術どうしの交互撃ちも抑えるため。
+    /// 自分の属性 = 直前に撃った攻撃術の属性。2つの計算がこの1つの値を見る。
+    /// - 連続減衰: 次に同じ属性の術を撃つと威力が下がる（1つの属性の連打を最適解にしないため。
+    ///   「同じ術」ではなく「同じ属性」で見るのは、同じ属性の術どうしの交互撃ちも抑えるため）
+    /// - 被ダメージの相性: 敵の攻撃（敵の属性）とこの属性の相性で、受けるダメージが変わる
+    /// オンライン対戦の「最後に使った技の属性に変わる」と同じ規則にしてある。
+    /// null（まだ撃っていない）は、相性の上では無属性として扱う。
+    /// 詠唱中の術ガイドとHPバーの表示のために公開している。
     /// </summary>
-    public ReadOnlyReactiveProperty<ElementType?> LastAttackElement => _lastAttackElement;
+    public ReadOnlyReactiveProperty<ElementType?> PlayerElement => _playerElement;
 
     // --- Stunの確率（B8） ---
     // 0〜1の乱数。テストで固定できるよう外から渡す
@@ -126,7 +129,7 @@ public class BattleModel : IDisposable
     /// 交戦相手を差し替える。セクション遷移時にSectionProgressManagerから呼ぶ。
     /// 敵側の状態（HP・最大HP）のみをリセットし、
     /// プレイヤーHPとコンボは意図的に据え置く（セクション間の引き継ぎ要素）。
-    /// 連続減衰の記憶とStunの連続成功回数は消す（新しい敵には何を撃っても減衰しない・Stunは基本の確率に戻る）。
+    /// 自分の属性とStunの連続成功回数は消す（新しい敵には何を撃っても減衰せず、自分は無属性に戻る・Stunは基本の確率に戻る）。
     /// 決着済みで落ちている_isBattleActiveもここでtrueに戻す。
     /// </summary>
     public void SetEnemy(EnemyData enemyData)
@@ -135,7 +138,7 @@ public class BattleModel : IDisposable
         BossMaxHp = enemyData.maxHp;
         _bossHp.Value = enemyData.maxHp;
         _isBattleActive.Value = true;
-        _lastAttackElement.Value = null;
+        _playerElement.Value = null;
         _stunStreak = 0;
 
         _onEnemyChanged.OnNext(enemyData);
@@ -179,7 +182,8 @@ public class BattleModel : IDisposable
         // 回復術（威力0）は連続減衰の対象外で、記憶も更新しない。
         // 更新すると「攻撃→回復→同じ攻撃」で減衰を消せてしまうため
         bool isAttack = spell.basePower > 0f;
-        bool isRepeated = isAttack && _lastAttackElement.Value == spell.element;
+        bool isRepeated = isAttack && _playerElement.Value == spell.element;
+        var relation = ElementAffinity.GetRelation(spell.element, _enemyData.element);
 
         var bonus = new DamageBonus(
             result.SpeedBonus,
@@ -187,12 +191,13 @@ public class BattleModel : IDisposable
             isRepeated ? _balance.repeatElementMultiplier : 1.0f);
 
         var calculator = ResolveCalculator(spell.damageType);
-        var damageResult = calculator.Calculate(spell, _enemyData, bonus);
+        var damageResult = calculator.Calculate(spell, _balance.AffinityMultiplier(relation), bonus);
+        damageResult.Relation = relation;
 
         _bossHp.Value = Math.Max(0, _bossHp.Value - damageResult.TotalDamage);
         _comboCount.Value++;
         if (isAttack)
-            _lastAttackElement.Value = spell.element;
+            _playerElement.Value = spell.element;
 
         // Stunは確率で判定する。OnSpellHitより前に決め、失敗を数字のラベルで見せる
         if (damageResult.AppliedEffect == StatusEffectType.Stun && ShouldRollStun() && !RollStun())
@@ -207,7 +212,7 @@ public class BattleModel : IDisposable
         if (_statusEffectFactory != null && _statusEffectManager != null)
         {
             // 回復量だけはStrategyで算出しない。
-            // 弱点属性・速度ボーナス・コンボはいずれも「敵に与えるダメージ」の倍率であり、
+            // 相性・速度ボーナス・コンボはいずれも「敵に与えるダメージ」の倍率であり、
             // 自分の回復量に乗せる筋合いがないため、SpellDataの値をそのまま分割する。
             if (result.Spell.statusEffect == StatusEffectType.HealOverTime)
                 damageResult.PerTickHeal = CalculatePerTickHeal(result.Spell);
@@ -236,6 +241,8 @@ public class BattleModel : IDisposable
 
     /// <summary>
     /// ボスの攻撃ダメージをプレイヤーに適用する。
+    /// ダメージ = 攻撃の値 × 相性倍率（敵の属性 → 自分の属性） × ガード軽減（B8.3で相性を追加）。
+    /// 攻撃ごとの属性は持たず、敵自身の属性で撃つ（覚えることを「敵の属性」1つに絞るため）。
     /// </summary>
     public void ApplyEnemyDamage(EnemyAction action, bool isGuarding)
     {
@@ -245,16 +252,15 @@ public class BattleModel : IDisposable
         if (IsInvincible) return;
     #endif
 
-        int baseDamage = action.attackData.damage;
+        var relation = ElementAffinity.GetRelation(_enemyData.element, _playerElement.Value ?? ElementType.None);
+        float damage = action.attackData.damage * _balance.AffinityMultiplier(relation);
 
         if (isGuarding)
-        {
-            float guardRate = action.isHeavy ? _balance.heavyGuardRate : _balance.normalGuardRate;
-            baseDamage = (int)(baseDamage * guardRate);
-        }
+            damage *= action.isHeavy ? _balance.heavyGuardRate : _balance.normalGuardRate;
 
-        _playerHp.Value = Math.Max(0, _playerHp.Value - baseDamage);
-        _onPlayerDamaged.OnNext(new PlayerDamageInfo(baseDamage, isGuarding, action.isHeavy, isMisfire: false));
+        int finalDamage = (int)damage;
+        _playerHp.Value = Math.Max(0, _playerHp.Value - finalDamage);
+        _onPlayerDamaged.OnNext(new PlayerDamageInfo(finalDamage, isGuarding, action.isHeavy, isMisfire: false, relation));
         CheckBattleEnd();
     }
 
@@ -402,6 +408,6 @@ public class BattleModel : IDisposable
         _onDotTick.Dispose();
         _onPlayerDamaged.Dispose();
         _onHealed.Dispose();
-        _lastAttackElement.Dispose();
+        _playerElement.Dispose();
     }
 }

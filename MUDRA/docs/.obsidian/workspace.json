@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "specification_MUDRA.md",
+                "file": "affinity_chart_asset_prompt.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "specification_MUDRA"
+              "title": "affinity_chart_asset_prompt"
             }
           },
           {
@@ -244,17 +244,25 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "devlog/dev_log_B8.3.md",
+    "devlog/dev_log_B8.3.md.tmp.14128.f23b0f21b22c",
+    "app_screen_asset_prompts.md",
+    "spec_change_element_affinity.md",
+    "sound_asset_list.md",
+    "proposal_MUDRA.md",
+    "hand_sign_tuning.md",
+    "codex_text.md",
+    "balance_sheet.md",
+    "B3_enemy_stage_content.md",
+    "spell_icon_prompts.md",
+    "affinity_chart_asset_prompt.md",
+    "specification_MUDRA.md",
     "sedg8xmoo",
     "devlog/dev_log_B8.2.md",
     "devlog/dev_log_B8.2.md.tmp.14128.a07dab32689d",
     "devlog/dev_log_B8.1.md",
     "devlog/dev_log_B8.1.md.tmp.14606.98f96b0d6e94",
-    "spell_icon_prompts.md",
     "sedWEj46K",
-    "app_screen_asset_prompts.md",
-    "sound_asset_list.md",
-    "codex_text.md",
-    "balance_sheet.md",
     "spell_icon_prompts.md.tmp.14606.e5978a8c7942",
     "devlog/dev_log_A1.md",
     "codex_text.md.tmp.14606.e6951c204844",
@@ -269,16 +277,8 @@
     "devlog/dev_log_B8.md.tmp.14128.09de28d65d32",
     "architecture/sedi4sWgC",
     "architecture/sed7JKkUs",
-    "architecture/02_battle_system.md.tmp.14128.69adfd5cdcc8",
-    "architecture/02_battle_system.md.tmp.14128.18b68bc5c675",
-    "specification_MUDRA.md",
-    "proposal_MUDRA.md",
-    "B3_enemy_stage_content.md",
-    "hand_sign_tuning.md",
     "devlog/dev_log_B6.md",
     "devlog/dev_log_B5.md",
-    "devlog/dev_log_B4.5.md",
-    "devlog/dev_log_B4.md",
-    "devlog/dev_log_B3.md"
+    "devlog/dev_log_B4.5.md"
   ]
 }

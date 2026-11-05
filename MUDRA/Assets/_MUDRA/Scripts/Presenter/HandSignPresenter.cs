@@ -39,8 +39,8 @@ public class HandSignPresenter : MonoBehaviour
     private PlayerStateManager _playerStateManager;
     private GuardWindowManager _guardWindowManager;
     private PauseModel _pauseModel;
-    // 連続減衰がかかる属性（BattleModel.LastAttackElement）。術ガイドの候補に印を付けるのに使う（B8）
-    private ReadOnlyReactiveProperty<ElementType?> _lastAttackElement;
+    // 自分の属性（BattleModel.PlayerElement）。同じ属性の術は連続減衰がかかるので、術ガイドの候補に印を付けるのに使う（B8）
+    private ReadOnlyReactiveProperty<ElementType?> _playerElement;
 
     private readonly CompositeDisposable _disposables = new();
     private bool _isInitialized;
@@ -69,14 +69,14 @@ public class HandSignPresenter : MonoBehaviour
         PlayerStateManager playerStateManager,
         GuardWindowManager guardWindowManager,
         PauseModel pauseModel,
-        ReadOnlyReactiveProperty<ElementType?> lastAttackElement)
+        ReadOnlyReactiveProperty<ElementType?> playerElement)
     {
         _handTrackingService = handTrackingService;
         _model = model;
         _playerStateManager = playerStateManager;
         _guardWindowManager = guardWindowManager;
         _pauseModel = pauseModel;
-        _lastAttackElement = lastAttackElement;
+        _playerElement = playerElement;
 
     #if UNITY_EDITOR || DEVELOPMENT_BUILD
         if (_debugKeyboardInput != null)
@@ -133,14 +133,14 @@ public class HandSignPresenter : MonoBehaviour
         _model.OnSignAdded
             .Subscribe(_ =>
             {
-                _sequenceGuideView.UpdateGuide(_model.MatchCandidates, _model.InputCount, _lastAttackElement.CurrentValue);
+                _sequenceGuideView.UpdateGuide(_model.MatchCandidates, _model.InputCount, _playerElement.CurrentValue);
                 _sequenceGuideView.PlayConfirmEffect();
                 _se.Play(_sound.signConfirm, SignPitch(_model.InputCount));
             })
             .AddTo(_disposables);
 
         // 詠唱中に敵が替わると減衰が解ける（DoTのtickでトドメを刺した時など）。表示中のガイドを描き直す
-        _lastAttackElement
+        _playerElement
             .Skip(1)
             .Where(_ => _model.InputCount > 0)
             .Subscribe(element => _sequenceGuideView.UpdateGuide(_model.MatchCandidates, _model.InputCount, element))

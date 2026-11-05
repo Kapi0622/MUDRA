@@ -235,13 +235,13 @@ public class ScreenPresenter : MonoBehaviour
         foreach (var stage in _gameStateManager.AllStages)
         {
             var boss = stage.FindBoss();
-            var weakElement = boss != null ? boss.weakElement : default;
+            var weakness = boss != null ? ElementAffinity.GetWeakness(boss.element) : null;
             cards.Add(new StageCardData(
                 stage.stageNumber,
                 stage.stageName,
                 boss != null ? boss.enemyName : "？",
-                boss != null ? ElementNames.Get(weakElement) : "？",
-                _palette != null ? _palette.ElementColor(weakElement) : Color.white,
+                ElementNames.Get(weakness),
+                _palette != null ? _palette.ElementColor(weakness) : Color.white,
                 BuildRecordText(stage),
                 stage.selectThumbnail));
         }
@@ -300,19 +300,20 @@ public class ScreenPresenter : MonoBehaviour
 
     /// <summary>
     /// 敗北時のヒント。負けた相手の弱点と、その属性で攻撃できる術（印の並び付き）を出す。
-    /// StageSelectの弱点表示と同じEnemyData.weakElementを使う。
+    /// StageSelectの弱点表示と同じく、敵の属性からElementAffinityで導く。
     /// </summary>
     private string BuildDefeatHint(EnemyData enemy)
     {
         if (enemy == null) return string.Empty;
 
-        string element = ElementNames.Get(enemy.weakElement);
+        var weakness = ElementAffinity.GetWeakness(enemy.element);
+        string element = ElementNames.Get(weakness);
         var spells = _allSpells
-            .Where(spell => spell != null && spell.element == enemy.weakElement && spell.basePower > 0f)
+            .Where(spell => spell != null && spell.element == weakness && spell.basePower > 0f)
             .Select(spell => $"{spell.spellName}（{string.Join(" → ", spell.sequence.Select(SequenceGuideView.GetSignDisplayName))} → 発）")
             .ToArray();
 
-        string hint = $"{enemy.enemyName}は{element}に弱い";
+        string hint = $"{enemy.enemyName}（{ElementNames.Get(enemy.element)}）は{element}に弱い";
         return spells.Length > 0 ? $"{hint}。　{string.Join("　", spells)}" : hint;
     }
 

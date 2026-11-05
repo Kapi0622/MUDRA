@@ -1,6 +1,6 @@
 # 📘 仕様書：「MUDRA」
 
-> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/11/01（B8：バランス調整を反映） **ステータス:** v2.0 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
+> **ドキュメント種別:** ゲーム仕様書 **作成日:** 2026/06/28 **最終更新:** 2026/11/06（B8.3：相性システムを反映） **ステータス:** v2.1 **関連:** [企画書モック v0.2](https://claude.ai/chat/game_design_mock_%E5%8D%B0%E8%A1%93%E3%83%90%E3%83%88%E3%83%AB.md) **開発方針:** 仕様駆動開発。本仕様書を実装の拠り所とし、自分の手でコードに落とす。実装中に仕様との齟齬が発生した場合は仕様書を更新し「生きたドキュメント」として運用する。
 
 ---
 
@@ -135,6 +135,7 @@ Scripts/
 |`PlayerStateManager`|プレイヤーの行動フェーズ（Idle / Chanting / Releasing）を管理する。ガードはPlayerPhaseとは独立した`GuardWindowManager`で管理する|Pure C#|
 |`EnemyStateManager`|敵の行動フェーズ（Idle / Charging / Attacking / Stunned）を管理する。全状態が「タイマー経過→次へ」の共通パターンのため、`async UniTaskVoid`ループ + enum/switchで実装する（Stateパターンは不採用）。外部からのStun付与/解除メソッドを公開する。セクション遷移では`SetEnemy`で敵データを差し替えてループを再開する|Pure C#|
 |`GuardWindowManager`|ガード受付窓（1秒）を管理する。Guard印確定で窓が開き、時間経過で自動終了。PlayerPhaseとは独立して動作し、詠唱中でもガード可能|Pure C#|
+|`ElementAffinity`|属性の相性の規則（B8.3）。「攻撃側の属性 × 受ける側の属性」から有利・等倍・不利を返す唯一の場所で、弱点（その属性に強い属性）も導く。術→敵・敵の攻撃→自分・将来の対戦で同じ規則を使う。表（ScriptableObject）は持たない（§7-2）|static class|
 
 #### StatusEffect
 
@@ -181,7 +182,7 @@ Scripts/
 |`ScreenFlashView`|画面全体の色フラッシュ（被弾・ガード成功・暴発・ボス撃破）|MonoBehaviour|
 |`CameraShakeView`|カメラの揺れ（Cinemachine Impulse）。ワールドだけが揺れ、HUDは揺れない|MonoBehaviour|
 |`GuardView`|ガード受付中の構え枠と、ガード成功の「防」|MonoBehaviour|
-|`DamageNumberView`|ダメージ数字・回復量（MultiHitの時間差表示、弱点・速度ボーナスのラベル）|MonoBehaviour|
+|`DamageNumberView`|ダメージ数字・回復量（MultiHitの時間差表示、弱点・耐性・速度ボーナスのラベル。耐性と自分の被弾のラベルはB8.3）|MonoBehaviour|
 |`ComboView`|コンボ数「n 連」とコンボ切れの演出|MonoBehaviour|
 |`StatusIconView`|継続中の効果のアイコン（蝕＝DoT・封＝Stun・癒＝HoT）|MonoBehaviour|
 |`BattleResultView`|「討伐」「敗北」の決着表示（B5のリザルト画面までの仮）|MonoBehaviour|
@@ -197,15 +198,15 @@ Scripts/
 |クラス名|責務|区分|
 |---|---|---|
 |`SpellData`|術の定義データ（シーケンス・威力・属性・演出素材）|ScriptableObject|
-|`EnemyData`|敵の定義データ（HP・弱点属性・行動パターン）|ScriptableObject|
+|`EnemyData`|敵の定義データ（HP・属性・行動パターン）。弱点は属性から`ElementAffinity`が導く（B8.3）|ScriptableObject|
 |`EnemyAttackData`|攻撃1種分のテンプレートデータ（ダメージ・チャージ時間・演出）|ScriptableObject|
 |`EnemyAction`|行動パターン1要素分のデータ（`EnemyAttackData`参照・大技フラグ・行動後の待機時間）|Serializable struct|
 |`StageSection`|ステージ内の1セクション分のデータ（敵データ参照・ボスフラグ）|Serializable struct|
 |`StageData`|ステージ定義データ（セクション配列・環境・道中とボスのBGM）。1ステージは道中雑魚×N + ボス×1のセクションで構成される|ScriptableObject|
 |`PresentationTimingData`|演出の時間表（複数のクラスにまたがる尺）。Modelの待機時間もここから計算する（B4）|ScriptableObject|
-|`BattlePaletteData`|複数のViewで使う意味の色（DoT・回復・ガード・弱点・属性）（B4）|ScriptableObject|
+|`BattlePaletteData`|複数のViewで使う意味の色（DoT・回復・ガード・弱点・不利・属性）（B4。不利はB8.3）|ScriptableObject|
 |`SoundData`|術・敵の攻撃・ステージの曲以外の固定の音（タイトル・リザルトの曲、勝敗のジングル、印・被弾・UIなどの効果音）（B7）|ScriptableObject|
-|`BalanceData`|バトル全体の調整値（PlayerMaxHp・暴発・ガード・速度ボーナス・コンボ・連続減衰・Stunの確率）。術・敵ごとの値は持たない（B8）|ScriptableObject|
+|`BalanceData`|バトル全体の調整値（PlayerMaxHp・暴発・ガード・速度ボーナス・コンボ・連続減衰・相性の倍率・Stunの確率）。術・敵ごとの値は持たない（B8。相性の倍率はB8.3）|ScriptableObject|
 
 ### 2-2. インターフェース定義
 
@@ -254,11 +255,10 @@ public interface IDamageCalculator
     /// ダメージを計算して返す。
     /// </summary>
     /// <param name="spellData">発動した術のデータ</param>
-    /// <param name="enemyData">対象の敵データ</param>
-    /// <param name="speedBonus">速度ボーナス倍率</param>
-    /// <param name="comboCount">コンボ数</param>
+    /// <param name="affinity">相性倍率（ElementAffinityとBalanceDataで決まる。B8.3）</param>
+    /// <param name="bonus">速度ボーナス・コンボ・連続減衰（B8）</param>
     /// <returns>計算結果のダメージ情報</returns>
-    DamageResult Calculate(SpellData spellData, EnemyData enemyData, float speedBonus, int comboCount);
+    DamageResult Calculate(SpellData spellData, float affinity, DamageBonus bonus);
 }
 ```
 
@@ -297,16 +297,29 @@ public enum HandSign
 
 ```csharp
 /// <summary>
-/// 属性。ボスの弱点属性との相性計算に使用する。
+/// 属性。術・敵・自分が持ち、相性はElementAffinityが決める（B8.3）。
+/// 値はアセットにシリアライズ済みなので全て明示し、追加は必ず末尾にする。
 /// </summary>
 public enum ElementType
 {
-    Wind,       // 風（壱印「開」）
-    Earth,      // 地（弐印「握」）
-    Thunder,    // 雷（参印「指」）
-    Water,      // 水（肆印「刃」）
-    Fire,       // 火（伍印「掌」）
-    Light,      // 光（陸印「合」）
+    Wind    = 0, // 風（木を含む）
+    Earth   = 1, // 土
+    Thunder = 2, // 雷
+    Water   = 3, // 水
+    Fire    = 4, // 火
+    Light   = 5, // 光
+    Dark    = 6, // 闇（今は敵だけ。B8.3）
+    None    = 7, // 無（相性の影響を受けない。B8.3）
+}
+
+/// <summary>
+/// 攻撃側から見た、受ける側の属性との関係（B8.3）。倍率はBalanceDataが持つ。
+/// </summary>
+public enum ElementRelation
+{
+    Neutral      = 0, // 等倍
+    Advantage    = 1, // 有利（受ける側の弱点）
+    Disadvantage = 2, // 不利（受ける側が強い、または同じ属性）
 }
 
 /// <summary>
@@ -496,8 +509,7 @@ public class EnemyData : ScriptableObject
 
     [Header("戦闘パラメータ")]
     public int maxHp;
-    public ElementType weakElement;
-    public float weakMultiplier = 1.5f;
+    public ElementType element;              // 敵自身の属性。弱点は相性の規則から導く。敵の攻撃もこの属性（B8.3）
     public float stunChanceMultiplier = 1f;  // Stunの入りやすさ。BalanceDataの確率に掛ける（B8）
 
     [Header("行動パラメータ")]
@@ -598,12 +610,18 @@ public struct DamageResult
     public int TotalDamage;
     public int PerHitDamage;        // 1ヒットあたりのダメージ（MultiHitのView側時間差表示用 / A3追加）
     public int HitCount;
-    public bool IsWeakness;         // 弱点属性かどうか
     public bool HasSpeedBonus;      // 速度ボーナスが適用されたか
+    public bool IsRepeated;         // 連続減衰がかかったか（B8）
     public StatusEffectType AppliedEffect;
     public float EffectDuration;
     public int PerTickDamage;       // tick1回あたりのダメージ（DoT専用。他Strategyは0 / A5追加）
     public int TickCount;           // tick回数（DoT専用。他Strategyは0 / A5追加）
+    public bool StunResisted;       // Stunが確率判定で入らなかったか（B8）
+    public int PerTickHeal;         // tick1回あたりの回復量（HoT専用）
+
+    public ElementRelation Relation;                                        // 術と敵の属性の関係（B8.3。BattleModelが埋める）
+    public bool IsWeakness => Relation == ElementRelation.Advantage;        // 弱点を突いたか
+    public bool IsDisadvantage => Relation == ElementRelation.Disadvantage; // 耐性があったか（「耐性」表示）
 }
 ```
 
@@ -629,7 +647,7 @@ Title ─→ Calibration ─→ Tutorial ─→ StageSelect ─→ InGame ─→
 | Title → Calibration | はじめる | `StartGame` |
 | Calibration → Tutorial | 次へ（カメラが動いていて、手が一度でも映った） | `CompleteCalibration` |
 | Calibration → Title | 戻る | `ToTitle` |
-| Tutorial → StageSelect | 全段階を達成・木人を撃破 ／ スキップ | `CompleteTutorial` ／ `SkipTutorial`・`ToStageSelect` |
+| Tutorial → StageSelect | 全段階を達成・練習用の泥ころを撃破 ／ スキップ | `CompleteTutorial` ／ `SkipTutorial`・`ToStageSelect` |
 | Tutorial → Tutorial | 敗北 ／ ポーズの「もう一度」 | `Retry` |
 | StageSelect → InGame | ステージを選ぶ | `SelectStage` |
 | InGame → Result | 決着（演出を見せ終えてから） | `EndBattle` |
@@ -640,7 +658,7 @@ Title ─→ Calibration ─→ Tutorial ─→ StageSelect ─→ InGame ─→
 `AppInitializer._tutorialStage` が未設定の時だけ、Calibration から StageSelect へ直接進む（データの設定漏れで進めなくなるのを避ける）。
 
 - **Calibration（B6）:** 毎回通る。カメラ映像を大きく出し、手が一度でも映れば「次へ」を押せる。認識テスト（印を組むと一覧が光る）は任意。カメラが見つからない・映像が届かない時はエラーと再試行を出す
-- **Tutorial（B6）:** StageSelect の前に毎回通る（スキップ可：ボタン・`Tab`・ポーズの「ステージ選択へ」）。InGame シーンで木人との練習バトルを行い、詠唱 → 発動 → 解除 → 防御 → 属性 の順に指示を出す。Result 画面・戦績には出さない
+- **Tutorial（B6）:** StageSelect の前に毎回通る（スキップ可：ボタン・`Tab`・ポーズの「ステージ選択へ」）。InGame シーンで練習用の泥ころ（`ED_TrainingDummy`。B6 では木人、B6.5 で見た目を変更）との練習バトルを行い、詠唱 → 発動 → 解除 → 防御 → 属性 の順に指示を出す。Result 画面・戦績には出さない
 - **ポーズ（B5）:** InGame・Tutorial の中で、もう一度（同じフェーズをやり直す）・ステージ選択へ を選べる。手が5秒映らない時は自動でポーズし、「手が認識されません」ガイドを出す（判定は Calibration のガイドと共通）
 
 ### 4-2. 状態遷移：PlayerStateManager
@@ -1075,7 +1093,9 @@ IDamageCalculator calculator = spellData.damageType switch
     _ => throw new ArgumentOutOfRangeException()
 };
 
-DamageResult result = calculator.Calculate(spellData, enemyData, speedBonus, comboCount);
+var relation = ElementAffinity.GetRelation(spellData.element, enemyData.element);   // B8.3
+DamageResult result = calculator.Calculate(spellData, balance.AffinityMultiplier(relation), bonus);
+result.Relation = relation;
 ```
 
 #### 各Strategyの計算方式
@@ -1083,13 +1103,13 @@ DamageResult result = calculator.Calculate(spellData, enemyData, speedBonus, com
 **SingleHitCalculator（単発高火力）**
 
 ```
-最終ダメージ = basePower × 弱点倍率 × 速度ボーナス × コンボ倍率
+最終ダメージ = basePower × 相性倍率 × 速度ボーナス × コンボ倍率 × 連続減衰
 ```
 
 **MultiHitCalculator（多段ヒット）**
 
 ```
-1ヒットあたりのダメージ = (basePower / hitCount) × 弱点倍率 × 速度ボーナス × コンボ倍率
+1ヒットあたりのダメージ = (basePower / hitCount) × 相性倍率 × 速度ボーナス × コンボ倍率 × 連続減衰
 合計ダメージ = 1ヒットあたり × hitCount
 ```
 
@@ -1100,13 +1120,13 @@ DamageResult result = calculator.Calculate(spellData, enemyData, speedBonus, com
 **DamageOverTimeCalculator（継続ダメージ）**
 
 ```
-初撃ダメージ = basePower × 0.3 × 弱点倍率 × 速度ボーナス × コンボ倍率
-tick1回分ダメージ = basePower × 0.7 / tick数 × 弱点倍率
+初撃ダメージ = basePower × 0.3 × 相性倍率 × 速度ボーナス × コンボ倍率 × 連続減衰
+tick1回分ダメージ = basePower × 0.7 / tick数 × 相性倍率
 tick数 = statusEffectDuration ÷ tick間隔
 tick間隔 = 1.0秒（固定）
 ```
 
-> **倍率の適用範囲:** 速度ボーナスとコンボ倍率は初撃のみに適用する。 tickダメージは「一度付与したら固定値で刻む」設計とし、弱点倍率のみを適用する。
+> **倍率の適用範囲:** 速度ボーナスとコンボ倍率は初撃のみに適用する。 tickダメージは「一度付与したら固定値で刻む」設計とし、相性倍率のみを適用する（術と敵の組で決まるため）。
 > 
 > **責務分割:** Calculatorは「初撃・tick1回分がいくらか」を算出し、`DamageResult.PerTickDamage`/`TickCount`に格納する。 「毎秒tickダメージを適用し続ける」スケジュール管理はStatusEffect基盤（`DotEffect` / `StatusEffectManager`）の責務。 初撃ダメージは`BattleModel.ApplySpellDamage`で即座に適用され、tickダメージは`DotEffect.OnTick`→`BattleModel.ApplyDotDamage`で毎秒適用される（A5で接続完了）。
 
@@ -1114,15 +1134,34 @@ tick間隔 = 1.0秒（固定）
 
 |要素|値|
 |---|---|
-|弱点倍率|`EnemyData.weakMultiplier`（デフォルト 1.5）|
-|非弱点倍率|1.0|
+|相性倍率|有利 1.5 / 等倍 1.0 / 不利 0.75（B8.3。関係は`ElementAffinity`、倍率は`BalanceData`）|
 |速度ボーナス|詠唱時間が「印数 × 1.0秒」以内: 1.3 / それ以外: 1.0（B8）|
 |コンボ倍率|1.0 + 0.03 × min(comboCount, 10)。10コンボで×1.3が上限（B8）|
 |連続減衰|直前の攻撃術と同じ属性なら 0.6（B8）|
 |防御時の軽減率|通常攻撃: 0.5倍 / 大技: 0.3倍|
 |暴発セルフダメージ|PlayerMaxHp × 0.05（固定割合）|
 
-> **B8:** 弱点倍率以外の値はすべて `BalanceData`（アセット `BD_Balance`）にあり、Inspectorで調整する。
+> **B8:** 倍率の値はすべて `BalanceData`（アセット `BD_Balance`）にあり、Inspectorで調整する（相性の倍率もB8.3でここに加えた）。
+
+#### 相性（B8.3）
+
+以前は敵ごとに弱点属性を1つ持たせ、弱点なら×1.5・それ以外は×1.0だった。業火がほぼ全敵で最速になる万能枠になり、弱点にも一貫した規則がなかったため、**敵に属性を持たせ、相性の規則から有利・不利を導く**形に変えた。
+
+- 循環 **水 → 火 → 風 → 土 → 雷 → 水**（矢印の先の属性に強い）と **光 ⇄ 闇**（互いに弱点）。風は「風・木」として扱う（木の妖は風属性）
+- 攻撃側が受ける側に強い → 有利／受ける側が強い、または同じ属性 → 不利／それ以外 → 等倍／どちらかが無 → 等倍
+- どの属性にも有利になる属性がちょうど1つあり、これを「弱点」と呼ぶ（`ElementAffinity.GetWeakness`）。UI・図鑑・敗北時のヒントは敵の属性から弱点を導く
+- 無はプレイヤー専用（双刃・回復術）。光・無の敵は作らない
+- 表を ScriptableObject にしないのは、上の規則で全マスが決まり、表にすると規則から外れたマスを作れてしまうため。対戦で双方の表が食い違う心配もない。全マスは EditMode テスト（`Editor/Tests/ElementAffinityTests.cs`）で確かめる
+
+**自分の属性（術者の属性）:** 最後に撃った攻撃術の属性（`BattleModel.PlayerElement`）。撃つ前・敵の交代直後は無として扱う。回復術は変えない。連続減衰と被ダメージの相性の両方がこの1つの値を見る。オンライン対戦の「最後に使った技の属性に変化する」と同じ規則にするため、通常モードでも同じに揃えた。
+
+**敵の攻撃の相性:** 敵の攻撃は敵自身の属性を持ち（攻撃ごとの属性は持たない）、自分の属性との相性で被ダメージが変わる。
+`被ダメージ = 攻撃のダメージ × 相性倍率（敵の属性 → 自分の属性） × ガード軽減`
+
+| 表示 | 意味 | 術 → 敵 | 敵の攻撃 → 自分 |
+|---|---|---|---|
+| 弱点！ | 受ける側が苦手な属性で撃たれた（×1.5） | ○ | ○ |
+| 耐性 | 受ける側が強い、または同じ属性（×0.75） | ○ | ○ |
 
 ### 7-3. バトル進行フロー
 
@@ -1220,7 +1259,7 @@ battleModel.OnPlayerDamaged.Subscribe(info => {
 });
 guardWindowManager.IsGuarding.Subscribe(guardView.SetStance);
 battleModel.OnSpellHit.Where(r => r.TotalDamage > 0)   // 回復術（威力0）は除く
-    .Subscribe(r => damageNumberView.ShowSpellHit(r.PerHitDamage, r.HitCount, r.IsWeakness, r.HasSpeedBonus));
+    .Subscribe(r => damageNumberView.ShowSpellHit(r.PerHitDamage, r.HitCount, r.IsWeakness, r.IsDisadvantage, r.HasSpeedBonus, r.IsRepeated, r.StunResisted));
 battleModel.ComboCount.Subscribe(comboView.SetCombo);
 statusEffectManager.OnEffectApplied.Subscribe(type => statusIconView.SetEffectActive(type, true));
 ```
@@ -1561,6 +1600,8 @@ B4完了後、「確定が鈍く、誤判定がやや多い」という体感か
 - 各ボスの行動パターン微調整
 
 > **進捗実績:** B8（B7.5で先取り〜11/01）完了。コンボ上限（10コンボで×1.3）・同じ属性の連続減衰（×0.6、弱点一辺倒の対策）・速度ボーナスの引き下げ（×1.5→×1.3）・術と敵の数値はB7.5で先取りした。B8ではStun完封対策を**確率化（逓減つき）**で実装し（§10-2）、GuardWindowDuration・SpeedBonusに加えて全体の調整値を`BalanceData`（`BD_Balance`）にまとめた。通しプレイの結果、敵の攻撃が弱くガード無しでも勝ててしまうため、敵の攻撃力を通常×1.5・大技×1.75に上げ（大技を多めに上げてガードの重要性を高める）、代わりに回復術を35→50にした。ボスの行動パターンは、溜めが最も短く反応が厳しかった影縫いの溜めを1.0→1.3秒に延ばしただけで、他は据え置き。PlayerMaxHpは100で確定。数値の早見表は`docs/balance_sheet.md`。詳細は dev_log_B8。
+
+> **B8.3（11/05〜11/06）:** 弱点システムを相性システムに置き換えた（§7-2「相性」）。敵の`weakElement`/`weakMultiplier`を`element`に、倍率を`BalanceData`に一本化。双刃・回復術を無属性に、蟹坊主の弱点を土→風に変更。自分の属性（最後に撃った攻撃術）を導入し、敵の攻撃にも相性を掛ける。HPバーに属性と弱点、HUD右上に相性図を常時表示。光と闇は互いに弱点。詳細は dev_log_B8.3。
 
 #### B9：バグフィックス・最終調整の内訳
 

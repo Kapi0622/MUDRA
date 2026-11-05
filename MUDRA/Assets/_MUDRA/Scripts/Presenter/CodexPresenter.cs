@@ -214,7 +214,8 @@ public class CodexPresenter : MonoBehaviour
 
         var facts = new[]
         {
-            $"弱点　{ColoredElement(enemy.weakElement)}",
+            $"属性　{ColoredElement(enemy.element)}",
+            $"弱点　{ColoredElement(ElementAffinity.GetWeakness(enemy.element))}",
             $"体力　{Stars(enemy.maxHp, HpStarThresholds)}",
             $"技　　{AttackText(enemy)}",
         };
@@ -278,13 +279,13 @@ public class CodexPresenter : MonoBehaviour
     private static string Stars(int value, IReadOnlyList<int> thresholds)
         => Stars(value, thresholds.Select(t => (float)t).ToArray());
 
-    private string ColoredElement(ElementType element)
+    private string ColoredElement(ElementType? element)
     {
         string hex = ColorUtility.ToHtmlStringRGB(ElementColor(element));
         return $"<color=#{hex}>{ElementNames.Get(element)}</color>";
     }
 
-    private Color ElementColor(ElementType element)
+    private Color ElementColor(ElementType? element)
         => _palette != null ? _palette.ElementColor(element) : Color.white;
 
     private void OnDestroy()

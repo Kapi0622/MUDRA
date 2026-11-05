@@ -57,6 +57,15 @@ namespace MUDRA.Data
         [Range(0f, 1f)]
         public float repeatElementMultiplier = 0.6f;
 
+        [Header("相性（B8.3）")]
+        [Tooltip("有利な属性で攻撃した時の倍率。術から敵へも、敵の攻撃から自分へも同じ値を使う")]
+        [Min(1f)]
+        public float advantageMultiplier = 1.5f;
+
+        [Tooltip("不利な属性（受ける側が強い、または同じ属性）で攻撃した時の倍率")]
+        [Range(0f, 1f)]
+        public float disadvantageMultiplier = 0.75f;
+
         [Header("Stun（封殺し対策）")]
         [Tooltip("Stunが入る基本の確率。敵ごとのEnemyData.stunChanceMultiplierを掛けて使う")]
         [Range(0f, 1f)]
@@ -65,5 +74,16 @@ namespace MUDRA.Data
         [Tooltip("同じ敵にStunが入るたびに確率へ掛ける値（0.5なら 60%→30%→15%）。失敗した時と敵が替わった時に基本の確率へ戻る")]
         [Range(0f, 1f)]
         public float stunChanceDecay = 0.5f;
+
+        /// <summary>相性の倍率。関係はElementAffinityが決め、倍率はここで1か所にまとめて調整する</summary>
+        public float AffinityMultiplier(ElementRelation relation)
+        {
+            return relation switch
+            {
+                ElementRelation.Advantage => advantageMultiplier,
+                ElementRelation.Disadvantage => disadvantageMultiplier,
+                _ => 1f,
+            };
+        }
     }
 }

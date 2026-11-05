@@ -25,6 +25,9 @@ namespace MUDRA.Data
         [Tooltip("弱点ヒット。敵の被弾フラッシュとダメージ数字")]
         public Color weakness = new Color(1f, 0.85f, 0.2f);
 
+        [Tooltip("不利（耐性）。ダメージ数字の「耐性」ラベル（B8.3）。連続減衰の灰色と見分けられるよう青みを付けている")]
+        public Color disadvantage = new Color(0.5f, 0.6f, 0.75f);
+
         // 術エフェクト（パーティクル）の色と揃えている。変えるときはエフェクトのプレハブも合わせる
         [Header("属性")]
         public Color wind = new Color(0.35f, 0.8f, 0.45f);
@@ -33,6 +36,9 @@ namespace MUDRA.Data
         public Color water = new Color(0.2f, 0.45f, 0.9f);
         public Color fire = new Color(0.9f, 0.3f, 0.1f);
         public Color light = new Color(0.95f, 0.9f, 0.7f);
+        public Color dark = new Color(0.55f, 0.35f, 0.75f);
+        [Tooltip("無属性。相性の影響を受けない術（双刃・回復術）と、まだ術を撃っていない自分")]
+        public Color none = new Color(0.85f, 0.85f, 0.85f);
 
         [Tooltip("色を定義していない属性")]
         public Color unknownElement = Color.gray;
@@ -48,8 +54,14 @@ namespace MUDRA.Data
                 ElementType.Water => water,
                 ElementType.Fire => fire,
                 ElementType.Light => light,
+                ElementType.Dark => dark,
+                ElementType.None => none,
                 _ => unknownElement,
             };
         }
+
+        /// <summary>弱点が無い（ElementAffinity.GetWeakness が null）時は unknownElement</summary>
+        public Color ElementColor(ElementType? element)
+            => element.HasValue ? ElementColor(element.Value) : unknownElement;
     }
 }

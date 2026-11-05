@@ -45,6 +45,8 @@ public class DamageNumberView : MonoBehaviour
     private const string SpeedLabel = "迅速！";
     private const string RepeatedLabel = "連続↓";
     private const string StunResistedLabel = "抵抗";
+    // 不利（B8.3）。Stunの「抵抗」とは別物なので文言を分ける
+    private const string DisadvantageLabel = "耐性";
 
     [Tooltip("弱点・DoT・回復・ガードの数字の色。敵のフラッシュ・画面フラッシュと同じ色を使う")]
     [SerializeField] private BattlePaletteData _palette;
@@ -72,11 +74,11 @@ public class DamageNumberView : MonoBehaviour
 
     /// <summary>
     /// 術のヒット。hitCountが2以上なら1ヒットずつ時間差で出す（MultiHitの連撃に見せる）。
-    /// 弱点・速度ボーナス・連続減衰・Stunの抵抗（B8）は最初の数字の上にラベルを添える。
+    /// 弱点・耐性（B8.3）・速度ボーナス・連続減衰・Stunの抵抗（B8）は最初の数字の上にラベルを添える。
     /// 連続減衰（B8）の一撃は数字を灰色にする。弱点でも灰色を優先するのは、
     /// 「弱点なのに伸びない」理由がその場で分かるようにするため（色が弱点のままだと減衰に気づけない）。
     /// </summary>
-    public void ShowSpellHit(int perHitDamage, int hitCount, bool isWeakness, bool hasSpeedBonus, bool isRepeated, bool isStunResisted)
+    public void ShowSpellHit(int perHitDamage, int hitCount, bool isWeakness, bool isDisadvantage, bool hasSpeedBonus, bool isRepeated, bool isStunResisted)
     {
         var origin = EnemyPosition();
         float size = isWeakness ? WeakSize : NormalSize;
@@ -88,16 +90,15 @@ public class DamageNumberView : MonoBehaviour
             Spawn(perHitDamage.ToString(), origin + RandomOffset(), size, color, i * MultiHitInterval);
         }
 
-        string label = BuildHitLabel(isWeakness, hasSpeedBonus, isRepeated, isStunResisted);
-        if (label.Length > 0)
-            Spawn(label, origin + new Vector2(0f, LabelOffsetY), LabelSize, LabelColor, 0f);
+        SpawnLabel(BuildHitLabel(isWeakness, isDisadvantage, hasSpeedBonus, isRepeated, isStunResisted), origin);
     }
 
-    /// <summary>「弱点！ 迅速！ 連続↓ 抵抗」のように該当するものを並べる。連続は数字と同じ灰色、抵抗は白銀にする</summary>
-    private static string BuildHitLabel(bool isWeakness, bool hasSpeedBonus, bool isRepeated, bool isStunResisted)
+    /// <summary>「弱点！ 迅速！ 連続↓ 抵抗」のように該当するものを並べる。耐性は不利の色、連続は数字と同じ灰色、抵抗は白銀にする</summary>
+    private string BuildHitLabel(bool isWeakness, bool isDisadvantage, bool hasSpeedBonus, bool isRepeated, bool isStunResisted)
     {
-        var parts = new System.Collections.Generic.List<string>(4);
+        var parts = new System.Collections.Generic.List<string>(5);
         if (isWeakness) parts.Add(WeakLabel);
+        if (isDisadvantage) parts.Add(DisadvantageText());
         if (hasSpeedBonus) parts.Add(SpeedLabel);
         if (isRepeated) parts.Add($"<color=#{ColorUtility.ToHtmlStringRGB(RepeatedColor)}>{RepeatedLabel}</color>");
         if (isStunResisted) parts.Add($"<color=#{ColorUtility.ToHtmlStringRGB(StunResistedColor)}>{StunResistedLabel}</color>");
@@ -116,12 +117,29 @@ public class DamageNumberView : MonoBehaviour
         Spawn("+" + amount, PlayerPosition() + RandomOffset(), SmallSize, _palette.heal, 0f);
     }
 
-    /// <summary>プレイヤーの被弾。ガードで軽減した時は青く小さく出す。</summary>
-    public void ShowPlayerDamage(int damage, bool wasGuarded)
+    /// <summary>
+    /// プレイヤーの被弾。ガードで軽減した時は青く小さく出す。
+    /// 敵の攻撃と自分の属性の相性（B8.3）は、術のヒットと同じ「弱点！」「耐性」のラベルで添える
+    /// （受ける側が苦手なら弱点、強いなら耐性。敵に撃つ時と同じ言葉で、どちら向きでも同じ規則だと分かるように）。
+    /// </summary>
+    public void ShowPlayerDamage(int damage, bool wasGuarded, bool isWeakness, bool isDisadvantage)
     {
-        Spawn(damage.ToString(), PlayerPosition() + RandomOffset(),
+        var origin = PlayerPosition();
+        Spawn(damage.ToString(), origin + RandomOffset(),
             wasGuarded ? SmallSize : NormalSize,
             wasGuarded ? _palette.guard : PlayerDamageColor, 0f);
+
+        SpawnLabel(isWeakness ? WeakLabel : isDisadvantage ? DisadvantageText() : string.Empty, origin);
+    }
+
+    private string DisadvantageText()
+        => $"<color=#{ColorUtility.ToHtmlStringRGB(_palette.disadvantage)}>{DisadvantageLabel}</color>";
+
+    /// <summary>数字の上にラベルを出す。空なら何もしない</summary>
+    private void SpawnLabel(string label, Vector2 origin)
+    {
+        if (label.Length > 0)
+            Spawn(label, origin + new Vector2(0f, LabelOffsetY), LabelSize, LabelColor, 0f);
     }
 
     /// <summary>

@@ -9,6 +9,9 @@ using MUDRA.Data;
 /// </summary>
 public class BattlePresenter : MonoBehaviour
 {
+    // 自分のHPバーの名前欄（B8.3）。自分の属性は直前に撃った攻撃術で変わり、被ダメージの相性に効くので常に見せる
+    private const string PlayerElementLabel = "自分の属性";
+
     private BattleModel _battleModel;
     private EnemyStateManager _enemyStateManager;
     private SpellSequenceModel _spellSequenceModel;
@@ -31,6 +34,8 @@ public class BattlePresenter : MonoBehaviour
     [SerializeField] private DamageNumberView _damageNumberView;
     [SerializeField] private ComboView _comboView;
     [SerializeField] private StatusIconView _statusIconView;
+    [Tooltip("HPバーの名前欄に出す属性の色（B8.3）")]
+    [SerializeField] private BattlePaletteData _palette;
 
     [Header("サウンド（B7）")]
     [SerializeField] private SePlayer _se;
@@ -67,9 +72,15 @@ public class BattlePresenter : MonoBehaviour
             .Subscribe(enemyData =>
             {
                 _bossHpBarView.InitializeHp(_battleModel.BossHp.CurrentValue, _battleModel.BossMaxHp);
-                _bossHpBarView.SetName(enemyData.enemyName);
+                _bossHpBarView.SetName(EnemyNameText(enemyData));
                 Debug.Log($"[Battle] 敵出現: {enemyData.enemyName} (HP:{_battleModel.BossMaxHp})");
             })
+            .AddTo(_disposables);
+
+        // --- 自分の属性（B8.3） → 自分のHPバーの名前欄 ---
+        // 撃つ前・敵が替わった直後は null（相性の上では無属性）
+        _battleModel.PlayerElement
+            .Subscribe(element => _playerHpBarView.SetName($"{PlayerElementLabel}　{ColoredElement(element ?? ElementType.None)}"))
             .AddTo(_disposables);
 
         // --- HP監視 ---
@@ -92,7 +103,7 @@ public class BattlePresenter : MonoBehaviour
         _battleModel.OnSpellHit
             .Where(result => result.TotalDamage > 0)
             .Subscribe(result => _damageNumberView.ShowSpellHit(
-                result.PerHitDamage, result.HitCount, result.IsWeakness, result.HasSpeedBonus, result.IsRepeated,
+                result.PerHitDamage, result.HitCount, result.IsWeakness, result.IsDisadvantage, result.HasSpeedBonus, result.IsRepeated,
                 result.StunResisted))
             .AddTo(_disposables);
 
@@ -180,7 +191,8 @@ public class BattlePresenter : MonoBehaviour
 
     private void HandlePlayerDamaged(PlayerDamageInfo info)
     {
-        _damageNumberView.ShowPlayerDamage(info.Damage, info.WasGuarded);
+        _damageNumberView.ShowPlayerDamage(info.Damage, info.WasGuarded,
+            info.Relation == ElementRelation.Advantage, info.Relation == ElementRelation.Disadvantage);
 
         // 暴発の自傷では被弾音を鳴らさない（暴発の音は HandSignPresenter が鳴らす）
         if (info.IsMisfire)
@@ -201,6 +213,24 @@ public class BattlePresenter : MonoBehaviour
         _se.Play(info.IsHeavy ? _sound.playerDamageHeavy : _sound.playerDamage);
         _screenFlashView.FlashDamage(info.IsHeavy);
         _cameraShakeView.ShakeDamage(info.IsHeavy);
+    }
+
+    /// <summary>
+    /// 敵のHPバーの名前欄。「泥人形　土　／　弱点　風」（B8.3。区切りは開始演出と同じ「／」。「｜」はフォントに無い）。
+    /// 相性図を辿らなくても次に撃つ属性が分かるよう、属性と並べて弱点も出す
+    /// </summary>
+    private string EnemyNameText(EnemyData enemy)
+    {
+        var weakness = ElementAffinity.GetWeakness(enemy.element);
+        string weaknessText = weakness.HasValue ? ColoredElement(weakness.Value) : ElementNames.Get(weakness);
+        return $"{enemy.enemyName}　{ColoredElement(enemy.element)}　／　弱点　{weaknessText}";
+    }
+
+    private string ColoredElement(ElementType element)
+    {
+        string name = ElementNames.Get(element);
+        if (_palette == null) return name;
+        return $"<color=#{ColorUtility.ToHtmlStringRGB(_palette.ElementColor(element))}>{name}</color>";
     }
 
     private void OnDestroy()

@@ -18,9 +18,8 @@ public class EnemyData : ScriptableObject
 
     [Header("戦闘パラメータ")]
     public int maxHp;
-    public ElementType weakElement;
-    [Tooltip("弱点属性ヒット時の倍率")]
-    public float weakMultiplier = 1.5f;
+    [Tooltip("敵自身の属性（B8.3）。弱点・耐性はElementAffinityが相性の規則から導く。敵の攻撃もこの属性を持つ")]
+    public ElementType element;
     [Tooltip("Stunの入りやすさ（B8）。BalanceDataの確率に掛ける。1 = 標準、0 = Stunが入らない。ボスを止めにくくする時に下げる")]
     [Min(0f)]
     public float stunChanceMultiplier = 1f;

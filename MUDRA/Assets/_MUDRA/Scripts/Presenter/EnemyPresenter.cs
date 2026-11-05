@@ -158,13 +158,13 @@ public class EnemyPresenter : MonoBehaviour
     public UniTask PlayStageIntroAsync(StageData stage, CancellationToken token)
     {
         var boss = stage.FindBoss();
-        var weakElement = boss != null ? boss.weakElement : default;
+        var weakness = boss != null ? ElementAffinity.GetWeakness(boss.element) : null;
         var data = new StageCardData(
             stage.stageNumber,
             stage.stageName,
             boss != null ? boss.enemyName : "？",
-            boss != null ? ElementNames.Get(weakElement) : "？",
-            _palette != null ? _palette.ElementColor(weakElement) : Color.white,
+            ElementNames.Get(weakness),
+            _palette != null ? _palette.ElementColor(weakness) : Color.white,
             string.Empty);
 
         // 帯と同時に拍子木、帯が消えて「結印！」が出る時（introTitleDuration 後）に太鼓と掛け声

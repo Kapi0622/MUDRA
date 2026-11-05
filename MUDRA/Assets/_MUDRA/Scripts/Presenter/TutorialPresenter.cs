@@ -14,7 +14,9 @@ using UnityEngine;
 public class TutorialPresenter : MonoBehaviour
 {
     private const string ClearedText = "よし！";
-    private const string RepeatNote = "ただし同じ属性の術を続けると威力が下がる（数字が灰色になる）。別の属性の術を挟もう";
+    // 属性の段階の本文（B8.3）。本文の欄は26ptで1行約22字・4行まで。これより長くするとはみ出す
+    private const string AffinityRule = "強い属性で攻めると大きく効き、同じ属性や苦手な属性だと効きにくい。";
+    private const string PlayerElementNote = "同じ属性を続けると威力↓。最後に撃った術の属性が自分の属性になり、受ける傷も変わる";
     private const string CompletedTitle = "修練完了！";
     private const string CompletedDetail = "これで準備は整った。ステージ選択へ進む";
     private const string MisfireNote = "並びが違うと暴発して、自分が傷を負う。術の並びはポーズ（Esc）の術一覧でも見られる";
@@ -24,7 +26,7 @@ public class TutorialPresenter : MonoBehaviour
     private readonly CompositeDisposable _disposables = new();
 
     /// <summary>BattleInitializerから呼ばれる（チュートリアルの時だけ）</summary>
-    /// <param name="enemy">木人。弱点属性の段階で、弱点と術を示すのに使う</param>
+    /// <param name="enemy">練習用の泥ころ（ED_TrainingDummy）。属性の段階で、属性・弱点と術を示すのに使う</param>
     public void Initialize(
         TutorialModel tutorialModel,
         GameStateManager gameStateManager,
@@ -83,7 +85,7 @@ public class TutorialPresenter : MonoBehaviour
             TutorialStep.Release => $"発動：印を並べて「{release}」で放とう",
             TutorialStep.Cancel => $"解除：「{cancel}」で並びを取り消そう",
             TutorialStep.Guard => $"防御：攻撃の予告が出たら「{guard}」で受けよう",
-            TutorialStep.Element => $"属性：{enemy.enemyName}は{ElementNames.Get(enemy.weakElement)}に弱い",
+            TutorialStep.Element => $"属性：{enemy.enemyName}は{ElementNames.Get(enemy.element)}。{ElementNames.Get(ElementAffinity.GetWeakness(enemy.element))}に弱い",
             _ => CompletedTitle,
         };
     }
@@ -115,12 +117,16 @@ public class TutorialPresenter : MonoBehaviour
 
             case TutorialStep.Element:
             {
-                var weakSpells = attackSpells.Where(spell => spell.element == enemy.weakElement).Select(SpellWithSequence).ToArray();
-                string element = ElementNames.Get(enemy.weakElement);
-                // 連続減衰（B8）もここで伝える。弱点を知った直後が、弱点の術を連打したくなる瞬間のため
-                return weakSpells.Length > 0
-                    ? $"弱点の属性で攻めると大きく効く。{element}の術：{string.Join("　", weakSpells)}\n{RepeatNote}"
-                    : $"弱点の属性で攻めると大きく効く\n{RepeatNote}";
+                // 例には弱点の術のうち並びが一番短いものを1つだけ出す（発動の段階と同じ。全部並べると欄からはみ出す）
+                var weakness = ElementAffinity.GetWeakness(enemy.element);
+                var example = attackSpells
+                    .Where(spell => spell.element == weakness)
+                    .OrderBy(spell => spell.sequence.Length)
+                    .FirstOrDefault();
+                // 連続減衰（B8）と自分の属性（B8.3）もここで伝える。弱点を知った直後が、弱点の術を連打したくなる瞬間のため
+                return example != null
+                    ? $"{AffinityRule}例：{SpellWithSequence(example)}\n{PlayerElementNote}"
+                    : $"{AffinityRule}\n{PlayerElementNote}";
             }
 
             default:
