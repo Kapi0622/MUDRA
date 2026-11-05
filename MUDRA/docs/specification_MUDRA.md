@@ -1252,7 +1252,8 @@ HP・被弾・ガード・ダメージ数字・コンボ・状態アイコンを
 ```csharp
 // BattlePresenter の購読（抜粋）
 battleModel.OnPlayerDamaged.Subscribe(info => {
-    damageNumberView.ShowPlayerDamage(info.Damage, info.WasGuarded);
+    damageNumberView.ShowPlayerDamage(info.Damage, info.WasGuarded,
+        info.Relation == ElementRelation.Advantage, info.Relation == ElementRelation.Disadvantage);
     if (info.IsMisfire)       screenFlashView.FlashMisfire();
     else if (info.WasGuarded) { guardView.PlayGuardSuccess(); screenFlashView.FlashGuard(); cameraShakeView.ShakeGuard(); }
     else                      { screenFlashView.FlashDamage(info.IsHeavy); cameraShakeView.ShakeDamage(info.IsHeavy); }
@@ -1601,7 +1602,7 @@ B4完了後、「確定が鈍く、誤判定がやや多い」という体感か
 
 > **進捗実績:** B8（B7.5で先取り〜11/01）完了。コンボ上限（10コンボで×1.3）・同じ属性の連続減衰（×0.6、弱点一辺倒の対策）・速度ボーナスの引き下げ（×1.5→×1.3）・術と敵の数値はB7.5で先取りした。B8ではStun完封対策を**確率化（逓減つき）**で実装し（§10-2）、GuardWindowDuration・SpeedBonusに加えて全体の調整値を`BalanceData`（`BD_Balance`）にまとめた。通しプレイの結果、敵の攻撃が弱くガード無しでも勝ててしまうため、敵の攻撃力を通常×1.5・大技×1.75に上げ（大技を多めに上げてガードの重要性を高める）、代わりに回復術を35→50にした。ボスの行動パターンは、溜めが最も短く反応が厳しかった影縫いの溜めを1.0→1.3秒に延ばしただけで、他は据え置き。PlayerMaxHpは100で確定。数値の早見表は`docs/balance_sheet.md`。詳細は dev_log_B8。
 
-> **B8.3（11/05〜11/06）:** 弱点システムを相性システムに置き換えた（§7-2「相性」）。敵の`weakElement`/`weakMultiplier`を`element`に、倍率を`BalanceData`に一本化。双刃・回復術を無属性に、蟹坊主の弱点を土→風に変更。自分の属性（最後に撃った攻撃術）を導入し、敵の攻撃にも相性を掛ける。HPバーに属性と弱点、HUD右上に相性図を常時表示。光と闇は互いに弱点。詳細は dev_log_B8.3。
+> **B8.3（11/05〜11/06）:** 弱点システムを相性システムに置き換えた（§7-2「相性」）。敵の`weakElement`/`weakMultiplier`を`element`に、倍率を`BalanceData`に一本化。双刃・回復術を無属性に、蟹坊主の弱点を土→風に変更。自分の属性（最後に撃った攻撃術）を導入し、敵の攻撃にも相性を掛ける。敵のHPバーに属性（名前とは別の欄。弱点は出さない）、HUD右上に相性図を常時表示。光と闇は互いに弱点。詳細は dev_log_B8.3。
 
 #### B9：バグフィックス・最終調整の内訳
 

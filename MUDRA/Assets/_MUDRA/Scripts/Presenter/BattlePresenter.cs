@@ -11,6 +11,9 @@ public class BattlePresenter : MonoBehaviour
 {
     // 自分のHPバーの名前欄（B8.3）。自分の属性は直前に撃った攻撃術で変わり、被ダメージの相性に効くので常に見せる
     private const string PlayerElementLabel = "自分の属性";
+    // 敵のHPバーの属性欄（B8.3）。名前とは別の欄（バーの上の左端）に出し、名前を中央に保つ。
+    // 弱点は右上の相性図で分かるので出さない（ユーザー判断）
+    private const string EnemyElementLabel = "属性";
 
     private BattleModel _battleModel;
     private EnemyStateManager _enemyStateManager;
@@ -72,7 +75,8 @@ public class BattlePresenter : MonoBehaviour
             .Subscribe(enemyData =>
             {
                 _bossHpBarView.InitializeHp(_battleModel.BossHp.CurrentValue, _battleModel.BossMaxHp);
-                _bossHpBarView.SetName(EnemyNameText(enemyData));
+                _bossHpBarView.SetName(enemyData.enemyName);
+                _bossHpBarView.SetElement($"{EnemyElementLabel}　{ColoredElement(enemyData.element)}");
                 Debug.Log($"[Battle] 敵出現: {enemyData.enemyName} (HP:{_battleModel.BossMaxHp})");
             })
             .AddTo(_disposables);
@@ -213,17 +217,6 @@ public class BattlePresenter : MonoBehaviour
         _se.Play(info.IsHeavy ? _sound.playerDamageHeavy : _sound.playerDamage);
         _screenFlashView.FlashDamage(info.IsHeavy);
         _cameraShakeView.ShakeDamage(info.IsHeavy);
-    }
-
-    /// <summary>
-    /// 敵のHPバーの名前欄。「泥人形　土　／　弱点　風」（B8.3。区切りは開始演出と同じ「／」。「｜」はフォントに無い）。
-    /// 相性図を辿らなくても次に撃つ属性が分かるよう、属性と並べて弱点も出す
-    /// </summary>
-    private string EnemyNameText(EnemyData enemy)
-    {
-        var weakness = ElementAffinity.GetWeakness(enemy.element);
-        string weaknessText = weakness.HasValue ? ColoredElement(weakness.Value) : ElementNames.Get(weakness);
-        return $"{enemy.enemyName}　{ColoredElement(enemy.element)}　／　弱点　{weaknessText}";
     }
 
     private string ColoredElement(ElementType element)

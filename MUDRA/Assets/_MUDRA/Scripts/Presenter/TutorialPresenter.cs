@@ -16,7 +16,7 @@ public class TutorialPresenter : MonoBehaviour
     private const string ClearedText = "よし！";
     // 属性の段階の本文（B8.3）。本文の欄は26ptで1行約22字・4行まで。これより長くするとはみ出す
     private const string AffinityRule = "強い属性で攻めると大きく効き、同じ属性や苦手な属性だと効きにくい。";
-    private const string PlayerElementNote = "同じ属性を続けると威力↓。最後に撃った術の属性が自分の属性になり、受ける傷も変わる";
+    private const string PlayerElementNote = "同じ属性を続けると威力↓。最後に撃った攻撃術の属性が自分の属性になり、受ける傷も変わる";
     private const string CompletedTitle = "修練完了！";
     private const string CompletedDetail = "これで準備は整った。ステージ選択へ進む";
     private const string MisfireNote = "並びが違うと暴発して、自分が傷を負う。術の並びはポーズ（Esc）の術一覧でも見られる";

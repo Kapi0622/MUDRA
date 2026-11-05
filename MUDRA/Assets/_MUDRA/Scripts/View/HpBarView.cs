@@ -12,6 +12,8 @@ using LitMotion;
 ///
 /// UI改修 ステップ5: HPが減った時にバー全体を短く揺らす（回復では揺らさない）。
 /// 名前の欄（任意）を設定したバーは SetName で敵の名前を出す（ボス側のバーの上中央）。
+/// 属性の欄（任意。B8.3）は SetElement で敵の属性を出す（ボス側のバーの上の左端）。
+/// 名前と同じ欄に並べると名前が中央からずれるので、欄を分けている。
 /// </summary>
 public class HpBarView : MonoBehaviour
 {
@@ -37,6 +39,9 @@ public class HpBarView : MonoBehaviour
 
     [Header("名前(任意。UI改修 ステップ5)")]
     [SerializeField] private TextMeshProUGUI _nameText;
+
+    [Header("属性(任意。B8.3)")]
+    [SerializeField] private TextMeshProUGUI _elementText;
 
     // 実行中のモーションを保持し、連続ダメージ時に前のモーションをキャンセルする
     private MotionHandle _currentBarHandle;
@@ -88,6 +93,12 @@ public class HpBarView : MonoBehaviour
     public void SetName(string displayName)
     {
         if (_nameText != null) _nameText.text = displayName;
+    }
+
+    /// <summary>属性の欄の文字を差し替える（欄が無いバーでは何もしない）</summary>
+    public void SetElement(string elementText)
+    {
+        if (_elementText != null) _elementText.text = elementText;
     }
 
     private void PlayDamageShake()

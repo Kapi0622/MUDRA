@@ -55,12 +55,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "affinity_chart_asset_prompt.md",
-                "mode": "preview",
+                "file": "spec_change_element_affinity.md",
+                "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "affinity_chart_asset_prompt"
+              "title": "spec_change_element_affinity"
             }
           },
           {
@@ -244,6 +244,8 @@
   },
   "active": "887245b9b718a217",
   "lastOpenFiles": [
+    "specification_MUDRA.md.tmp.14128.280527bb165d",
+    "affinity_chart_asset_prompt.md",
     "devlog/dev_log_B8.3.md",
     "devlog/dev_log_B8.3.md.tmp.14128.f23b0f21b22c",
     "app_screen_asset_prompts.md",
@@ -255,7 +257,6 @@
     "balance_sheet.md",
     "B3_enemy_stage_content.md",
     "spell_icon_prompts.md",
-    "affinity_chart_asset_prompt.md",
     "specification_MUDRA.md",
     "sedg8xmoo",
     "devlog/dev_log_B8.2.md",
@@ -278,7 +279,6 @@
     "architecture/sedi4sWgC",
     "architecture/sed7JKkUs",
     "devlog/dev_log_B6.md",
-    "devlog/dev_log_B5.md",
-    "devlog/dev_log_B4.5.md"
+    "devlog/dev_log_B5.md"
   ]
 }

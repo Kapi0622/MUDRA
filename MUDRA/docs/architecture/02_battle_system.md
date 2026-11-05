@@ -393,7 +393,7 @@ private void HandleSignConfirmed(HandSign sign)
 | 購読するストリーム | 呼ぶもの |
 |---|---|
 | `BattleModel.PlayerHp` / `BossHp`（`.Skip(1)`） | `HpBarView.SetHp(hp, maxHp)` ※初期表示は `InitializeHp` で別途 |
-| `BattleModel.OnEnemyChanged` | ボスHPバーを `InitializeHp` で新しい敵の MaxHp に合わせ直し、名前欄に「名前　属性　／　弱点　属性」（B8.3。属性は色付き） |
+| `BattleModel.OnEnemyChanged` | ボスHPバーを `InitializeHp` で新しい敵の MaxHp に合わせ直し、名前欄に敵の名前、属性欄（バーの上の左端）に「属性　土」（B8.3。属性は色付き。名前を中央に保つため欄を分け、弱点は右上の相性図に任せて出さない） |
 | `BattleModel.PlayerElement` | 自分のHPバーの名前欄に「自分の属性　〇」（B8.3。null は無） |
 | `BattleModel.ComboCount` | `ComboView.SetCombo` |
 | `BattleModel.OnSpellHit`（`TotalDamage > 0` のみ）/ `OnDotTick` / `OnHealed` | `DamageNumberView` |
